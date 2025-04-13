@@ -9,6 +9,7 @@ use OpenAI;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
+use Mozex\Anthropic\Client;
 
 class ConnectWithLLM
 {
