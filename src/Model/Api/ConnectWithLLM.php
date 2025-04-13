@@ -1,43 +1,76 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sunnysideup\AutomatedContentManagement\Model\Api;
 
 use Exception;
+use OpenAI;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
 
 class ConnectWithLLM
 {
-
     use Configurable;
     use Injectable;
 
-    public function RunQuery(string $query): string
+    /**
+     * Run a query against the configured LLM
+     */
+    public function runQuery(string $query): string
     {
-        $client = Environment::getEnv('SS_LLM_CLIENT');
-        $apiKey = Environment::getEnv('SS_LLM_API_KEY');
-        if ($client) {
-            $method = 'ask' . $client;
-            if (method_exists($this, $method)) {
-                return $this->$method($apiKey, $query);
-            } else {
-                throw new Exception('Method not found: ' . $method);
-            }
-        }
-        return $query;
+        $client = Environment::getEnv('SS_LLM_CLIENT')
+            ?? throw new Exception('LLM client not configured in environment');
+
+        $apiKey = Environment::getEnv('SS_LLM_API_KEY')
+            ?? throw new Exception('LLM API key not configured in environment');
+
+        $method = 'ask' . $client;
+
+        return method_exists($this, $method)
+            ? $this->$method($apiKey, $query)
+            : throw new Exception('Unsupported LLM client: ' . $client);
     }
-    function askOpenAI($question, $model = 'gpt-3.5-turbo')
+
+    /**
+     * Send a question to OpenAI and get a response
+     */
+    protected function askOpenAI(string $apiKey, string $question, string $model = 'gpt-4o'): string
     {
-        $client = OpenAI::client('your-api-key');
+        try {
+            $client = OpenAI::client($apiKey);
+            $response = $client->chat()->create([
+                'model' => $model,
+                'messages' => [['role' => 'user', 'content' => $question]],
+                'temperature' => 0.7,
+            ]);
 
-        $response = $client->chat()->create([
-            'model' => $model,
-            'messages' => [
-                ['role' => 'user', 'content' => $question],
-            ],
-        ]);
+            return $response->choices[0]->message->content;
+        } catch (Exception $e) {
+            error_log('OpenAI API error: ' . $e->getMessage());
+            throw $e;
+        }
+    }
 
-        return $response->choices[0]->message->content;
+    /**
+     * Send a question to Claude and get a response
+     */
+    protected function askClaude(string $apiKey, string $question, string $model = 'claude-3-opus-20240229'): string
+    {
+        try {
+            $client = new \Mozex\Anthropic\Client($apiKey);
+            $response = $client->messages()->create([
+                'model' => $model,
+                'max_tokens' => 1000,
+                'messages' => [['role' => 'user', 'content' => $question]],
+                'temperature' => 0.7,
+            ]);
+
+            return $response->content[0]->text;
+        } catch (Exception $e) {
+            error_log('Anthropic API error: ' . $e->getMessage());
+            throw $e;
+        }
     }
 }

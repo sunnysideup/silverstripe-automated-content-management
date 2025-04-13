@@ -22,8 +22,10 @@
     "require": {
         "silverstripe/framework": "^5.0",
         "silverstripe/admin": "^2.0",
-        "openai-php/client": "^0.10.0"
+        "openai-php/client": "^0.10.0",
+        "mozex/anthropic-php": "^1.1"
     },
+    "suggest": {},
     "require-dev": {
         "sunnysideup/sswebpack_engine_only": "dev-master",
         "silverleague/ideannotator": "*",
