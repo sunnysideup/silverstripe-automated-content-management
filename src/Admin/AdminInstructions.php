@@ -8,7 +8,7 @@ use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class AdminInstructions extends ModelAdmin
 {
-    private static $url_segment = 'automated-content-management-instructions';
+    private static $url_segment = 'automated-edits';
 
     private static $menu_title = 'Automated Edits';
 
