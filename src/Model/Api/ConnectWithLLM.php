@@ -27,4 +27,17 @@ class ConnectWithLLM
         }
         return $query;
     }
+    function askOpenAI($question, $model = 'gpt-3.5-turbo')
+    {
+        $client = OpenAI::client('your-api-key');
+
+        $response = $client->chat()->create([
+            'model' => $model,
+            'messages' => [
+                ['role' => 'user', 'content' => $question],
+            ],
+        ]);
+
+        return $response->choices[0]->message->content;
+    }
 }
