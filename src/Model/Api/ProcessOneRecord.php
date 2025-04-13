@@ -25,10 +25,10 @@ class ProcessOneRecord
             $recordProcess->delete();
             return;
         }
-        if ($recordProcess->CanProcess()) {
+        if ($recordProcess->getCanProcess()) {
             $recordProcess->Started = true;
             $recordProcess->write();
-            $answer = $this->sendToLLM($instruction, $recordProcess->Before);
+            $answer = $this->sendToLLM($instruction, $recordProcess->getBeforeHumanValue());
             $recordProcess->After = $answer;
             $recordProcess->Completed = $answer;
             $recordProcess->write();
@@ -57,11 +57,12 @@ class ProcessOneRecord
     }
 
 
-    protected function sendToLLM($instruction, $before)
+    protected function sendToLLM(string $instruction, string $beforeAsHumanValue): string
     {
         // This is where you would send the instruction and before value to the LLM
         // For now, we will just return a dummy response
         $obj = Injector::inst()->get(ConnectWithLLM::class);
-        return $obj->runQuery($instruction, $before);
+        $query = "Instruction: {$instruction}\n\n\nCurrent content: {$beforeAsHumanValue}";
+        return $obj->runQuery($query);
     }
 }

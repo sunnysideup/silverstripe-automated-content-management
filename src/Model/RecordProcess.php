@@ -20,8 +20,9 @@ class RecordProcess extends DataObject
         'Started' => 'Boolean',
         'Completed' => 'Boolean',
         'Accepted' => 'Boolean',
-        'Cancelled' => 'Boolean',
+        'Rejected' => 'Boolean',
         'OriginalUpdated' => 'Boolean',
+        'IsTest' => 'Boolean',
     ];
 
     private static $has_one = [
@@ -54,7 +55,8 @@ class RecordProcess extends DataObject
 
     public function getCanProcess(): bool
     {
-        if ($this->Instruction()->ReadyToProcess) {
+        $instruction = $this->Instruction();
+        if ($instruction->ReadyToProcess || $instruction->RunTest) {
             if (!$this->getCanNotProcessAnymore()) {
                 return true;
             }

@@ -3,6 +3,7 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Tasks;
 
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use Sunnysideup\AutomatedContentManagement\Model\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
@@ -22,7 +23,7 @@ class ProcessInstructions extends BuildTask
 
     public function run($request)
     {
-        $this->processor = ProcessOneRecord::create();
+        $this->processor = Injector::inst()->get(ProcessOneRecord::class);
         $this->cleanupInstructions();
         $this->getAnswers();
         $this->updateOriginals();
@@ -57,6 +58,7 @@ class ProcessInstructions extends BuildTask
         $recordProcesses = RecordProcess::get()->filter([
             'Completed' => true,
             'Accepted' => true,
+            'IsTest' => false,
         ]);
         foreach ($recordProcesses as $recordProcess) {
             $this->processor->updateOriginalRecord($recordProcess);

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model\Api;
 
+use Anthropic\Client as AnthropicClient;
 use Exception;
-use OpenAI;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
-use Mozex\Anthropic\Client;
+use OpenAI;
 
 class ConnectWithLLM
 {
@@ -27,17 +27,20 @@ class ConnectWithLLM
         $apiKey = Environment::getEnv('SS_LLM_API_KEY')
             ?? throw new Exception('LLM API key not configured in environment');
 
+        $clientModel = Environment::getEnv('SS_LLM_CLIENT_MODEL')
+            ?? null;
+
         $method = 'ask' . $client;
 
         return method_exists($this, $method)
-            ? $this->$method($apiKey, $query)
+            ? $this->$method($apiKey, $query, $clientModel)
             : throw new Exception('Unsupported LLM client: ' . $client);
     }
 
     /**
      * Send a question to OpenAI and get a response
      */
-    protected function askOpenAI(string $apiKey, string $question, string $model = 'gpt-4o'): string
+    protected function askOpenAI(string $apiKey, string $question, ?string $model = 'gpt-4o'): string
     {
         try {
             $client = OpenAI::client($apiKey);
@@ -57,16 +60,17 @@ class ConnectWithLLM
     /**
      * Send a question to Claude and get a response
      */
-    protected function askClaude(string $apiKey, string $question, string $model = 'claude-3-opus-20240229'): string
+    protected function askClaude(string $apiKey, string $question, ?string $model = 'claude-3-opus-20240229'): string
     {
         try {
-            $client = new Client($apiKey);
+            $client = new AnthropicClient($apiKey);
             $response = $client->messages()->create([
                 'model' => $model,
                 'max_tokens' => 1000,
                 'messages' => [['role' => 'user', 'content' => $question]],
                 'temperature' => 0.7,
             ]);
+
 
             return $response->content[0]->text;
         } catch (Exception $e) {
