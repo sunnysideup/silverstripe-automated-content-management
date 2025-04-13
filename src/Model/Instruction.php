@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
 use SilverStripe\Core\Injector\Injector;

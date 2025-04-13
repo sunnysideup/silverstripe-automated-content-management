@@ -59,7 +59,7 @@ class ConnectWithLLM
     protected function askClaude(string $apiKey, string $question, string $model = 'claude-3-opus-20240229'): string
     {
         try {
-            $client = new \Mozex\Anthropic\Client($apiKey);
+            $client = new Client($apiKey);
             $response = $client->messages()->create([
                 'model' => $model,
                 'max_tokens' => 1000,

@@ -28,22 +28,6 @@ class ProcessInstructions extends BuildTask
         $this->updateOriginals();
         $this->cleanupRecordProcesses();
         $this->cleanupInstructions();
-
-        $processor = ProcessOneRecord::create();
-        foreach ($recordProcesses as $recordProcess) {
-            $processor->recordAnswer($recordProcess);
-        }
-        $recordProcesses = RecordProcess::get()->filter([
-            'Completed' => true,
-            'Accepted' => true,
-        ]);
-        foreach ($recordProcesses as $recordProcess) {
-            $processor->updateOriginalRecord($recordProcess);
-        }
-        $recordProcesses = RecordProcess::get()->filter([
-            'Completed' => true,
-            'Accepted' => true,
-        ]);
     }
 
     protected function cleanupInstructions()

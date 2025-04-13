@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model\Api;
 
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\Core\Injector\Injector;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class ProcessOneRecord
@@ -59,6 +61,7 @@ class ProcessOneRecord
     {
         // This is where you would send the instruction and before value to the LLM
         // For now, we will just return a dummy response
-        return $before;
+        $obj = Injector::inst()->get(ConnectWithLLM::class);
+        return $obj->runQuery($instruction, $before);
     }
 }
