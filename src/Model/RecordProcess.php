@@ -178,7 +178,6 @@ class RecordProcess extends DataObject
         return false;
     }
 
-
     public function canDelete($member = null)
     {
         return false;

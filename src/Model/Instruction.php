@@ -20,6 +20,7 @@ class Instruction extends DataObject
     private static $db = [
         'Title' => 'Varchar(255)',
         'Description' => 'Text',
+        'RunTest' => 'Boolean',
         'ReadyToProcess' => 'Boolean',
         'ClassNameToChange' => 'Varchar(255)',
         'FieldToChange' => 'Varchar(255)',
@@ -32,6 +33,7 @@ class Instruction extends DataObject
     ];
     private static $has_many = [
         'RecordProcess' => RecordProcess::class,
+        'Tests' => RecordProcess::class,
     ];
 
     private static $summary_fields = [
@@ -76,6 +78,7 @@ class Instruction extends DataObject
             $readonlyFields = [
                 'Title',
                 'Description',
+                'ReadyToProcess',
                 'ClassNameToChange',
                 'FieldToChange',
             ];
@@ -88,6 +91,11 @@ class Instruction extends DataObject
                     );
                 }
             }
+            $fields->removeByName(
+                [
+                    'RunTest',
+                ]
+            );
         } else {
             $fields->removeByName(
                 [
@@ -160,6 +168,21 @@ class Instruction extends DataObject
                 $this->Completed = true;
             }
         }
+
+        if ($this->Cancelled) {
+            $this->ReadyToProcess = false;
+            foreach ($this->RecordProcess() as $recordProcess) {
+                $recordProcess->delete();
+            }
+        }
+        if ($this->ReadyToProcess) {
+            $this->RunTest = false;
+        }
+    }
+
+    public function onAfterWrite()
+    {
+        parent::onAfterWrite();
         if ($this->ReadyToProcess) {
             $className = $this->ClassNameToChange;
             $ids = $className::get()->columnUnique('ID');
@@ -175,13 +198,8 @@ class Instruction extends DataObject
                 $recordProcess->write();
             }
         }
-        if ($this->Cancelled) {
-            $this->ReadyToProcess = false;
-            foreach ($this->RecordProcess() as $recordProcess) {
-                $recordProcess->delete();
-            }
-        }
     }
+
 
     public function canEdit($member = null)
     {
