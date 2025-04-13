@@ -41,8 +41,8 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "bin": [
-        "bin/npm-build-automated-content-management.sh",
-        "bin/npm-watch-automated-content-management.sh"
+        "bin/sake-npm-build-automated-content-management.sh",
+        "bin/sake-npm-watch-automated-content-management.sh"
     ],
     "authors": [
         {
