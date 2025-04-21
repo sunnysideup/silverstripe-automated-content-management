@@ -4,12 +4,23 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
+use PhpParser\Node\Stmt\ElseIf_;
+use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Forms\CheckboxSetField;
+use SilverStripe\Forms\CompositeValidator;
+use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\GridField\GridField;
+use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
 use SilverStripe\Forms\GridField\GridFieldAddNewButton;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\Forms\GridField\GridFieldDeleteAction;
+use SilverStripe\Forms\OptionsetField;
 use SilverStripe\Forms\ReadonlyField;
+use SilverStripe\Forms\RequiredFields;
+use SilverStripe\Forms\Tab;
+use SilverStripe\Forms\TabSet;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBField;
@@ -22,18 +33,33 @@ use Sunnysideup\AutomatedContentManagement\Traits\CMSFieldsExtras;
 class Instruction extends DataObject
 {
 
+
     use CMSFieldsExtras;
     private static $table_name = 'AutomatedContentManagementInstruction';
 
+    private static $singular_name = 'Instruction';
+    private static $plural_name = 'Instructions';
+    private static $description = 'Instructions for the automated content management system.';
+
+    private static array $excluded_models = [
+        'SilverStripe\\Versioned\\ChangeSetItem',
+        'DNADesign\\Elemental\\Models\\BaseElement',
+    ];
+
+    private static array $included_models = [];
+
     private static $db = [
+        'ClassNameToChange' => 'Varchar(255)',
+        'FieldToChange' => 'Varchar(255)',
         'Title' => 'Varchar(255)',
         'Description' => 'Text',
         'RunTest' => 'Boolean',
         'ReadyToProcess' => 'Boolean',
-        'ClassNameToChange' => 'Varchar(255)',
-        'FieldToChange' => 'Varchar(255)',
+        'StartedProcess' => 'Boolean',
         'Completed' => 'Boolean',
         'Cancelled' => 'Boolean',
+        'AcceptAll' => 'Boolean',
+        'RejectAll' => 'Boolean',
     ];
 
     private static $has_one = [
@@ -54,10 +80,13 @@ class Instruction extends DataObject
     ];
 
     private static $field_labels = [
-        'Title' => 'Title',
-        'Description' => 'Description',
-        'ClassNameToChange' => 'Record Type to change',
-        'FieldToChange' => 'Field to change',
+        'ClassNameToChange' => '* Record Type you would like to update',
+        'FieldToChange' => '* Field to change',
+        'Title' => '* Title (internal use only, required)',
+        'Description' => '* Instructions for the LLM (required)',
+        'RunTest' => 'Run test now',
+        'ReadyToProcess' => 'Start process now',
+        'Cancelled' => 'Cancel further processing',
     ];
 
 
@@ -66,7 +95,9 @@ class Instruction extends DataObject
         'ProcessedRecords' => 'Int',
         'PercentageCompleted' => 'Percentage',
         'RecordType' => 'Varchar(255)',
-        'IsValidForProcessing' => 'Boolean',
+        'IsReadyForProcessing' => 'Boolean',
+        'IsReadyForReview' => 'Boolean',
+        'ReviewCompleted' => 'Boolean',
     ];
 
     private static $cascade_delete = [
@@ -76,92 +107,217 @@ class Instruction extends DataObject
 
     private static $default_sort = 'ID DESC';
 
+    // public function getCMSCompositeValidator(): CompositeValidator
+    // {
+    //     if (!$this->HasValidClassName()) {
+    //         return RequiredFields::create(
+    //             [
+    //                 'ClassNameToChange',
+    //             ]
+    //         );
+    //     } elseif (!$this->HasValidFieldName()) {
+    //         return RequiredFields::create(
+    //             [
+    //                 'ClassNameToChange',
+    //                 'FieldToChange',
+    //             ]
+    //         );
+    //     } else {
+    //         return RequiredFields::create(
+    //             [
+    //                 'ClassNameToChange',
+    //                 'FieldToChange',
+    //                 'Title',
+    //                 'Description',
+    //             ]
+    //         );
+    //     }
+    // }
+
     public function getCMSFields()
     {
-        $fields = parent::getCMSFields();
-        $fields->removeByName('ByID');
-        $this->addCastingFieldsNow($fields);
-        if ($this->ReadyToProcess) {
-            $readonlyFields = [
-                'Title',
-                'Description',
-                'ReadyToProcess',
-                'ClassNameToChange',
-                'FieldToChange',
+        if (!$this->HasValidClassName()) {
+            return FieldList::create(
+                $this->getSelectClassNameField(true)
+            );
+        } elseif (!$this->HasValidFieldName()) {
+            return FieldList::create(
+                $this->getSelectClassNameField(false, true),
+                $this->getSelectFieldNameField(true)
+            );
+        } else {
+            $fields = parent::getCMSFields();
+            $fields->addFieldToTab(
+                'Root',
+                Tab::create('Details'),
+                'RecordsToProcess'
+            );
+            $fields->addFieldToTab(
+                'Root.Details',
+                $fields->dataFieldByName('ByID')
+            );
+            $this->addCastingFieldsNow($fields);
+
+
+
+            $fields->dataFieldByName('ReadyToProcess')
+                ->setDescription(
+                    'This will allow start the process of getting data from the large lange model (like ChatGPT). <br />' .
+                        'Please note that the process may not start immediately. <br />' .
+                        'You can only check this box once all the required data-entry has been completed.'
+                );
+            $fields->dataFieldByName('RunTest')
+                ->setDescription(
+                    'Checking this option will allow you to run the results for just one (random) record without applying any of the suggested changes.'
+                );
+            $grids = [
+                'Tests' => RecordProcess::get()
+                    ->filter(
+                        [
+                            'IsTest' => true
+                        ]
+                    ),
+                'Review' => RecordProcess::get()
+                    ->filter(
+                        [
+                            'IsTest' => false,
+                            'Completed' => true,
+                            'Accepted' => false,
+                            'Rejected' => false,
+
+                        ]
+                    ),
+                'Queued' => RecordProcess::get()
+                    ->filter(
+                        [
+                            'Started' => false
+                        ]
+                    ),
+                'Accepted' => RecordProcess::get()
+                    ->filter(
+                        [
+                            'Accepted' => true
+                        ]
+                    ),
+                'Rejected' => RecordProcess::get()
+                    ->filter(
+                        [
+                            'Rejected' => true
+                        ]
+                    ),
             ];
-            foreach ($readonlyFields as $fieldName) {
-                $field = $fields->dataFieldByName($fieldName);
-                if ($field) {
+            foreach ($grids as $name => $list) {
+                $list = $list->filter(['InstructionID' => $this->ID]);
+                $fields->addFieldToTab(
+                    'Root.' . $name,
+                    new GridField(
+                        'RecordsToProcess' . $name,
+                        $name,
+                        $list,
+                        GridFieldConfig_RecordEditor::create()
+                            ->removeComponentsByType(GridFieldAddNewButton::class)
+                            ->removeComponentsByType(GridFieldDeleteAction::class)
+                    )
+                );
+            }
+            $fields->addFieldsToTab(
+                'Root.RecordsToProcess',
+                [
+                    $fields->dataFieldByName('AcceptAll')
+                        ->setDescription(
+                            'This will allow you to accept all the changes for all the records in the list.'
+                        ),
+                    $fields->dataFieldByName('RejectAll')
+                        ->setDescription(
+                            'This will allow you to accept all the changes for all the records in the list.'
+                        ),
+                    $fields->dataFieldByName('RejectAll')
+                ],
+                'RecordsToProcess'
+
+            );
+            $fields->dataFieldByName('RecordsToProcess')
+                ->setDescription(
+                    'This is a list of all the records that are to be processed. <br />' .
+                        'You can click on the record to see the details and make changes.'
+                )
+                ->getConfig()->removeComponentsByType(GridFieldAddNewButton::class)
+                ->removeComponentsByType(GridFieldDeleteAction::class)
+                ->removeComponentsByType(GridFieldAddExistingAutocompleter::class);
+
+            $this->makeFieldsReadonly($fields);
+            return $fields;
+        }
+    }
+
+    protected function makeFieldsReadonly($fields)
+    {
+        foreach ($fields->dataFields() as $field) {
+            $fieldName = $field->getName();
+            if ($this->makeFieldsReadonlyInner($fieldName)) {
+                $myField = $fields->dataFieldByName($fieldName);
+                if ($myField) {
                     $fields->replaceField(
                         $fieldName,
-                        ReadonlyField::create($fieldName, $this->fieldLabel($fieldName), $this->$fieldName)
+                        $myField
+                            ->performDisabledTransformation()
+                            ->setReadonly(true)
                     );
                 }
             }
-            $fields->removeByName(
-                [
-                    'RunTest',
-                ]
-            );
-        } else {
-            $fields->removeByName(
-                [
-                    'Completed',
-                    'Cancelled',
-                ]
-            );
         }
-        $grids = [
-            'Tests' => RecordProcess::get()
-                ->filter(
-                    [
-                        'IsTest' => true
-                    ]
-                ),
-            'Review' => RecordProcess::get()
-                ->filter(
-                    [
-                        'IsTest' => false,
-                        'Completed' => true,
-                        'Accepted' => false,
-                        'Rejected' => false,
+    }
 
-                    ]
-                ),
-            'Queued' => RecordProcess::get()
-                ->filter(
-                    [
-                        'Started' => false
-                    ]
-                ),
-            'Accepted' => RecordProcess::get()
-                ->filter(
-                    [
-                        'Accepted' => true
-                    ]
-                ),
-            'Rejected' => RecordProcess::get()
-                ->filter(
-                    [
-                        'Rejected' => true
-                    ]
-                ),
-        ];
-        foreach ($grids as $name => $list) {
-            $list = $list->filter(['InstructionID' => $this->ID]);
-            $fields->addFieldToTab(
-                'Root.' . $name,
-                new GridField(
-                    'RecordsToProcess' . $name,
-                    $name,
-                    $list,
-                    GridFieldConfig_RecordEditor::create()
-                        ->removeComponentsByType(GridFieldAddNewButton::class)
-                        ->removeComponentsByType(GridFieldDeleteAction::class)
-                )
-            );
+    protected function makeFieldsReadonlyInner(string $fieldName): bool
+    {
+        // everyting readonly
+        if ($this->getReviewCompleted()) {
+            return true;
         }
-        return $fields;
+        // everyting readonly
+        if ($this->Cancelled) {
+            return true;
+        }
+        // always readonly
+        switch ($fieldName) {
+            case 'ClassNameToChange':
+            case 'FieldToChange':
+            case 'Created':
+            case 'LastEdited':
+            case 'StartedProcess':
+            case 'Completed':
+            case 'ByID':
+                return true;
+            default:
+                break;
+        }
+        if ($this->getIsReadyForProcessing() !== true) {
+            switch ($fieldName) {
+                case 'ReadyToProcess':
+                case 'RunTest':
+                    return true;
+                default:
+                    break;
+            }
+        } elseif ($this->StartedProcess) {
+            switch ($fieldName) {
+                case 'Title':
+                case 'Description':
+                    return true;
+                default:
+                    break;
+            }
+        }
+        if ($this->getIsReadyForReview() !== true) {
+            switch ($fieldName) {
+                case 'AcceptAll':
+                case 'RejectAll':
+                    return true;
+                default:
+                    break;
+            }
+        }
+        return false;
     }
 
     public function getNumberOfRecords(): int
@@ -176,51 +332,101 @@ class Instruction extends DataObject
 
     public function getProcessedRecords(): int
     {
-        $className = $this->ClassNameToChange;
-        $fieldName = $this->FieldToChange;
-        if ($className && $fieldName) {
-            return $className::get()->count();
-        }
-        return 0;
+        return $this->RecordsToProcess()->filter(['Completed' => true])->count();
     }
 
     public function getPercentageCompleted(): float
     {
-        return round($this->getProcessedRecords() / $this->getNumberOfRecords() * 100) / 100;
+        if ($this->getNumberOfRecords() === 0) {
+            return 0;
+        }
+        return round(($this->getProcessedRecords() / $this->getNumberOfRecords()) * 100) / 100;
     }
 
-    public function IsValidForProcessing()
+    public function getIsReadyForProcessing()
     {
         if ($this->Completed) {
             return false;
         }
+        if (! $this->HasValidClassName()) {
+            return false;
+        }
+        if (!$this->getRecordType()) {
+            return false;
+        }
+        if (! $this->Title) {
+            return false;
+        }
+        if (! $this->Description) {
+            return false;
+        }
+        return true;
+    }
+
+    protected function HasValidClassName(): bool
+    {
         $className = $this->ClassNameToChange;
-        if (!class_exists($className)) {
+        if ($className && class_exists($className)) {
+            return true;
+        }
+        return false;
+    }
+
+    protected function HasValidFieldName(): bool
+    {
+        $fieldName = $this->FieldToChange;
+        $obj = $this->getRecordSingleton();
+        if (! $obj) {
             return false;
         }
-        if (!$this->getRecordType) {
-            return false;
+        $db = $obj->config()->get('db');
+        if (isset($db[$fieldName])) {
+            return true;
         }
+        return false;
+    }
+
+    public function getRecordSingleton()
+    {
+        if ($this->HasValidClassName()) {
+            return Injector::inst()->get($this->ClassNameToChange);
+        }
+        return null;
     }
 
     public function getRecordType(): string
     {
-        $className = $this->ClassNameToChange;
-        if (class_exists($className)) {
-            $obj = Injector::inst()->get($className);
-            $db = $obj->db();
+        $obj = $this->getRecordSingleton();
+        if ($obj) {
+            $db = $obj->config()->get('db');
             return $db[$this->FieldToChange] ?? 'Error: Field does not exist';
         }
         return 'Error: Class does not exist';
+    }
+
+    public function getIsReadyForReview(): bool
+    {
+        return (bool) $this->Completed;
+    }
+
+    public function getReviewCompleted(): bool
+    {
+        if ($this->Cancelled) {
+            return true;
+        }
+        $allReviewsDone = $this->RecordsToProcess()
+            ->filter(['Accepted' => false, 'Rejected' => false])
+            ->count() === 0;
+        return ($this->Completed && $allReviewsDone) ? true : false;
     }
 
     public function onBeforeWrite()
     {
         parent::onBeforeWrite();
         if (! $this->ByID) {
-            $this->ByID = Security::setCurrentUser()?->ID;
+            $this->ByID = Security::getCurrentUser()?->ID;
         }
-        if (! $this->Completed) {
+        if (! $this->Completed && $this->StartedProcess) {
             if ($this->getNumberOfRecords() === $this->getProcessedRecords()) {
                 $this->Completed = true;
             }
@@ -243,9 +449,7 @@ class Instruction extends DataObject
     public function onAfterWrite()
     {
         parent::onAfterWrite();
-        if ($this->ReadyToProcess) {
-            $this->AddRecords(false);
-        } elseif ($this->RunTest) {
+        if ($this->RunTest) {
             $item = $this->AddRecords(true, DB::get_conn()->random(), 1);
             if ($item) {
                 $obj = Injector::inst()->get(ProcessOneRecord::class);
@@ -253,17 +457,20 @@ class Instruction extends DataObject
             }
             $this->RunTest = false;
             $this->write();
+        } elseif ($this->ReadyToProcess) {
+            $this->AddRecords(false);
         }
     }
 
 
     public function canEdit($member = null)
     {
-        if ($this->Completed) {
+        if ($this->Cancelled || $this->getReviewCompleted()) {
             return false;
         }
         return parent::canEdit($member);
     }
+
 
 
     public function canDelete($member = null)
@@ -308,5 +515,150 @@ class Instruction extends DataObject
             return $recordProcess;
         }
         return null;
+    }
+
+    protected function getListOfClasses(): array
+    {
+        $otherList = [];
+        $pageList = [];
+        $classes = ClassInfo::subclassesFor(DataObject::class, false);
+        $excludedModels = $this->config()->get('excluded_models');
+        $includedModels = $this->config()->get('included_models');
+        foreach ($classes as $class) {
+            if (in_array($class, $excludedModels)) {
+                continue;
+            }
+            if (!empty($includedModels) && !in_array($class, $includedModels)) {
+                continue;
+            }
+
+            if (! $this->IsValidClassName($class)) {
+                continue;
+            }
+            // get the name
+            $obj = Injector::inst()->get($class);
+            $count = $class::get()->filter(['ClassName' => $class])->count();
+            if ($count === 0) {
+                continue;
+            }
+            if ($obj->hasMethod('CMSEditLink')) {
+                $name = $obj->i18n_singular_name();
+                $desc = $obj->Config()->get('description');
+                if ($desc) {
+                    $name .= ' - ' . $desc;
+                }
+                $name = trim($name);
+                // add name to list
+                foreach ([$otherList, $pageList] as $list) {
+                    if (in_array($name, $list, true)) {
+                        $name .= ' (disambiguation class name: ' . $class . ')';
+                    }
+                }
+                $name .= ' (' . $count . ' records)';
+                if ($obj instanceof SiteTree) {
+                    $pageList[$class] = $name;
+                } else {
+                    $otherList[$class] = $name;
+                }
+            }
+        }
+        asort($pageList);
+        asort($otherList);
+        return $pageList + $otherList;
+    }
+
+    protected function getSelectClassNameField(?bool $withInstructions = true, ?bool $onlyShowSelectedvalue = false): OptionsetField
+    {
+        $field = OptionsetField::create(
+            'ClassNameToChange',
+            $this->fieldLabel('ClassNameToChange'),
+            $this->getListOfClasses()
+        );
+        if ($withInstructions) {
+            $field->setDescription(
+                '
+                    Please select the record type you want to change.
+                    This will be used to create a list of records to process.
+                    Once selected, please save the record to continue.
+                '
+            );
+        }
+        if ($onlyShowSelectedvalue) {
+            $source = $field->getSource();
+            $field->setSource([
+                $this->ClassNameToChange => $source[$this->ClassNameToChange] ?? 'ERROR! Class not found',
+            ]);
+        }
+
+        return $field;
+    }
+
+    protected function getListOfFieldNames(): array
+    {
+        $list = [];
+        $record = $this->getRecordSingleton();
+        if ($record) {
+            $labels = $record->fieldLabels();
+            $db = $record->config()->get('db');
+            foreach ($db as $name => $type) {
+                if (! $this->IsValidFieldType($type)) {
+                    continue;
+                }
+                $list[$name] = $labels[$name] ?? $name;
+            }
+        }
+        return $list;
+    }
+
+    protected function getSelectFieldNameField(?bool $withInstructions = true, ?bool $onlyShowSelectedvalue = false): OptionsetField
+    {
+        $field = OptionsetField::create(
+            'FieldToChange',
+            $this->fieldLabel('FieldToChange'),
+            $this->getListOfFieldNames()
+        );
+        if ($withInstructions) {
+            $field->setDescription(
+                '
+                    Please select the field you want to change.
+                    Once selected, please save the record to continue.
+                '
+            );
+        }
+        if ($onlyShowSelectedvalue) {
+            $field->setSource([
+                $this->FieldToChange => $field->getSource()[$this->FieldToChange],
+            ]);
+        }
+        return $field;
+    }
+
+    protected function IsValidClassName(string $className)
+    {
+        if ($className && class_exists($className)) {
+            return true;
+        }
+        return false;
+    }
+    protected function IsValidFieldType(string $type): bool
+    {
+        //It removes everything from the first (  to the end
+        $type = preg_replace('/\(.*$/', '', $type);
+        switch ($type) {
+            case 'Varchar':
+            case 'Text':
+            case 'HTMLText':
+            case 'HTMLVarchar':
+            case 'Boolean':
+            case 'Int':
+            case 'Float':
+            case 'Decimal':
+            case 'Datetime':
+            case 'Date':
+            case 'Time':
+                return true;
+            default:
+                return false;
+        }
     }
 }

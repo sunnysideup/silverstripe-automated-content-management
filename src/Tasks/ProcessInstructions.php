@@ -44,12 +44,23 @@ class ProcessInstructions extends BuildTask
 
     protected function getAnswers()
     {
-        $recordProcesses = RecordProcess::get()->filter([
-            'Started' => false,
-            'Completed' => false,
+        $instructions = Instruction::get()->filterAny([
+            'ReadyToProcess' => true,
+            'RunTest' => false,
+        ])->excludeAny([
+            'Cancelled' => true,
+            'Completed' => true,
         ]);
-        foreach ($recordProcesses as $recordProcess) {
-            $this->processor->recordAnswer($recordProcess);
+        foreach ($instructions as $instruction) {
+            foreach (
+                RecordProcess::get()->filter([
+                    'Started' => false,
+                    'Completed' => false,
+                    'InstructionID' => $instruction->ID,
+                ]) as $recordProcess
+            ) {
+                $this->processor->recordAnswer($recordProcess);
+            }
         }
     }
 

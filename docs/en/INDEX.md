@@ -21,8 +21,6 @@ Add these variables to your .env file:
 
 ## Customising this project
 
-
-
 ### Custom Record Processor
 
 Use a custom record processor to change how content is processed:
@@ -118,8 +116,9 @@ class CustomRecordProcessor extends ProcessOneRecord
         return $connector->runQuery($enhancedPrompt);
     }
 }
+```
 
-Workflow
+### Workflow
 
 1. Create Instructions: Define what content needs to be generated or updated
 2. Run Tests: Test with a single record to verify results
@@ -128,7 +127,7 @@ Workflow
 5. Accept/Reject: Approve or reject individual changes
 6. Apply Changes: Run the task to apply approved changes to records
 
-Template Variables
+### Template Variables
 
 Use SilverStripe template syntax in your prompts to include record data:
 
@@ -137,16 +136,20 @@ $Description
 
 Make sure to emphasize these key features: $Features
 
-Security Notes
+### Security Notes
 
 - API keys should always be stored in environment variables
 - Review all AI-generated content before applying to live content
 - Consider implementing content validation rules
 - Restrict CMS access to the automated content management section
 
-Troubleshooting
+### Troubleshooting
 
 - Check environment variables are correctly set
 - Verify API key is valid and has appropriate permissions
 - Look for error messages in the SilverStripe logs
 - Test API connectivity from your server
+
+### Included models
+
+In order to include a model, it needs to have a method `CMSEditLink`. 

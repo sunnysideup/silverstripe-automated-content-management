@@ -6,11 +6,18 @@ namespace Sunnysideup\AutomatedContentManagement\Model;
 
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectInterface;
+use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\View\SSViewer;
+use SilverStripe\View\SSViewer_FromString;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
+use Sunnysideup\AutomatedContentManagement\Traits\CMSFieldsExtras;
 
 class RecordProcess extends DataObject
 {
+
+
+    use CMSFieldsExtras;
+
     private static $table_name = 'AutomatedContentManagementRecordProcess';
 
     private static $db = [
@@ -37,9 +44,15 @@ class RecordProcess extends DataObject
     ];
 
     private static $searchable_fields = [
-        'Title',
-        'Description',
-        'Accepted',
+        'RecordID' => 'Int',
+        'Before' => 'Text',
+        'After' => 'Text',
+        'Started' => 'Boolean',
+        'Completed' => 'Boolean',
+        'Accepted' => 'Boolean',
+        'Rejected' => 'Boolean',
+        'OriginalUpdated' => 'Boolean',
+        'IsTest' => 'Boolean',
     ];
 
     private static $casting = [
@@ -91,9 +104,13 @@ class RecordProcess extends DataObject
         $description = $this->Instruction()->Description;
         $record = $this->getRecord();
         if ($record) {
-            $template = SSViewer::create()->fromString($description);
+            $template = SSViewer_FromString::create($description);
             //FUTURE: SSViewer::create()->renderString($description);
-            return $template->process($record)->RAW();
+            $return = $template->process($record);
+            if ($return instanceof DBField) {
+                return $return->forTemplate();
+            }
+            return $return;
         }
         return null;
     }
@@ -102,7 +119,7 @@ class RecordProcess extends DataObject
      *
      * @return DataObject|null
      */
-    protected function getRecord()
+    public function getRecord()
     {
         $className = $this->Instruction()->ClassNameToChange;
         $recordID = $this->RecordID;
@@ -174,6 +191,11 @@ class RecordProcess extends DataObject
             default:
                 return (string) $value;
         }
+    }
+
+    public function getRecordType(): ?string
+    {
+        return $this->Instruction()?->getRecordType();
     }
 
 
