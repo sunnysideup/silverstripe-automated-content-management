@@ -24,6 +24,7 @@ class RecordProcess extends DataObject
         'RecordID' => 'Int',
         'Before' => 'Text',
         'After' => 'Text',
+        'Skip' => 'Boolean',
         'Started' => 'Boolean',
         'Completed' => 'Boolean',
         'Accepted' => 'Boolean',
@@ -47,27 +48,43 @@ class RecordProcess extends DataObject
         'RecordID' => 'Int',
         'Before' => 'Text',
         'After' => 'Text',
+        'IsTest' => 'Boolean',
+        'Skip' => 'Boolean',
         'Started' => 'Boolean',
         'Completed' => 'Boolean',
         'Accepted' => 'Boolean',
         'Rejected' => 'Boolean',
         'OriginalUpdated' => 'Boolean',
-        'IsTest' => 'Boolean',
     ];
 
     private static $casting = [
         'CanProcess' => 'Boolean',
         'CanNotProcessAnymore' => 'Boolean',
         'RecordTitle' => 'Varchar',
-        'HydratedDescription' => 'Text',
+        'HydratedInstructions' => 'Text',
         'BeforeHumanValue' => 'Text',
         'AfterHumanValue' => 'Text',
+    ];
+
+    private static $field_labels = [
+        'Before' => 'Before value',
+        'After' => 'After value',
+        'Skip' => 'Skip conversion for this record',
+        'Started' => 'Conversion started',
+        'Completed' => 'Conversion completed',
+        'Accepted' => 'Accept change',
+        'Rejected' => 'Reject change',
+        'OriginalUpdated' => 'Original Record updated with new value',
+        'IsTest' => 'Is test only',
     ];
 
     private static $default_sort = 'ID';
 
     public function getCanProcess(): bool
     {
+        if ($this->Skip) {
+            return false;
+        }
         $instruction = $this->Instruction();
         if ($instruction->ReadyToProcess || $instruction->RunTest) {
             if (!$this->getCanNotProcessAnymore()) {
@@ -77,10 +94,10 @@ class RecordProcess extends DataObject
         return false;
     }
 
-    public function getCanNotProcessAnymore()
+    public function getCanNotProcessAnymore(): bool
     {
         $instruction = $this->Instruction();
-        return !$instruction->Completed || $instruction->Cancelled;
+        return $instruction->Cancelled || $this->Completed || $this->Skip;
     }
 
     public function getRecordTitle()
@@ -92,14 +109,7 @@ class RecordProcess extends DataObject
         return 'Record not found';
     }
 
-    public function getCMSFields()
-    {
-        $fields = parent::getCMSFields();
-        $this->addCastingFieldsNow($fields);
-        return $fields;
-    }
-
-    public function getHydratedDescription(): ?string
+    public function getHydratedInstructions(): ?string
     {
         $description = $this->Instruction()->Description;
         $record = $this->getRecord();
@@ -128,6 +138,59 @@ class RecordProcess extends DataObject
         }
         return null;
     }
+
+    public function getCMSFields()
+    {
+        $fields = parent::getCMSFields();
+        $this->addCastingFieldsNow($fields);
+        $fields->removeByName('RecordID');
+        $fields->addFieldsToTab(
+            'Root.Main',
+            [
+                $fields->dataFieldByName('InstructionID'),
+                $fields->fieldByName('Root.Details.RecordTitleNICE'),
+            ],
+            'Before'
+        );
+        $this->makeFieldsReadonly($fields);
+        return $fields;
+    }
+
+
+    protected function makeFieldsReadonlyInner(string $fieldName): bool
+    {
+        // always readonly
+        switch ($fieldName) {
+            case 'InstructionID':
+            case 'Before':
+            case 'After':
+            case 'Started':
+            case 'Completed':
+            case 'OriginalUpdated':
+            case 'IsTest':
+                return true;
+            default:
+                break;
+        }
+        if ($this->getCanNotProcessAnymore() !== true) {
+            switch ($fieldName) {
+                case 'Accepted':
+                case 'Rejected':
+                    return true;
+                default:
+                    break;
+            }
+        } else {
+            switch ($fieldName) {
+                case 'Skip':
+                    return true;
+                default:
+                    break;
+            }
+        }
+        return false;
+    }
+
 
 
 
@@ -198,10 +261,17 @@ class RecordProcess extends DataObject
         return $this->Instruction()?->getRecordType();
     }
 
+    public function canCreate($member = null, $context = [])
+    {
+        return false;
+    }
 
     public function canEdit($member = null)
     {
-        return false;
+        if ($this->Accepted || $this->Rejected) {
+            return false;
+        }
+        return parent::canEdit($member);
     }
 
     public function canDelete($member = null)

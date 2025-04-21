@@ -17,7 +17,7 @@ class ProcessOneRecord
 
     public function recordAnswer(RecordProcess $recordProcess)
     {
-        $instruction = $recordProcess->getHydratedDescription();
+        $instruction = $recordProcess->getHydratedInstructions();
         $record = $recordProcess->getRecord();
         $field = $recordProcess->Instruction->FieldToChange;
         $recordProcess->Before = $record->$field;

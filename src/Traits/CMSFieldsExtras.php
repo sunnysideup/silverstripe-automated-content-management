@@ -36,6 +36,24 @@ trait CMSFieldsExtras
     }
 
 
+    protected function makeFieldsReadonly($fields)
+    {
+        foreach ($fields->dataFields() as $field) {
+            $fieldName = $field->getName();
+            if ($this->makeFieldsReadonlyInner($fieldName)) {
+                $myField = $fields->dataFieldByName($fieldName);
+                if ($myField) {
+                    $fields->replaceField(
+                        $fieldName,
+                        $myField
+                            ->performDisabledTransformation()
+                            ->setReadonly(true)
+                    );
+                }
+            }
+        }
+    }
+
     protected function addCastingFieldsNowInner($name, $type, $fields)
     {
         $methodName = 'get' . $name;

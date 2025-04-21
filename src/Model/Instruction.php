@@ -16,16 +16,19 @@ use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
 use SilverStripe\Forms\GridField\GridFieldAddNewButton;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\Forms\GridField\GridFieldDeleteAction;
+use SilverStripe\Forms\LiteralField;
 use SilverStripe\Forms\OptionsetField;
 use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\RequiredFields;
 use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\TabSet;
+use SilverStripe\Forms\ToggleCompositeField;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
+use Sunnysideup\AutomatedContentManagement\Model\Api\InstructionsForInstructions;
 use Sunnysideup\AutomatedContentManagement\Model\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 use Sunnysideup\AutomatedContentManagement\Traits\CMSFieldsExtras;
@@ -86,7 +89,7 @@ class Instruction extends DataObject
         'Description' => '* Instructions for the LLM (required)',
         'RunTest' => 'Run test now',
         'ReadyToProcess' => 'Start process now',
-        'Cancelled' => 'Cancel further processing',
+        'Cancelled' => 'Cancel any further processing',
     ];
 
 
@@ -158,7 +161,31 @@ class Instruction extends DataObject
             );
             $this->addCastingFieldsNow($fields);
 
-
+            if (! $this->StartedProcess) {
+                $exampleRecord = $this->getRecordExample();
+                if ($exampleRecord) {
+                    $instructionsCreator = Injector::inst()->create(
+                        InstructionsForInstructions::class,
+                        $exampleRecord,
+                    );
+                    $fields->addFieldsToTab(
+                        'Root.Main',
+                        [
+                            ToggleCompositeField::create(
+                                'InstructionDetailsHolder',
+                                'Variables Available for Instructions',
+                                [
+                                    LiteralField::create(
+                                        'InstructionDetails',
+                                        $instructionsCreator->getInstructions()
+                                    ),
+                                ]
+                            )->setHeadingLevel(4)
+                        ],
+                        'RunTest',
+                    );
+                }
+            }
 
             $fields->dataFieldByName('ReadyToProcess')
                 ->setDescription(
@@ -250,23 +277,6 @@ class Instruction extends DataObject
         }
     }
 
-    protected function makeFieldsReadonly($fields)
-    {
-        foreach ($fields->dataFields() as $field) {
-            $fieldName = $field->getName();
-            if ($this->makeFieldsReadonlyInner($fieldName)) {
-                $myField = $fields->dataFieldByName($fieldName);
-                if ($myField) {
-                    $fields->replaceField(
-                        $fieldName,
-                        $myField
-                            ->performDisabledTransformation()
-                            ->setReadonly(true)
-                    );
-                }
-            }
-        }
-    }
 
     protected function makeFieldsReadonlyInner(string $fieldName): bool
     {
@@ -394,6 +404,14 @@ class Instruction extends DataObject
         return null;
     }
 
+    public function getRecordExample()
+    {
+        if ($this->HasValidClassName()) {
+            $className = $this->ClassNameToChange;
+            return $className::get()->first();
+        }
+    }
+
     public function getRecordType(): string
     {
         $obj = $this->getRecordSingleton();
@@ -475,7 +493,7 @@ class Instruction extends DataObject
 
     public function canDelete($member = null)
     {
-        if ($this->Completed) {
+        if ($this->StartedProcess) {
             return false;
         }
         return parent::canDelete($member);
@@ -517,54 +535,59 @@ class Instruction extends DataObject
         return null;
     }
 
+    protected static array $listOfClasses = [];
+
     protected function getListOfClasses(): array
     {
-        $otherList = [];
-        $pageList = [];
-        $classes = ClassInfo::subclassesFor(DataObject::class, false);
-        $excludedModels = $this->config()->get('excluded_models');
-        $includedModels = $this->config()->get('included_models');
-        foreach ($classes as $class) {
-            if (in_array($class, $excludedModels)) {
-                continue;
-            }
-            if (!empty($includedModels) && !in_array($class, $includedModels)) {
-                continue;
-            }
-
-            if (! $this->IsValidClassName($class)) {
-                continue;
-            }
-            // get the name
-            $obj = Injector::inst()->get($class);
-            $count = $class::get()->filter(['ClassName' => $class])->count();
-            if ($count === 0) {
-                continue;
-            }
-            if ($obj->hasMethod('CMSEditLink')) {
-                $name = $obj->i18n_singular_name();
-                $desc = $obj->Config()->get('description');
-                if ($desc) {
-                    $name .= ' - ' . $desc;
+        if (empty(self::$listOfClasses)) {
+            $otherList = [];
+            $pageList = [];
+            $classes = ClassInfo::subclassesFor(DataObject::class, false);
+            $excludedModels = $this->config()->get('excluded_models');
+            $includedModels = $this->config()->get('included_models');
+            foreach ($classes as $class) {
+                if (in_array($class, $excludedModels)) {
+                    continue;
                 }
-                $name = trim($name);
-                // add name to list
-                foreach ([$otherList, $pageList] as $list) {
-                    if (in_array($name, $list, true)) {
-                        $name .= ' (disambiguation class name: ' . $class . ')';
+                if (!empty($includedModels) && !in_array($class, $includedModels)) {
+                    continue;
+                }
+
+                if (! $this->IsValidClassName($class)) {
+                    continue;
+                }
+                // get the name
+                $obj = Injector::inst()->get($class);
+                $count = $class::get()->filter(['ClassName' => $class])->count();
+                if ($count === 0) {
+                    continue;
+                }
+                if ($obj->hasMethod('CMSEditLink')) {
+                    $name = $obj->i18n_singular_name();
+                    $desc = $obj->Config()->get('description');
+                    if ($desc) {
+                        $name .= ' - ' . $desc;
+                    }
+                    $name = trim($name);
+                    // add name to list
+                    foreach ([$otherList, $pageList] as $list) {
+                        if (in_array($name, $list, true)) {
+                            $name .= ' (disambiguation class name: ' . $class . ')';
+                        }
+                    }
+                    $name .= ' (' . $count . ' records)';
+                    if ($obj instanceof SiteTree) {
+                        $pageList[$class] = $name;
+                    } else {
+                        $otherList[$class] = $name;
                     }
                 }
-                $name .= ' (' . $count . ' records)';
-                if ($obj instanceof SiteTree) {
-                    $pageList[$class] = $name;
-                } else {
-                    $otherList[$class] = $name;
-                }
             }
+            asort($pageList);
+            asort($otherList);
+            self::$listOfClasses = $pageList + $otherList;
         }
-        asort($pageList);
-        asort($otherList);
-        return $pageList + $otherList;
+        return self::$listOfClasses;
     }
 
     protected function getSelectClassNameField(?bool $withInstructions = true, ?bool $onlyShowSelectedvalue = false): OptionsetField
@@ -593,21 +616,27 @@ class Instruction extends DataObject
         return $field;
     }
 
+
+    protected static array $listOfFieldNames = [];
+
     protected function getListOfFieldNames(): array
     {
-        $list = [];
-        $record = $this->getRecordSingleton();
-        if ($record) {
-            $labels = $record->fieldLabels();
-            $db = $record->config()->get('db');
-            foreach ($db as $name => $type) {
-                if (! $this->IsValidFieldType($type)) {
-                    continue;
+        if (empty(self::$listOfFieldNames)) {
+            $list = [];
+            $record = $this->getRecordSingleton();
+            if ($record) {
+                $labels = $record->fieldLabels();
+                $db = $record->config()->get('db');
+                foreach ($db as $name => $type) {
+                    if (! $this->IsValidFieldType($type)) {
+                        continue;
+                    }
+                    $list[$name] = $labels[$name] ?? $name;
                 }
-                $list[$name] = $labels[$name] ?? $name;
             }
+            self::$listOfFieldNames = $list;
         }
-        return $list;
+        return self::$listOfFieldNames;
     }
 
     protected function getSelectFieldNameField(?bool $withInstructions = true, ?bool $onlyShowSelectedvalue = false): OptionsetField
