@@ -2,6 +2,14 @@
 
 This module allows you to connect your SilverStripe site with LLMs (Large Language Models) like ChatGPT and Claude to automate content generation and updates.
 
+## Acknowledgement
+
+
+## Also see
+
+https://github.com/emteknetnz/silverstripe-content-ai
+
+
 ## Environment Configuration
 
 Add these variables to your .env file:
