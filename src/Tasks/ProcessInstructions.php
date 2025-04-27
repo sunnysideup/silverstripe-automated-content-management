@@ -5,6 +5,7 @@ namespace Sunnysideup\AutomatedContentManagement\Tasks;
 
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
+use SilverStripe\ORM\DB;
 use Sunnysideup\AutomatedContentManagement\Model\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
@@ -33,12 +34,16 @@ class ProcessInstructions extends BuildTask
 
     protected function cleanupInstructions()
     {
+        DB::alteration_message('Writing all instructions ready for processing', 'created');
         $instructions = Instruction::get()->filter([
             'Completed' => false,
             'Cancelled' => false,
         ]);
         foreach ($instructions as $instruction) {
-            $instruction->write();
+            if ($instruction->isReadyToProcess()) {
+                DB::alteration_message('Writing instruction: ' . $instruction->getTitle(), 'created');
+                $instruction->write();
+            }
         }
     }
 
@@ -52,6 +57,8 @@ class ProcessInstructions extends BuildTask
             'Completed' => true,
         ]);
         foreach ($instructions as $instruction) {
+            $instruction->StartedProcessing = true;
+            $instruction->write();
             foreach (
                 RecordProcess::get()->filter([
                     'Started' => false,
@@ -59,7 +66,9 @@ class ProcessInstructions extends BuildTask
                     'InstructionID' => $instruction->ID,
                 ]) as $recordProcess
             ) {
-                $this->processor->recordAnswer($recordProcess);
+                if ($instruction->isReadyToProcess()) {
+                    $this->processor->recordAnswer($recordProcess);
+                }
             }
         }
     }
@@ -84,5 +93,6 @@ class ProcessInstructions extends BuildTask
         foreach ($recordProcesses as $recordProcess) {
             $recordProcess->delete();
         }
+        // todo: delete all records that are not needed anymore
     }
 }

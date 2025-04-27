@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model\Api;
 
-use Anthropic\Client as AnthropicClient;
+use Anthropic;
 use Exception;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
 use OpenAI;
 
-class ConnectWithLLM
+class ConnectorBaseClass
 {
     use Configurable;
     use Injectable;
@@ -34,7 +34,8 @@ class ConnectWithLLM
 
         return method_exists($this, $method)
             ? $this->$method($apiKey, $query, $clientModel)
-            : throw new Exception('Unsupported LLM client: ' . $client);
+            : throw new Exception('Unsupported LLM client: ' . $client .
+                '. Supported clients are: OpenAI (chat GPT), Anthropic (claude)');
     }
 
     /**
@@ -63,7 +64,7 @@ class ConnectWithLLM
     protected function askClaude(string $apiKey, string $question, ?string $model = 'claude-3-opus-20240229'): string
     {
         try {
-            $client = new AnthropicClient($apiKey);
+            $client = Anthropic::client($apiKey);
             $response = $client->messages()->create([
                 'model' => $model,
                 'max_tokens' => 1000,

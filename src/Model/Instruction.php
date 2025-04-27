@@ -94,13 +94,13 @@ class Instruction extends DataObject
 
 
     private static $casting = [
+        'IsReadyForProcessing' => 'Boolean',
+        'IsReadyForReview' => 'Boolean',
+        'ReviewCompleted' => 'Boolean',
         'NumberOfRecords' => 'Int',
         'ProcessedRecords' => 'Int',
         'PercentageCompleted' => 'Percentage',
         'RecordType' => 'Varchar(255)',
-        'IsReadyForProcessing' => 'Boolean',
-        'IsReadyForReview' => 'Boolean',
-        'ReviewCompleted' => 'Boolean',
     ];
 
     private static $cascade_delete = [
@@ -330,6 +330,69 @@ class Instruction extends DataObject
         return false;
     }
 
+    protected function HasValidClassName(): bool
+    {
+        $className = $this->ClassNameToChange;
+        if ($className && class_exists($className)) {
+            return true;
+        }
+        return false;
+    }
+
+    protected function HasValidFieldName(): bool
+    {
+        $fieldName = $this->FieldToChange;
+        $obj = $this->getRecordSingleton();
+        if (! $obj) {
+            return false;
+        }
+        $db = $obj->config()->get('db');
+        if (isset($db[$fieldName])) {
+            return true;
+        }
+        return false;
+    }
+
+    public function getIsReadyForProcessing(): bool
+    {
+        if ($this->Completed) {
+            return false;
+        }
+        if (! $this->HasValidClassName()) {
+            return false;
+        }
+        if (!$this->getRecordType()) {
+            return false;
+        }
+        if (! $this->Title) {
+            return false;
+        }
+        if (! $this->Description) {
+            return false;
+        }
+        // cam still process...
+        // if ($this->StartedProcess) {
+        //     return false;
+        // }
+        return true;
+    }
+
+    public function getIsReadyForReview(): bool
+    {
+        return (bool) $this->Completed;
+    }
+
+    public function getReviewCompleted(): bool
+    {
+        if ($this->Cancelled) {
+            return true;
+        }
+        $allReviewsDone = $this->RecordsToProcess()
+            ->filter(['Accepted' => false, 'Rejected' => false])
+            ->count() === 0;
+        return ($this->Completed && $allReviewsDone) ? true : false;
+    }
+
     public function getNumberOfRecords(): int
     {
         $className = $this->ClassNameToChange;
@@ -353,48 +416,7 @@ class Instruction extends DataObject
         return round(($this->getProcessedRecords() / $this->getNumberOfRecords()) * 100) / 100;
     }
 
-    public function getIsReadyForProcessing()
-    {
-        if ($this->Completed) {
-            return false;
-        }
-        if (! $this->HasValidClassName()) {
-            return false;
-        }
-        if (!$this->getRecordType()) {
-            return false;
-        }
-        if (! $this->Title) {
-            return false;
-        }
-        if (! $this->Description) {
-            return false;
-        }
-        return true;
-    }
 
-    protected function HasValidClassName(): bool
-    {
-        $className = $this->ClassNameToChange;
-        if ($className && class_exists($className)) {
-            return true;
-        }
-        return false;
-    }
-
-    protected function HasValidFieldName(): bool
-    {
-        $fieldName = $this->FieldToChange;
-        $obj = $this->getRecordSingleton();
-        if (! $obj) {
-            return false;
-        }
-        $db = $obj->config()->get('db');
-        if (isset($db[$fieldName])) {
-            return true;
-        }
-        return false;
-    }
 
     public function getRecordSingleton()
     {
@@ -422,21 +444,7 @@ class Instruction extends DataObject
         return 'Error: Class does not exist';
     }
 
-    public function getIsReadyForReview(): bool
-    {
-        return (bool) $this->Completed;
-    }
 
-    public function getReviewCompleted(): bool
-    {
-        if ($this->Cancelled) {
-            return true;
-        }
-        $allReviewsDone = $this->RecordsToProcess()
-            ->filter(['Accepted' => false, 'Rejected' => false])
-            ->count() === 0;
-        return ($this->Completed && $allReviewsDone) ? true : false;
-    }
 
     public function onBeforeWrite()
     {
