@@ -10,73 +10,66 @@ use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
 use OpenAI;
+use SilverStripe\Core\ClassInfo;
+use SilverStripe\Core\Config\Config;
+use SilverStripe\Core\Injector\Injector;
 
-class ConnectorBaseClass
+abstract class ConnectorBaseClass
 {
     use Configurable;
     use Injectable;
 
+    private static string $client = '';
+    private static string $model = '';
+
+    abstract protected string $defaultModel;
+    abstract protected string $shortName;
+
+    public function getShortName(): string
+    {
+        return $this->shortName;
+    }
+
+    public function getDefaultModel(): string
+    {
+        return $this->defaultModel;
+    }
+
     /**
      * Run a query against the configured LLM
      */
-    public function runQuery(string $query): string
+    abstract public function runQuery(string $query, ?string $model = ''): string;
+
+    protected function getApiKey(): string
     {
-        $client = Environment::getEnv('SS_LLM_CLIENT')
-            ?? throw new Exception('LLM client not configured in environment');
-
-        $apiKey = Environment::getEnv('SS_LLM_API_KEY')
-            ?? throw new Exception('LLM API key not configured in environment');
-
-        $clientModel = Environment::getEnv('SS_LLM_CLIENT_MODEL')
-            ?? null;
-
-        $method = 'ask' . $client;
-
-        return method_exists($this, $method)
-            ? $this->$method($apiKey, $query, $clientModel)
-            : throw new Exception('Unsupported LLM client: ' . $client .
-                '. Supported clients are: OpenAI (chat GPT), Anthropic (claude)');
+        $v = Environment::getEnv('SS_LLM_API_KEY');
+        if (! $v) {
+            $myVarName = Environment::getEnv('SS_LLM_API_KEY_' . strtoupper($this->getShortName()));
+            $v = Environment::getEnv($myVarName);
+            if (! $v) {
+                throw new Exception('LLM API key (SS_LLM_API_KEY or ' . $myVarName . ') not configured in environment');
+            }
+        }
+        return $v;
     }
 
-    /**
-     * Send a question to OpenAI and get a response
-     */
-    protected function askOpenAI(string $apiKey, string $question, ?string $model = 'gpt-4o'): string
+    protected function getModel(?string $model = ''): string
     {
-        try {
-            $client = OpenAI::client($apiKey);
-            $response = $client->chat()->create([
-                'model' => $model,
-                'messages' => [['role' => 'user', 'content' => $question]],
-                'temperature' => 0.7,
-            ]);
-
-            return $response->choices[0]->message->content;
-        } catch (Exception $e) {
-            error_log('OpenAI API error: ' . $e->getMessage());
-            throw $e;
+        $v = Environment::getEnv('SS_LLM_CLIENT_MODEL');
+        if (! $v) {
+            if (! $v) {
+                $v = Environment::getEnv('SS_LLM_CLIENT_MODEL_' . $this->getShortName());
+                if (! $v) {
+                    $v = Config::inst()->get(static::class, 'model');
+                    if (! $v) {
+                        $v = Config::inst()->get(static::class, 'model_' . strtolower($this->getShortName()));
+                        if (! $v) {
+                            $v = $this->getDefaultModel();
+                        }
+                    }
+                }
+            }
         }
-    }
-
-    /**
-     * Send a question to Claude and get a response
-     */
-    protected function askClaude(string $apiKey, string $question, ?string $model = 'claude-3-opus-20240229'): string
-    {
-        try {
-            $client = Anthropic::client($apiKey);
-            $response = $client->messages()->create([
-                'model' => $model,
-                'max_tokens' => 1000,
-                'messages' => [['role' => 'user', 'content' => $question]],
-                'temperature' => 0.7,
-            ]);
-
-
-            return $response->content[0]->text;
-        } catch (Exception $e) {
-            error_log('Anthropic API error: ' . $e->getMessage());
-            throw $e;
-        }
+        return $v;
     }
 }
