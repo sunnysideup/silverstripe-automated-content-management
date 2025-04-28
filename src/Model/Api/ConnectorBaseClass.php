@@ -35,6 +35,31 @@ abstract class ConnectorBaseClass
         return $this->defaultModel;
     }
 
+    public static function inst(?string $client = null): static
+    {
+        if (! $client) {
+            $client = Environment::getEnv('SS_LLM_CLIENT') ?: Config::inst()->get(static::class, 'client');
+            if (! class_exists($client)) {
+                $classes = ClassInfo::subclassesFor(self::class, false);
+                foreach ($classes as $class) {
+                    if ($class->getShortName() === $client) {
+                        $client = $class;
+                        break;
+                    }
+                }
+            }
+        }
+        if (class_exists($client)) {
+            return Injector::inst()->get($client);
+        } else {
+            throw new Exception('
+                Client requires a class name, but --' . $client . '-- is not a class.
+                You can set this in your .env file using SS_LLM_CLIENT, as static property ConnectorBaseClass::client, or pass it in as a parameter.
+                You can provide the full class name, or just the short name (e.g. "OpenAIConnector" or "Sunnysideup\AutomatedContentManagement\Model\Api\Connectors\OpenAIConnector").
+            ');
+        }
+    }
+
     /**
      * Run a query against the configured LLM
      */

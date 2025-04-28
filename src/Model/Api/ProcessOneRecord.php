@@ -61,8 +61,8 @@ class ProcessOneRecord
     {
         // This is where you would send the instruction and before value to the LLM
         // For now, we will just return a dummy response
-        $obj = Injector::inst()->get(ConnectWithLLM::class);
-        $query = "Instruction: {$instruction}\n\n\nCurrent content: {$beforeAsHumanValue}";
+        $obj = ConnectorBaseClass::inst();
+        $query = "$instruction";
         return $obj->runQuery($query);
     }
 }
