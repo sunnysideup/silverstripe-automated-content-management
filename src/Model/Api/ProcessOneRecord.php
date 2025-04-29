@@ -63,6 +63,6 @@ class ProcessOneRecord
         // For now, we will just return a dummy response
         $obj = ConnectorBaseClass::inst();
         $query = "$instruction";
-        return $obj->runQuery($query);
+        return $obj->askQuestion($query);
     }
 }

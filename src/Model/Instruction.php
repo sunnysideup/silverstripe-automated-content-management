@@ -25,6 +25,7 @@ use SilverStripe\Forms\TabSet;
 use SilverStripe\Forms\ToggleCompositeField;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
+use SilverStripe\ORM\FieldType\DBEnum;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
@@ -50,6 +51,33 @@ class Instruction extends DataObject
     ];
 
     private static array $included_models = [];
+
+    private static array $excluded_fields = [
+        'ClassName',
+        'ID',
+        'Created',
+        'LastEdited',
+    ];
+
+    private static array $included_fields = [];
+
+    private static array $excluded_field_types = [
+        DBEnum::class,
+    ];
+
+    private static array $included_field_types = [];
+
+    private static $excluded_class_field_combos = [
+        // 'SilverStripe\\Versioned\\ChangeSetItem' => [
+        //     'ClassName',
+        // ],
+    ];
+
+    private static $included_class_field_combos = [
+        // 'SilverStripe\\Versioned\\ChangeSetItem' => [
+        //     'ClassName',
+        // ],
+    ];
 
     private static $db = [
         'ClassNameToChange' => 'Varchar(255)',
@@ -198,10 +226,17 @@ class Instruction extends DataObject
                     'Checking this option will allow you to run the results for just one (random) record without applying any of the suggested changes.'
                 );
             $grids = [
-                'Tests' => RecordProcess::get()
+                'Test Only' => RecordProcess::get()
                     ->filter(
                         [
                             'IsTest' => true
+                        ]
+                    ),
+
+                'Queued' => RecordProcess::get()
+                    ->filter(
+                        [
+                            'Started' => false
                         ]
                     ),
                 'Review' => RecordProcess::get()
@@ -212,12 +247,6 @@ class Instruction extends DataObject
                             'Accepted' => false,
                             'Rejected' => false,
 
-                        ]
-                    ),
-                'Queued' => RecordProcess::get()
-                    ->filter(
-                        [
-                            'Started' => false
                         ]
                     ),
                 'Accepted' => RecordProcess::get()
@@ -377,6 +406,8 @@ class Instruction extends DataObject
         return true;
     }
 
+
+
     public function getIsReadyForReview(): bool
     {
         return (bool) $this->Completed;
@@ -476,7 +507,7 @@ class Instruction extends DataObject
     {
         parent::onAfterWrite();
         if ($this->RunTest) {
-            $item = $this->AddRecords(true, DB::get_conn()->random(), 1);
+            $item = $this->AddRecords(true);
             if ($item) {
                 $obj = Injector::inst()->get(ProcessOneRecord::class);
                 $obj->recordAnswer($item);
@@ -484,7 +515,7 @@ class Instruction extends DataObject
             $this->RunTest = false;
             $this->write();
         } elseif ($this->ReadyToProcess) {
-            $this->AddRecords(false);
+            $this->AddRecords(false, null, 9999);
         }
     }
 
@@ -521,19 +552,30 @@ class Instruction extends DataObject
         if ($limit) {
             $list = $list->limit($limit);
         }
-        $ids = $className::get()->columnUnique('ID');
+        if ($isTest) {
+            $list = $list->orderBy(DB::get_conn()->random())->limit(1);
+        }
+        $ids = $list->columnUnique('ID');
+        if (empty($ids)) {
+            return null;
+        }
         foreach ($ids as $id) {
-            $filter = [
-                'RecordID' => $id,
+            $keyFields = [
                 'InstructionID' => $this->ID,
                 'IsTest' => $isTest,
             ];
-            $recordProcess = null;
-            if ($isTest === false) {
-                $recordProcess = RecordProcess::get()->filter($filter)->first();
+            if ($isTest) {
+                $keyFields['Skip'] = false;
+            } else {
+                $keyFields['RecordID'] = $id;
             }
+            $recordProcess = RecordProcess::get()->filter($keyFields)->first();
             if (! $recordProcess) {
-                $recordProcess = RecordProcess::create($filter);
+                if ($isTest) {
+                    // now we can add the record
+                    $keyFields['RecordID'] = $id;
+                }
+                $recordProcess = RecordProcess::create($keyFields);
             }
             $recordProcess->write();
         }
@@ -626,7 +668,6 @@ class Instruction extends DataObject
 
 
     protected static array $listOfFieldNames = [];
-
     protected function getListOfFieldNames(): array
     {
         if (empty(self::$listOfFieldNames)) {
@@ -635,16 +676,103 @@ class Instruction extends DataObject
             if ($record) {
                 $labels = $record->fieldLabels();
                 $db = $record->config()->get('db');
-                foreach ($db as $name => $type) {
-                    if (! $this->IsValidFieldType($type)) {
+                $className = get_class($record);
+
+                // Get configuration variables using config system
+                $excludedFields = $this->config()->get('excluded_fields');
+                $includedFields = $this->config()->get('included_fields');
+                $excludedFieldTypes = $this->config()->get('excluded_field_types');
+                $includedFieldTypes = $this->config()->get('included_field_types');
+                $excludedClassFieldCombos = $this->config()->get('excluded_class_field_combos');
+                $includedClassFieldCombos = $this->config()->get('included_class_field_combos');
+
+                foreach ($db as $name => $typeName) {
+                    if (! $this->IsValidFieldType((string) $typeName)) {
                         continue;
                     }
+                    $type = $record->dbObject($typeName);
+                    // Skip if field is in excluded_fields
+                    if (in_array($name, $excludedFields)) {
+                        continue;
+                    }
+
+                    // Skip if field is in excluded_class_field_combos for this class
+                    if (
+                        isset($excludedClassFieldCombos[$className]) &&
+                        in_array($name, $excludedClassFieldCombos[$className])
+                    ) {
+                        continue;
+                    }
+
+                    // Skip if field type is in excluded_field_types
+                    if ($this->isExcludedFieldType($type, $excludedFieldTypes)) {
+                        continue;
+                    }
+
+                    // Skip if not explicitly included when included_fields is not empty
+                    if (!empty($includedFields) && !in_array($name, $includedFields)) {
+                        continue;
+                    }
+
+                    // Skip if not explicitly included when included_class_field_combos for this class is not empty
+                    if (
+                        isset($includedClassFieldCombos[$className]) &&
+                        !empty($includedClassFieldCombos[$className]) &&
+                        !in_array($name, $includedClassFieldCombos[$className])
+                    ) {
+                        continue;
+                    }
+
+                    // Skip if field type is not explicitly included when included_field_types is not empty
+                    if (!empty($includedFieldTypes) && !$this->isIncludedFieldType($type, $includedFieldTypes)) {
+                        continue;
+                    }
+
+                    // all good in the hood
                     $list[$name] = $labels[$name] ?? $name;
                 }
             }
             self::$listOfFieldNames = $list;
         }
         return self::$listOfFieldNames;
+    }
+
+    /**
+     * Check if a field type is in the excluded_field_types list
+     *
+     * @param DBField $type The field type to check
+     * @param array $excludedFieldTypes List of excluded field types
+     * @return bool
+     */
+    protected function isExcludedFieldType($type, array $excludedFieldTypes): bool
+    {
+        foreach ($excludedFieldTypes as $excludedType) {
+            if ($type instanceof $excludedType) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if a field type is in the included_field_types list
+     *
+     * @param DBField $type The field type to check
+     * @param array $includedFieldTypes List of included field types
+     * @return bool
+     */
+    protected function isIncludedFieldType($type, array $includedFieldTypes): bool
+    {
+        if (empty($includedFieldTypes)) {
+            return true; // If no included types specified, all non-excluded types are included
+        }
+
+        foreach ($includedFieldTypes as $includedType) {
+            if ($type instanceof $includedType) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected function getSelectFieldNameField(?bool $withInstructions = true, ?bool $onlyShowSelectedvalue = false): OptionsetField

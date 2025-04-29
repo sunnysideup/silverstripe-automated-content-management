@@ -12,22 +12,56 @@ https://github.com/emteknetnz/silverstripe-content-ai
 
 ## Environment Configuration
 
-Add these variables to your .env file:
+Add these variables to your `.env` file:
 
 ```shell
-  # Required: Which LLM to use - "OpenAI" or "Claude"
-  SS_LLM_CLIENT="OpenAI"
+# Required: Which LLM to use - "OpenAI" or "Claude"
+SS_LLM_CLIENT_NAME="OpenAI"
 
-  # Required: Your API key
-  SS_LLM_API_KEY="your-api-key-here"
+# Required: Your API key
+SS_LLM_CLIENT_API_KEY="your-api-key-here"
 
-  # Optional: Specific model to use (defaults provided if not set)
-  SS_LLM_CLIENT_MODEL="gpt-4o"  # For OpenAI
-  # OR
-  SS_LLM_CLIENT_MODEL="claude-3-opus-20240229"  # For Anthropic
+# If you want to use more than one LLMs, 
+# add their short name to the end of the environment variable
+SS_LLM_CLIENT_API_KEY_CLAUDE="your-api-key-here"
+SS_LLM_CLIENT_API_KEY_OPENAI="your-api-key-here"
+
+# Optional: Specific model to use (defaults provided if not set)
+SS_LLM_CLIENT_MODEL="gpt-4o"  # For OpenAI
+# Again, if you are using more than one LLM, 
+# use their short name like this:
+SS_LLM_CLIENT_MODEL_OPENAI="gpt-4o"  # For OpenAI
+SS_LLM_CLIENT_MODEL_CLAUDE="claude-3-opus-20240229"  # For OpenAI
+
+# OR
+SS_LLM_CLIENT_MODEL="claude-3-opus-20240229"  # For Anthropic
+```
+
+## Environment Configuation in YML
+
+You can also set the variables in the Silverstripe Config Layer, like this:
+
+```yml
+Sunnysideup\AutomatedContentManagement\Model\Api\ConnectorBaseClass:
+  client_name: OpenAI # OR Sunnysideup\AutomatedContentManagement\Model\Api\Connectors\OpenAIConnector
+  client_model: gpt-4o
+  client_model_openai: gpt-4o
+  client_model_claude: claude-3-opus-20240229
+
 ```
 
 ## Customising this project
+
+Here is how you can set the classes and fields that are available for the CMS User:
+
+```
+Sunnysideup\AutomatedContentManagement\Model\Instruction:
+  excluded_models: # include all except ones listed
+    - MyClass\Foo\Bar
+  included_models: # only include ones listed
+    - MyOtherClass\Foo\Bar
+
+```
 
 ### Custom Record Processor
 
@@ -121,7 +155,7 @@ class CustomRecordProcessor extends ProcessOneRecord
         $enhancedPrompt = "Follow these guidelines:\n- Be concise\n- Maintain brand voice\n\n" . $instruction;
         // Get the LLM connector and query it
         $connector = Injector::inst()->get(ConnectWithLLM::class);
-        return $connector->runQuery($enhancedPrompt);
+        return $connector->askQuestion($enhancedPrompt);
     }
 }
 ```

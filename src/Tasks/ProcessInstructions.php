@@ -40,7 +40,7 @@ class ProcessInstructions extends BuildTask
             'Cancelled' => false,
         ]);
         foreach ($instructions as $instruction) {
-            if ($instruction->isReadyToProcess()) {
+            if ($instruction->getIsReadyForProcessing()) {
                 DB::alteration_message('Writing instruction: ' . $instruction->getTitle(), 'created');
                 $instruction->write();
             }
@@ -51,22 +51,27 @@ class ProcessInstructions extends BuildTask
     {
         $instructions = Instruction::get()->filterAny([
             'ReadyToProcess' => true,
-            'RunTest' => false,
+            'RunTest' => true,
         ])->excludeAny([
             'Cancelled' => true,
             'Completed' => true,
         ]);
         foreach ($instructions as $instruction) {
-            $instruction->StartedProcessing = true;
-            $instruction->write();
-            foreach (
-                RecordProcess::get()->filter([
-                    'Started' => false,
-                    'Completed' => false,
-                    'InstructionID' => $instruction->ID,
-                ]) as $recordProcess
-            ) {
-                if ($instruction->isReadyToProcess()) {
+            if (! $instruction->RunTest) {
+                $instruction->StartedProcess = true;
+                $instruction->write();
+            }
+            $list = RecordProcess::get()->filter([
+                'Started' => false,
+                'Completed' => false,
+                'Skip' => false,
+                'InstructionID' => $instruction->ID,
+            ]);
+            $list = $list->filter([
+                'IsTest' => $instruction->RunTest,
+            ]);
+            foreach ($list as $recordProcess) {
+                if ($recordProcess->getCanProcess()) {
                     $this->processor->recordAnswer($recordProcess);
                 }
             }
@@ -88,7 +93,7 @@ class ProcessInstructions extends BuildTask
     protected function cleanupRecordProcesses()
     {
         $recordProcesses = RecordProcess::get()->filter([
-            'Cancelled' => true,
+            'Instruction.Cancelled' => true,
         ]);
         foreach ($recordProcesses as $recordProcess) {
             $recordProcess->delete();

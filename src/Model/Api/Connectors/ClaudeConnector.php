@@ -16,13 +16,13 @@ use Sunnysideup\AutomatedContentManagement\Model\Api\ConnectorBaseClass;
 
 class ClaudeConnector extends ConnectorBaseClass
 {
-    protected string $shortName = 'ClaudeConnector';
+    protected string $shortName = 'Claude';
     protected string $defaultModel = 'claude-3-opus-20240229';
 
     /**
      * Send a question to Claude and get a response
      */
-    public function runQuery(string $question, ?string $model = 'claude-3-opus-20240229'): string
+    public function askQuestion(string $question, ?string $model = 'claude-3-opus-20240229'): string
     {
         try {
             $client = Anthropic::client($this->getApiKey());

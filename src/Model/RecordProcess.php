@@ -86,7 +86,7 @@ class RecordProcess extends DataObject
             return false;
         }
         $instruction = $this->Instruction();
-        if ($instruction->ReadyToProcess || $instruction->RunTest) {
+        if ($instruction->getIsReadyForProcessing()) {
             if (!$this->getCanNotProcessAnymore()) {
                 return true;
             }
