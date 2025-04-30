@@ -600,7 +600,7 @@ class Instruction extends DataObject
             }
             $this->RunTest = false;
             $this->write();
-        } elseif ($this->ReadyToProcess) {
+        } elseif ($this->ReadyToProcess && ! $this->Completed) {
             $this->AddRecords(false);
         }
         if ($this->RejectAll) {
