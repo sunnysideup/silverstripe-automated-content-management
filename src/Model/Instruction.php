@@ -578,8 +578,9 @@ class Instruction extends DataObject
             'Please return the answer as a value suitable for insertion into a
             ' . $this->getRecordType() . ' field type in a Silverstripe CMS Database.
             For example, if the field is a Varchar field, then please return a string.
-            For HTMLText, please make sure all text is wrapped in any of the following tags: p, ul, ol, li, or h2 - h6 and make sure
-            that all HTML is valid.'
+            For HTMLText, please make sure all text is wrapped in any of the following tags: p, ul, ol, li, or h2 - h6
+            also make sure that all HTML is valid.
+            Never wrap returns in things link ```html.'
         );
     }
 
@@ -660,22 +661,13 @@ class Instruction extends DataObject
             $keyFields = [
                 'InstructionID' => $this->ID,
                 'IsTest' => $isTest,
+                'RecordID' => $id,
             ];
             if ($isTest) {
                 $keyFields['Skip'] = false;
-            } else {
-                $keyFields['RecordID'] = $id;
             }
             $recordProcess = RecordProcess::get()->filter($keyFields)->first();
-            if ($isTest) {
-                $recordProcess->delete();
-                $recordProcess = null;
-            }
-            if (! $recordProcess) {
-                if ($isTest) {
-                    // now we can add the record
-                    $keyFields['RecordID'] = $id;
-                }
+            if (! $recordProcess || $isTest) {
                 $recordProcess = RecordProcess::create($keyFields);
             }
             $recordProcess->write();
