@@ -13,6 +13,7 @@ use OpenAI;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Injector\Injector;
+use Sunnysideup\AutomatedContentManagement\Model\Api\Connectors\TestConnector;
 
 abstract class ConnectorBaseClass
 {
@@ -84,7 +85,9 @@ abstract class ConnectorBaseClass
             $myVarName = Environment::getEnv('SS_LLM_CLIENT_API_KEY_' . strtoupper($this->getShortName()));
             $v = Environment::getEnv($myVarName);
             if (! $v) {
-                throw new Exception('LLM API key (SS_LLM_CLIENT_API_KEY or ' . $myVarName . ') not configured in environment');
+                throw new Exception(
+                    'The LLM Api key (using SS_LLM_CLIENT_API_KEY or ' . $myVarName . ')  is not configured in this environment.'
+                );
             }
         }
         return $v;
@@ -108,5 +111,15 @@ abstract class ConnectorBaseClass
             }
         }
         return $v;
+    }
+
+    public function getClientNameNice(): string
+    {
+        return $this->getShortName();
+    }
+
+    public function getModelNice(): string
+    {
+        return $this->getModel();
     }
 }

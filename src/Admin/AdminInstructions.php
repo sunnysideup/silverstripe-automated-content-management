@@ -8,14 +8,14 @@ use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class AdminInstructions extends ModelAdmin
 {
-    private static $url_segment = 'automated-edits';
+    private static $url_segment = 'llm-edits';
 
-    private static $menu_title = 'Automated Edits';
+    private static $menu_title = 'LLM Edits';
+
+    private static $menu_icon_class = 'font-icon-block-content';
 
     private static $managed_models = [
         Instruction::class,
         RecordProcess::class,
     ];
-
-    private static $menu_icon_class = 'font-icon-block-content';
 }

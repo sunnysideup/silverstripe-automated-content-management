@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Traits;
 
+use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\RequiredFields;
 use SilverStripe\ORM\FieldType\DBField;
@@ -72,10 +73,14 @@ trait CMSFieldsExtras
         } else {
             $niceValue = $v->forTemplate();
         }
+        $className = ReadonlyField::class;
+        if ($type === 'HTMLText' || strpos($niceValue, '<')) {
+            $className = HTMLReadonlyField::class;
+        }
         $fields->addFieldsToTab(
             'Root.Details',
             [
-                ReadonlyField::create($name . 'NICE', $this->fieldLabel($name), $niceValue),
+                $className::create($name . 'NICE', $this->fieldLabel($name), $niceValue),
             ]
         );
     }

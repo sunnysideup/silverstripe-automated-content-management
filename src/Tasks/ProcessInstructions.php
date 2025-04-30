@@ -12,9 +12,9 @@ use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class ProcessInstructions extends BuildTask
 {
-    protected $title = 'Process Instructions';
+    protected $title = 'Process LLM Instructions';
 
-    protected $description = 'Processes instructions for automated content management.';
+    protected $description = 'Processes LLM instructions for automated content management.';
 
     protected $enabled = true;
 
@@ -24,6 +24,8 @@ class ProcessInstructions extends BuildTask
 
     public function run($request)
     {
+        DB::alteration_message($this->title);
+        DB::alteration_message('... ' . $this->description);
         $this->processor = Injector::inst()->get(ProcessOneRecord::class);
         $this->cleanupInstructions();
         $this->getAnswers();
@@ -34,14 +36,14 @@ class ProcessInstructions extends BuildTask
 
     protected function cleanupInstructions()
     {
-        DB::alteration_message('Writing all instructions ready for processing', 'created');
+        DB::alteration_message('Writing all instructions ready for processing');
         $instructions = Instruction::get()->filter([
             'Completed' => false,
             'Cancelled' => false,
         ]);
         foreach ($instructions as $instruction) {
             if ($instruction->getIsReadyForProcessing()) {
-                DB::alteration_message('Writing instruction: ' . $instruction->getTitle(), 'created');
+                DB::alteration_message('... Writing instruction: ' . $instruction->getTitle());
                 $instruction->write();
             }
         }
@@ -57,6 +59,7 @@ class ProcessInstructions extends BuildTask
             'Completed' => true,
         ]);
         foreach ($instructions as $instruction) {
+            DB::alteration_message('Processing instruction: ' . $instruction->getTitle());
             if (! $instruction->RunTest) {
                 $instruction->StartedProcess = true;
                 $instruction->write();
@@ -70,7 +73,11 @@ class ProcessInstructions extends BuildTask
             $list = $list->filter([
                 'IsTest' => $instruction->RunTest,
             ]);
+            if ($instruction->NumberOfRecordsToProcessPerBatch) {
+                $list = $list->limit($instruction->NumberOfRecordsToProcessPerBatch);
+            }
             foreach ($list as $recordProcess) {
+                DB::alteration_message('... Processing record process: ' . $recordProcess->getRecordTitle());
                 if ($recordProcess->getCanProcess()) {
                     $this->processor->recordAnswer($recordProcess);
                 }
@@ -80,24 +87,33 @@ class ProcessInstructions extends BuildTask
 
     protected function updateOriginals()
     {
+        DB::alteration_message('Updating original records');
         $recordProcesses = RecordProcess::get()->filter([
             'Completed' => true,
             'Accepted' => true,
             'IsTest' => false,
         ]);
         foreach ($recordProcesses as $recordProcess) {
+            DB::alteration_message('... Updating original record: ' . $recordProcess->getRecordTitle(), 'created');
             $this->processor->updateOriginalRecord($recordProcess);
         }
     }
 
     protected function cleanupRecordProcesses()
     {
-        $recordProcesses = RecordProcess::get()->filter([
-            'Instruction.Cancelled' => true,
-        ]);
-        foreach ($recordProcesses as $recordProcess) {
-            $recordProcess->delete();
+        DB::alteration_message('Cleaning up record processes');
+        $filters = [
+            ['Instruction.Cancelled' => true],
+            ['OriginalUpdated' => true],
+            ['Rejected' => true],
+        ];
+        foreach ($filters as $filter) {
+            DB::alteration_message('... Deleting by filter: ' . json_encode($filter), 'deleted');
+            $recordProcesses = RecordProcess::get()->filter($filter);
+            foreach ($recordProcesses as $recordProcess) {
+                DB::alteration_message('... ... Deleting record process: ' . $recordProcess->ID, 'deleted');
+                $recordProcess->delete();
+            }
         }
-        // todo: delete all records that are not needed anymore
     }
 }

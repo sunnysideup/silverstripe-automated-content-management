@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
+use SilverStripe\Core\Config\Config;
+use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\DataObjectInterface;
 use SilverStripe\ORM\FieldType\DBField;
-use SilverStripe\View\SSViewer;
 use SilverStripe\View\SSViewer_FromString;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Traits\CMSFieldsExtras;
@@ -24,6 +24,7 @@ class RecordProcess extends DataObject
         'RecordID' => 'Int',
         'Before' => 'Text',
         'After' => 'Text',
+        'ErrorFound' => 'Boolean',
         'Skip' => 'Boolean',
         'Started' => 'Boolean',
         'Completed' => 'Boolean',
@@ -38,26 +39,31 @@ class RecordProcess extends DataObject
     ];
 
     private static $summary_fields = [
-        'Created.Nice' => 'Created',
         'Instruction.Title' => 'Action',
         'RecordTitle' => 'Record',
+        'IsTest.Nice' => 'Test Only',
+        'Started.Nice' => 'Started Processing',
+        'Completed.Nice' => 'Completed Processing',
         'Accepted.Nice' => 'Change Accepted',
+        'OriginalUpdated.Nice' => 'Originating Record Updated',
     ];
 
     private static $searchable_fields = [
-        'RecordID' => 'Int',
-        'Before' => 'Text',
-        'After' => 'Text',
-        'IsTest' => 'Boolean',
-        'Skip' => 'Boolean',
-        'Started' => 'Boolean',
-        'Completed' => 'Boolean',
-        'Accepted' => 'Boolean',
-        'Rejected' => 'Boolean',
-        'OriginalUpdated' => 'Boolean',
+        'RecordID',
+        'Before',
+        'After',
+        'ErrorFound',
+        'IsTest',
+        'Skip',
+        'Started',
+        'Completed',
+        'Accepted',
+        'Rejected',
+        'OriginalUpdated',
     ];
 
     private static $casting = [
+        'FindErrorsOnly' => 'Boolean',
         'CanProcess' => 'Boolean',
         'CanNotProcessAnymore' => 'Boolean',
         'RecordTitle' => 'Varchar',
@@ -76,9 +82,15 @@ class RecordProcess extends DataObject
         'Rejected' => 'Reject change',
         'OriginalUpdated' => 'Original Record updated with new value',
         'IsTest' => 'Is test only',
+        'Instruction' => 'LLM Instruction',
     ];
 
     private static $default_sort = 'ID';
+
+    public function getFindErrorsOnly(): bool
+    {
+        return (bool) $this->Instruction()->FindErrorsOnly;
+    }
 
     public function getCanProcess(): bool
     {
@@ -104,25 +116,31 @@ class RecordProcess extends DataObject
     {
         $record = $this->getRecord();
         if ($record) {
-            return $record->getTitle() . ' (' . $record->ID . ')';
+            return $record->getTitle(); //. ' (ID: #' . $record->ID . ')';
         }
-        return 'Record not found';
+        return 'Error: record not found'; // (ID: #' . $this->RecordID . ')';
     }
 
-    public function getHydratedInstructions(): ?string
+    public function getHydratedInstructions(): string
     {
         $description = $this->Instruction()->Description;
         $record = $this->getRecord();
+        $v = '';
         if ($record) {
             $template = SSViewer_FromString::create($description);
             //FUTURE: SSViewer::create()->renderString($description);
             $return = $template->process($record);
             if ($return instanceof DBField) {
-                return $return->forTemplate();
+                $v = $return->forTemplate();
+            } else {
+                $v = $return;
             }
-            return $return;
         }
-        return null;
+        $add = $this->getAlwaysAddedInstruction();
+        if ($add) {
+            $v .= PHP_EOL . PHP_EOL . $add;
+        }
+        return $v;
     }
 
     /**
@@ -139,20 +157,73 @@ class RecordProcess extends DataObject
         return null;
     }
 
+    public function getAlwaysAddedInstruction(): string
+    {
+        $instruction = $this->Instruction();
+        if ($instruction->AlwaysAddedInstruction) {
+            return $instruction->AlwaysAddedInstruction;
+        }
+        return '';
+    }
+
+
+
     public function getCMSFields()
     {
         $fields = parent::getCMSFields();
         $this->addCastingFieldsNow($fields);
+        if ($this->getRecordType() === 'HTMLText') {
+            foreach (['Before', 'After'] as $fieldName) {
+                $fields->replaceField(
+                    $fieldName,
+                    HTMLReadonlyField::create($fieldName . 'Nice', $fieldName, $this->dbObject($fieldName)->Raw())
+                );
+            }
+        }
         $fields->removeByName('RecordID');
-        $fields->addFieldsToTab(
-            'Root.Main',
-            [
-                $fields->dataFieldByName('InstructionID'),
-                $fields->fieldByName('Root.Details.RecordTitleNICE'),
-            ],
-            'Before'
-        );
+
         $this->makeFieldsReadonly($fields);
+        if ($this->getFindErrorsOnly()) {
+            $fields->removeByName('Accepted');
+            $fields->removeByName('Rejected');
+            $fields->removeByName('OriginalUpdated');
+        } else {
+            $fields->removeByName('ErrorFound');
+        }
+        if ($this->IsTest) {
+            $fields->removeByName('Skip');
+            $fields->removeByName('Accepted');
+            $fields->removeByName('Rejected');
+            $fields->removeByName('OriginalUpdated');
+        }
+        $record = $this->getRecord();
+        if ($record) {
+            if ($record->hasMethod('CMSEditLink')) {
+                $link = $record->CMSEditLink();
+            } elseif ($record->hasMethod('Link')) {
+                $link = $record->Link();
+            } else {
+                $link = null;
+            }
+            if ($link) {
+                $title = '<a href="' . $link . '" target="_blank">' . $this->getRecordTitle() . '</a>';
+            } else {
+                $title = $this->getRecordTitle();
+            }
+            $fields->addFieldsToTab(
+                'Root.Main',
+                [
+                    $fields->dataFieldByName('InstructionID'),
+                    HTMLReadonlyField::create(
+                        'ViewRecord',
+                        'Record',
+                        $title
+
+                    ),
+                ],
+                'BeforeNice'
+            );
+        }
         return $fields;
     }
 
@@ -191,28 +262,50 @@ class RecordProcess extends DataObject
         return false;
     }
 
-
+    public function getTitle(): string
+    {
+        return $this->getRecordTitle();
+    }
 
 
     public function getBeforeHumanValue(): string
     {
         return $this->getHumanValue($this->Before);
     }
+
     public function getAfterHumanValue(): string
     {
         return $this->getHumanValue($this->After);
+    }
+
+    public function getIsErrorAnswer(?string $answer): bool
+    {
+        if (! $answer) {
+            $answer = $this->Answer;
+        }
+        if ($answer) {
+            $prependNonError = Config::inst()->get(Instruction::class, 'non_error_prepend');
+            if ($answer === $prependNonError) {
+                return false;
+            }
+            $prependError = Config::inst()->get(Instruction::class, 'error_prepend');
+            if (strpos($answer, $prependError) === 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function getHumanValue(mixed $value): string
     {
         $type = $this->getRecordType();
         switch ($type) {
-            case 'Varchar':
-            case 'Text':
-                return (string) $value;
             case 'Int':
             case 'Float':
                 return (string) $value;
+            case 'Percentage':
+                $value = (float) $value;
+                return round($value * 100, 2) . '%';
             case 'Boolean':
                 return $value ? 'Yes' : 'No';
             case 'Datetime':

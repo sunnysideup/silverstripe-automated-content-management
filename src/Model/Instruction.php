@@ -22,6 +22,7 @@ use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\RequiredFields;
 use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\TabSet;
+use SilverStripe\Forms\TextField;
 use SilverStripe\Forms\ToggleCompositeField;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
@@ -29,6 +30,8 @@ use SilverStripe\ORM\FieldType\DBEnum;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
+use Sunnysideup\AutomatedContentManagement\Model\Api\ConnectorBaseClass;
+use Sunnysideup\AutomatedContentManagement\Model\Api\Converters;
 use Sunnysideup\AutomatedContentManagement\Model\Api\InstructionsForInstructions;
 use Sunnysideup\AutomatedContentManagement\Model\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
@@ -41,10 +44,10 @@ class Instruction extends DataObject
     use CMSFieldsExtras;
     private static $table_name = 'AutomatedContentManagementInstruction';
 
-    private static $singular_name = 'Instruction';
-    private static $plural_name = 'Instructions';
-    private static $description = 'Instructions for the automated content management system.';
-
+    private static $singular_name = 'LLM Instruction';
+    private static $plural_name = 'LLM Instructions';
+    private static string $error_prepend = 'HAS_ERROR: ';
+    private static string $non_error_prepend = 'OK';
     private static array $excluded_models = [
         'SilverStripe\\Versioned\\ChangeSetItem',
         'DNADesign\\Elemental\\Models\\BaseElement',
@@ -52,18 +55,11 @@ class Instruction extends DataObject
 
     private static array $included_models = [];
 
-    private static array $excluded_fields = [
-        'ClassName',
-        'ID',
-        'Created',
-        'LastEdited',
-    ];
+    private static array $excluded_fields = [];
 
     private static array $included_fields = [];
 
-    private static array $excluded_field_types = [
-        DBEnum::class,
-    ];
+    private static array $excluded_field_types = [];
 
     private static array $included_field_types = [];
 
@@ -79,11 +75,18 @@ class Instruction extends DataObject
         // ],
     ];
 
+    private static $defaults = [
+        'NumberOfRecordsToProcessPerBatch' => 100,
+    ];
+
     private static $db = [
         'ClassNameToChange' => 'Varchar(255)',
         'FieldToChange' => 'Varchar(255)',
         'Title' => 'Varchar(255)',
+        'FindErrorsOnly' => 'Boolean',
         'Description' => 'Text',
+        'AlwaysAddedInstruction' => 'Text',
+        'NumberOfRecordsToProcessPerBatch' => 'Int',
         'RunTest' => 'Boolean',
         'ReadyToProcess' => 'Boolean',
         'StartedProcess' => 'Boolean',
@@ -101,13 +104,18 @@ class Instruction extends DataObject
     ];
 
     private static $summary_fields = [
-        'Created.Nice' => 'Created',
+        'Created.Ago' => 'Created',
         'Title' => 'Title',
+        'StartedProcess.Nice' => 'Started',
+        'Completed.Nice' => 'Completed',
     ];
 
     private static $searchable_fields = [
         'Title',
+        'FindErrorsOnly',
         'Description',
+        'StartedProcess',
+        'Completed',
     ];
 
     private static $field_labels = [
@@ -120,7 +128,6 @@ class Instruction extends DataObject
         'Cancelled' => 'Cancel any further processing',
     ];
 
-
     private static $casting = [
         'IsReadyForProcessing' => 'Boolean',
         'IsReadyForReview' => 'Boolean',
@@ -128,7 +135,11 @@ class Instruction extends DataObject
         'NumberOfRecords' => 'Int',
         'ProcessedRecords' => 'Int',
         'PercentageCompleted' => 'Percentage',
-        'RecordType' => 'Varchar(255)',
+        'ClassNameToChangeNice' => 'Varchar',
+        'FieldToChangeNice' => 'Varchar',
+        'RecordType' => 'Varchar',
+        'LLMProvidedBy' => 'Varchar',
+        'LLMModelUsed' => 'Varchar',
     ];
 
     private static $cascade_delete = [
@@ -167,6 +178,7 @@ class Instruction extends DataObject
 
     public function getCMSFields()
     {
+
         if (!$this->HasValidClassName()) {
             return FieldList::create(
                 $this->getSelectClassNameField(true)
@@ -210,7 +222,7 @@ class Instruction extends DataObject
                                 ]
                             )->setHeadingLevel(4)
                         ],
-                        'RunTest',
+                        'AlwaysAddedInstruction',
                     );
                 }
             }
@@ -265,7 +277,7 @@ class Instruction extends DataObject
             foreach ($grids as $name => $list) {
                 $list = $list->filter(['InstructionID' => $this->ID]);
                 $fields->addFieldToTab(
-                    'Root.' . $name,
+                    'Root.RecordsByStatus.' . $name,
                     new GridField(
                         'RecordsToProcess' . $name,
                         $name,
@@ -276,6 +288,11 @@ class Instruction extends DataObject
                     )
                 );
             }
+            $recordsToProcessTab = $fields->fieldByName('Root.RecordsToProcess');
+            if ($recordsToProcessTab) {
+                $recordsToProcessTab->setTitle('Records');
+            }
+
             $fields->addFieldsToTab(
                 'Root.RecordsToProcess',
                 [
@@ -287,7 +304,6 @@ class Instruction extends DataObject
                         ->setDescription(
                             'This will allow you to accept all the changes for all the records in the list.'
                         ),
-                    $fields->dataFieldByName('RejectAll')
                 ],
                 'RecordsToProcess'
 
@@ -338,10 +354,14 @@ class Instruction extends DataObject
                 default:
                     break;
             }
-        } elseif ($this->StartedProcess) {
+        }
+        if ($this->StartedProcess) {
             switch ($fieldName) {
                 case 'Title':
                 case 'Description':
+                case 'AlwaysAddedInstruction':
+                case 'NumberOfRecordsToProcessPerBatch':
+                case 'FindErrorsOnly':
                     return true;
                 default:
                     break;
@@ -436,7 +456,7 @@ class Instruction extends DataObject
 
     public function getProcessedRecords(): int
     {
-        return $this->RecordsToProcess()->filter(['Completed' => true])->count();
+        return $this->RecordsToProcess()->filter(['Completed' => true, 'IsTest' => false])->count();
     }
 
     public function getPercentageCompleted(): float
@@ -447,7 +467,56 @@ class Instruction extends DataObject
         return round(($this->getProcessedRecords() / $this->getNumberOfRecords()) * 100) / 100;
     }
 
+    public function getClassNameToChangeNice(): string
+    {
+        $obj = $this->getRecordSingleton();
+        if ($obj) {
+            return $obj->i18n_singular_name();
+        }
+        return 'ERROR: Class not found';
+    }
 
+    public function getClassNameToChangePluralNice(): string
+    {
+        $obj = $this->getRecordSingleton();
+        if ($obj) {
+            return $obj->i18n_plural_name();
+        }
+        return 'ERROR: Class not found';
+    }
+
+    public function getFieldToChangeNice(): string
+    {
+        $fieldName = $this->FieldToChange;
+        if ($fieldName) {
+            $obj = $this->getRecordSingleton();
+            if ($obj) {
+                return $obj->fieldLabel($fieldName);
+            }
+        }
+        return 'ERROR: field not found';
+    }
+
+    public function getRecordType(): string
+    {
+        $obj = $this->getRecordSingleton();
+        if ($obj) {
+            $db = $obj->config()->get('db');
+            $type = $db[$this->FieldToChange] ?? 'Error: Field does not exist';
+            return Converters::standardised_field_type($type);
+        }
+        return 'Error: Class does not exist';
+    }
+
+    public function getLLMProvidedBy()
+    {
+        return ConnectorBaseClass::inst()->getClientNameNice();
+    }
+
+    public function getLLMModelUsed()
+    {
+        return ConnectorBaseClass::inst()->getModelNice();
+    }
 
     public function getRecordSingleton()
     {
@@ -465,16 +534,6 @@ class Instruction extends DataObject
         }
     }
 
-    public function getRecordType(): string
-    {
-        $obj = $this->getRecordSingleton();
-        if ($obj) {
-            $db = $obj->config()->get('db');
-            return $db[$this->FieldToChange] ?? 'Error: Field does not exist';
-        }
-        return 'Error: Class does not exist';
-    }
-
 
 
     public function onBeforeWrite()
@@ -489,18 +548,52 @@ class Instruction extends DataObject
             }
         }
 
-        if ($this->Cancelled) {
-            $this->ReadyToProcess = false;
-            foreach ($this->RecordsToProcess() as $recordProcess) {
-                $recordProcess->delete();
-            }
-        }
         if ($this->ReadyToProcess) {
             $this->RunTest = false;
         }
         if ($this->RunTest) {
             $this->ReadyToProcess = false;
         }
+        if (! $this->Title && $this->HasValidClassName() && $this->HasValidFieldName()) {
+            $this->Title = 'Update ' . $this->getFieldToChangeNice() . ' fields in ' . $this->getClassNameToChangePluralNice() . ' records';
+        }
+        if ($this->HasValidClassName() && $this->HasValidFieldName()) {
+            if (!$this->AlwaysAddedInstruction || $this->isChanged('FindErrorsOnly')) {
+                if ($this->FindErrorsOnly) {
+                    $this->AlwaysAddedInstruction = $this->getFindErrorsOnlyInstruction();
+                } else {
+                    $this->AlwaysAddedInstruction = $this->getUpdateInstruction();
+                }
+            }
+        }
+        if ($this->NumberOfRecordsToProcessPerBatch > 1000 || $this->NumberOfRecordsToProcessPerBatch < 1) {
+            $this->NumberOfRecordsToProcessPerBatch = $this->Config()->get('defaults')['NumberOfRecordsToProcessPerBatch'] ?? 100;
+        }
+    }
+
+    protected function getFindErrorsOnlyInstruction(): string
+    {
+        return $this->cleanWhitespace(
+            '
+            If you find an error, then please prepend any answer with ' . $this->Config()->get('error_prepend') . '.
+            If no error is found as per the instructions above then just return ' . $this->Config()->get('non_error_prepend')
+        );
+    }
+
+    protected function getUpdateInstruction(): string
+    {
+        return $this->cleanWhitespace(
+            'Please return the answer as a value suitable for insertion into a
+            ' . $this->getRecordType() . ' field type in a Silverstripe CMS Database.
+            For example, if the field is a Varchar field, then please return a string.
+            For HTMLText, please make sure all text is wrapped in any of the following tags: p, ul, ol, li, or h2 - h6 and make sure
+            that all HTML is valid.'
+        );
+    }
+
+    protected function cleanWhitespace(string $text): string
+    {
+        return trim(preg_replace('/\s+/', ' ', $text));
     }
 
     public function onAfterWrite()
@@ -515,7 +608,19 @@ class Instruction extends DataObject
             $this->RunTest = false;
             $this->write();
         } elseif ($this->ReadyToProcess) {
-            $this->AddRecords(false, null, 9999);
+            $this->AddRecords(false);
+        }
+        if ($this->RejectAll) {
+            $this->RecordsToProcess()->filter(['Rejected' => false])->each(function ($item) {
+                $item->RejectAll = true;
+                $item->write();
+            });
+        }
+        if ($this->AcceptAll) {
+            $this->RecordsToProcess()->filter(['Accepted' => false])->each(function ($item) {
+                $item->AcceptAll = true;
+                $item->write();
+            });
         }
     }
 
@@ -570,6 +675,10 @@ class Instruction extends DataObject
                 $keyFields['RecordID'] = $id;
             }
             $recordProcess = RecordProcess::get()->filter($keyFields)->first();
+            if ($isTest) {
+                $recordProcess->delete();
+                $recordProcess = null;
+            }
             if (! $recordProcess) {
                 if ($isTest) {
                     // now we can add the record
@@ -579,7 +688,7 @@ class Instruction extends DataObject
             }
             $recordProcess->write();
         }
-        if ($limit === 1) {
+        if ($isTest) {
             return $recordProcess;
         }
         return null;
@@ -808,7 +917,7 @@ class Instruction extends DataObject
     protected function IsValidFieldType(string $type): bool
     {
         //It removes everything from the first (  to the end
-        $type = preg_replace('/\(.*$/', '', $type);
+        $type = Converters::standardised_field_type($type);
         switch ($type) {
             case 'Varchar':
             case 'Text':

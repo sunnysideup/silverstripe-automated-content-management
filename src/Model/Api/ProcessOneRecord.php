@@ -17,20 +17,22 @@ class ProcessOneRecord
 
     public function recordAnswer(RecordProcess $recordProcess)
     {
-        $instruction = $recordProcess->getHydratedInstructions();
+        $question = $recordProcess->getHydratedInstructions();
         $record = $recordProcess->getRecord();
         $field = $recordProcess->Instruction->FieldToChange;
         $recordProcess->Before = $record->$field;
         if ($recordProcess->getCanNotProcessAnymore()) {
-            $recordProcess->delete();
             return;
         }
         if ($recordProcess->getCanProcess()) {
             $recordProcess->Started = true;
             $recordProcess->write();
-            $answer = $this->sendToLLM($instruction, $recordProcess->getBeforeHumanValue());
+            $answer = $this->sendToLLM($question);
             $recordProcess->After = $answer;
             $recordProcess->Completed = $answer;
+            if ($recordProcess->getFindErrorsOnly()) {
+                $recordProcess->ErrorFound = $recordProcess->getIsErrorAnswer($answer);
+            }
             $recordProcess->write();
         }
     }
@@ -42,7 +44,7 @@ class ProcessOneRecord
             $isPublished = $record->hasMethod('isPublished') && $record->isPublished();
             if ($isPublished) {
                 if ($record->hasMethod('isModifiedOnDraft')) {
-                    $isPublished = $record->isModifiedOnDraft();
+                    $isPublished = $record->isModifiedOnDraft() ? false : true;
                 }
             }
             $field = $recordProcess->Instruction()->FieldToChange;
@@ -57,12 +59,10 @@ class ProcessOneRecord
     }
 
 
-    protected function sendToLLM(string $instruction, string $beforeAsHumanValue): string
+    protected function sendToLLM(string $question): string
     {
         // This is where you would send the instruction and before value to the LLM
         // For now, we will just return a dummy response
-        $obj = ConnectorBaseClass::inst();
-        $query = "$instruction";
-        return $obj->askQuestion($query);
+        return ConnectorBaseClass::inst()->askQuestion($question);
     }
 }
