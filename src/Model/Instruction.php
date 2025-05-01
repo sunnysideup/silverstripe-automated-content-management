@@ -28,12 +28,12 @@ use Sunnysideup\AutomatedContentManagement\Model\Api\InstructionsForInstructions
 use Sunnysideup\AutomatedContentManagement\Model\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 use Sunnysideup\AutomatedContentManagement\Traits\CMSFieldsExtras;
+use Sunnysideup\ClassesAndFieldsInfo\Api\ClassAndFieldInfo;
 use Sunnysideup\ClassesAndFieldsInfo\Traits\ClassesAndFieldsTrait;
 
 class Instruction extends DataObject
 {
 
-    use ClassesAndFieldsTrait;
 
     use CMSFieldsExtras;
     private static $table_name = 'AutomatedContentManagementInstruction';
@@ -68,6 +68,7 @@ class Instruction extends DataObject
     private static $has_one = [
         'By' => Member::class,
     ];
+
     private static $has_many = [
         'RecordsToProcess' => RecordProcess::class,
     ];
@@ -499,7 +500,7 @@ class Instruction extends DataObject
     {
         if ($this->HasValidClassName()) {
             $className = $this->ClassNameToChange;
-            return $className::get()->first();
+            return $className::get()->orderBy(DB::get_conn()->random())->first();
         }
     }
 
@@ -686,10 +687,16 @@ class Instruction extends DataObject
 
     protected function getSelectFieldNameField(?bool $withInstructions = true, ?bool $onlyShowSelectedvalue = false): OptionsetField
     {
+        $listOfFieldNames = Injector::inst()->get(ClassAndFieldInfo::class)
+            ->getListOfFieldNames(
+                $this,
+                $this->ClassNameToChange,
+                ['db']
+            );
         $field = OptionsetField::create(
             'FieldToChange',
             $this->fieldLabel('FieldToChange'),
-            $this->getListOfFieldNames($this->getRecordSingleton())
+            $listOfFieldNames
         );
         if ($withInstructions) {
             $field->setDescription(

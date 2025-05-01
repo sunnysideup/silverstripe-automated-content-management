@@ -44,15 +44,15 @@ class InstructionsForInstructions
         }
 
         return
-            '<p>To use values from the record at hand, use the following field variables:</p>'
-            . $sectionsHtml
-            . '<h2>Examples of variable usage in your instructions</h2>'
+            '<h2>Examples of variable usage in your instructions</h2>'
             . '<p>'
             . 'e.g. if you have a record with a Title, Description Field and you are trying to get a summary for each record then your instruction could be something like:'
             . '<br ><em>Consider the Title: $Title and the Description: "$Description" and summarise it in less than five words.</em>'
             . '<br /><br />You can also use <em><% if $Foo %>something only shown if the variable Foo is available <% end_if %></em> to check for the existence of a variable (Foo in this case). For example: '
             . '<br /><em>Consider the Title: $Title <% if $Description %>and the Description: $Description<% end_if %> value(s) for this record and summarise it in less than five words.</em>.'
-            . '</p>';
+            . '</p>'
+            . '<p>To use values from the record at hand, use the following field variables:</p>'
+            . $sectionsHtml;
     }
 
     protected function getListOfFields(): array
