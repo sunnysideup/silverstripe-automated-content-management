@@ -26,11 +26,21 @@ class InstructionsForInstructions
         $sectionsHtml = '';
 
         foreach ($fieldLists as $header => $items) {
-            $sectionsHtml .= '<h2>' . $header . '</h2><ul>';
-            foreach ($items as $label => $placeholder) {
-                $sectionsHtml .= '<li>' . $label . ': <strong>$' . $placeholder . '</strong></li>';
+            // hack for better hierarchy
+            if (stripos($header, 'Main') === 0) {
+                $level = '2';
+            } else {
+                $level = '3';
             }
-            $sectionsHtml .= '</ul>';
+            $sectionsHtml .= '
+                <h' . $level . '>' . $header . '</h' . $level . '>
+                <ul>';
+            foreach ($items as $label => $placeholder) {
+                $sectionsHtml .= '
+                    <li>' . $label . ': <strong>$' . $placeholder . '</strong></li>';
+            }
+            $sectionsHtml .= '
+                </ul>';
         }
 
         return

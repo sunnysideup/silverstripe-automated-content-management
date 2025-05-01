@@ -106,12 +106,20 @@ class ProcessInstructions extends BuildTask
             ['Instruction.Cancelled' => true],
             ['OriginalUpdated' => true],
             ['Rejected' => true],
+            ['RecordID' => 0],
         ];
         foreach ($filters as $filter) {
             DB::alteration_message('... Deleting by filter: ' . json_encode($filter), 'deleted');
             $recordProcesses = RecordProcess::get()->filter($filter);
             foreach ($recordProcesses as $recordProcess) {
                 DB::alteration_message('... ... Deleting record process: ' . $recordProcess->ID, 'deleted');
+                $recordProcess->delete();
+            }
+        }
+        $recordProcesses = RecordProcess::get();
+        foreach ($recordProcesses as $recordProcess) {
+            DB::alteration_message('... Deleting record process without record: ' . $recordProcess->ID, 'deleted');
+            if (! $recordProcess->getRecord()) {
                 $recordProcess->delete();
             }
         }
