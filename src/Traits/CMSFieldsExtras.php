@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Traits;
 
+use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\RequiredFields;
@@ -9,18 +10,29 @@ use SilverStripe\ORM\FieldType\DBField;
 
 trait CMSFieldsExtras
 {
-    protected function addCastingFieldsNow($fields)
+    /**
+     *
+     *
+     * @param mixed $fields
+     * @param mixed $fieldsToAdd
+     *              provide similar to casting in terms of the array format
+     * @param mixed $fieldsToSkip
+     *              provide a simple list of field names
+     * @return void
+     */
+    protected function addCastingFieldsNow(FieldList $fields, ?array $fieldsToAdd = [], ?array $fieldsToSkip = [])
     {
-
         $fieldsToAdd = [
             'Created' => 'Datetime',
             'LastEdited' => 'Datetime',
-        ];
+        ] + $fieldsToAdd;
 
         $fieldsToSkip = [
-            'CSSClasses' => 'Varchar',
-            'Title' => 'Varchar',
-        ];
+            'CSSClasses',
+            'Title',
+        ] + $fieldsToSkip;
+
+        $fieldsToSkip = array_flip($fieldsToSkip);
 
         foreach ($fieldsToAdd as $name => $type) {
             $this->addCastingFieldsNowInner($name, $type, $fields);
@@ -74,7 +86,7 @@ trait CMSFieldsExtras
             $niceValue = $v->forTemplate();
         }
         $className = ReadonlyField::class;
-        if ($type === 'HTMLText' || strpos($niceValue, '<')) {
+        if ($type === 'HTMLText' || (strpos($niceValue, '<') && strpos($niceValue, '</'))) {
             $className = HTMLReadonlyField::class;
         }
         $fields->addFieldsToTab(
