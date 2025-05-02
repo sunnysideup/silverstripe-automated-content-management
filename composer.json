@@ -26,7 +26,8 @@
         "mozex/anthropic-php": "^1.1",
         "sunnysideup/classes-and-fields-info": "dev-main",
         "sunnysideup/selections": "dev-main",
-        "sunnysideup/add-casted-variables": "dev-main"
+        "sunnysideup/add-casted-variables": "dev-main",
+        "sunnysideup/optionsetfield-grouped": "dev-main"
     },
     "suggest": {
         "khalsa-jio/silverstripe-ai-nexus": "The Silverstripe way to connect to LLMs"
