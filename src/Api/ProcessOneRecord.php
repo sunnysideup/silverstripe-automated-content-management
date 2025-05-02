@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sunnysideup\AutomatedContentManagement\Model\Api;
+namespace Sunnysideup\AutomatedContentManagement\Api;
 
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Extensible;

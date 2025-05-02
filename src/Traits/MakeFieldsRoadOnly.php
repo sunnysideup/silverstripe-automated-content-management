@@ -11,6 +11,12 @@ use SilverStripe\ORM\FieldType\DBField;
 trait MakeFieldsRoadOnly
 {
 
+    /**
+     * make sure you have a makeFieldsReadonlyInner method in your class
+     * that returns true or false depending on whether the field should be readonly
+     * @param mixed $fields
+     * @return void
+     */
     protected function makeFieldsReadonly($fields)
     {
         foreach ($fields->dataFields() as $field) {

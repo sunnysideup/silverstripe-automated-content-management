@@ -42,8 +42,8 @@ SS_LLM_CLIENT_MODEL="claude-3-opus-20240229"  # For Anthropic
 You can also set the variables in the Silverstripe Config Layer, like this:
 
 ```yml
-Sunnysideup\AutomatedContentManagement\Model\Api\ConnectorBaseClass:
-  client_name: OpenAI # OR Sunnysideup\AutomatedContentManagement\Model\Api\Connectors\OpenAIConnector
+Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass:
+  client_name: OpenAI # OR Sunnysideup\AutomatedContentManagement\Api\Connectors\OpenAIConnector
   client_model: gpt-4o
   client_model_openai: gpt-4o
   client_model_claude: claude-3-opus-20240229
@@ -71,7 +71,7 @@ Use a custom record processor to change how content is processed:
 
 ```yml
 SilverStripe\Core\Injector\Injector:
-Sunnysideup\AutomatedContentManagement\Model\Api\ProcessOneRecord:
+Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord:
     class: MyProject\CustomRecordProcessor
 ```
 
@@ -112,7 +112,7 @@ Name: custom-acm-config
 After: 'automated-content-management'
 ---
 SilverStripe\Core\Injector\Injector:
-Sunnysideup\AutomatedContentManagement\Model\Api\ConnectWithLLM:
+Sunnysideup\AutomatedContentManagement\Api\ConnectWithLLM:
     class: MyProject\CustomLLMConnector
 ```
 
@@ -120,7 +120,7 @@ Sunnysideup\AutomatedContentManagement\Model\Api\ConnectWithLLM:
 <?php
 namespace MyProject;
 
-use Sunnysideup\AutomatedContentManagement\Model\Api\ConnectWithLLM;
+use Sunnysideup\AutomatedContentManagement\Api\ConnectWithLLM;
 
 class CustomLLMConnector extends ConnectWithLLM
 {
@@ -137,7 +137,7 @@ Customize Processing Logic
 <?php
 namespace MyProject;
 
-use Sunnysideup\AutomatedContentManagement\Model\Api\ProcessOneRecord;
+use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class CustomRecordProcessor extends ProcessOneRecord

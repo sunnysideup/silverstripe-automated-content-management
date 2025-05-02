@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Sunnysideup\AutomatedContentManagement\Model\Api\Connectors;
+namespace Sunnysideup\AutomatedContentManagement\Api\Connectors;
 
 use Exception;
 use OpenAI;
-use Sunnysideup\AutomatedContentManagement\Model\Api\ConnectorBaseClass;
+use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
 
 class OpenAIConnector extends ConnectorBaseClass
 {

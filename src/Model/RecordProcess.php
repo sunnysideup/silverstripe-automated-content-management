@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
 use SilverStripe\Core\Config\Config;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\View\SSViewer_FromString;
+use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
-use Sunnysideup\AutomatedContentManagement\Traits\CMSFieldsExtras;
+use Sunnysideup\AutomatedContentManagement\Traits\MakeFieldsRoadOnly;
 
 class RecordProcess extends DataObject
 {
-
-
-    use CMSFieldsExtras;
+    use MakeFieldsRoadOnly;
 
     private static $table_name = 'AutomatedContentManagementRecordProcess';
 
@@ -171,7 +171,10 @@ class RecordProcess extends DataObject
     public function getCMSFields()
     {
         $fields = parent::getCMSFields();
-        $this->addCastingFieldsNow($fields);
+        Injector::inst()->get(AddCastedVariablesHelper::class)->AddCastingFields(
+            $this,
+            $fields,
+        );
         if ($this->getRecordType() === 'HTMLText') {
             foreach (['Before', 'After'] as $fieldName) {
                 $fields->replaceField(

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sunnysideup\AutomatedContentManagement\Model\Api;
+namespace Sunnysideup\AutomatedContentManagement\Api;
 
 use Anthropic;
 use Exception;
@@ -13,7 +13,7 @@ use OpenAI;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Injector\Injector;
-use Sunnysideup\AutomatedContentManagement\Model\Api\Connectors\TestConnector;
+use Sunnysideup\AutomatedContentManagement\Api\Connectors\TestConnector;
 
 abstract class ConnectorBaseClass
 {
@@ -68,7 +68,7 @@ abstract class ConnectorBaseClass
             throw new Exception('
                 Client requires a class name, but --' . ($client ?: 'NOTHING HERE') . '-- is not a class.
                 You can set this in your .env file using SS_LLM_CLIENT_NAME, as static property ConnectorBaseClass::client_name, or pass it in as a parameter.
-                You can provide the full class name, or just the short name (e.g. "OpenAIConnector" or "Sunnysideup\AutomatedContentManagement\Model\Api\Connectors\OpenAIConnector").
+                You can provide the full class name, or just the short name (e.g. "OpenAIConnector" or "Sunnysideup\AutomatedContentManagement\Api\Connectors\OpenAIConnector").
             ');
         }
     }

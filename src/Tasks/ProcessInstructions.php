@@ -6,7 +6,7 @@ namespace Sunnysideup\AutomatedContentManagement\Tasks;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DB;
-use Sunnysideup\AutomatedContentManagement\Model\Api\ProcessOneRecord;
+use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 

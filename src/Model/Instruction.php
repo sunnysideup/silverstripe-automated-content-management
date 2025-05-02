@@ -13,8 +13,10 @@ use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
 use SilverStripe\Forms\GridField\GridFieldAddNewButton;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\Forms\GridField\GridFieldDeleteAction;
+use SilverStripe\Forms\GroupedDropdownField;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\Forms\OptionsetField;
+use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\ToggleCompositeField;
 use SilverStripe\ORM\DataObject;
@@ -22,20 +24,22 @@ use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
-use Sunnysideup\AutomatedContentManagement\Model\Api\ConnectorBaseClass;
-use Sunnysideup\AutomatedContentManagement\Model\Api\Converters;
-use Sunnysideup\AutomatedContentManagement\Model\Api\InstructionsForInstructions;
-use Sunnysideup\AutomatedContentManagement\Model\Api\ProcessOneRecord;
+use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
+use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
+use Sunnysideup\AutomatedContentManagement\Api\Converters;
+use Sunnysideup\AutomatedContentManagement\Api\InstructionsForInstructions;
+use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 use Sunnysideup\AutomatedContentManagement\Traits\CMSFieldsExtras;
+use Sunnysideup\AutomatedContentManagement\Traits\MakeFieldsRoadOnly;
 use Sunnysideup\ClassesAndFieldsInfo\Api\ClassAndFieldInfo;
 use Sunnysideup\ClassesAndFieldsInfo\Traits\ClassesAndFieldsTrait;
 
 class Instruction extends DataObject
 {
 
+    use MakeFieldsRoadOnly;
 
-    use CMSFieldsExtras;
     private static $table_name = 'AutomatedContentManagementInstruction';
 
     private static $singular_name = 'LLM Instruction';
@@ -43,6 +47,31 @@ class Instruction extends DataObject
     private static string $error_prepend = 'HAS_ERROR: ';
     private static string $non_error_prepend = 'OK';
 
+    private static array $class_and_field_inclusion_exclusion_schema = [
+        'only_include_models_with_cmseditlink' => true,
+        'only_include_models_with_records' => true,
+        'excluded_models' => [],
+        'included_models' => [],
+        'excluded_fields' => [],
+        'included_fields' => [
+            'Varchar',
+            'Text',
+            'HTMLText',
+            'HTMLVarchar',
+            'Boolean',
+            'Int',
+            'Float',
+            'Decimal',
+            'Datetime',
+            'Date',
+            'Time',
+        ],
+        'excluded_field_types' => [],
+        'included_field_types' => [],
+        'excluded_class_field_combos' => [],
+        'included_class_field_combos' => [],
+        'grouped' => false,
+    ];
 
     private static $defaults = [
         'NumberOfRecordsToProcessPerBatch' => 100,
@@ -151,12 +180,12 @@ class Instruction extends DataObject
 
         if (!$this->HasValidClassName()) {
             return FieldList::create(
-                $this->getSelectClassNameField(true)
+                $this->getSelectClassNameField()
             );
         } elseif (!$this->HasValidFieldName()) {
             return FieldList::create(
-                $this->getSelectClassNameField(false, true),
-                $this->getSelectFieldNameField(true)
+                $this->getSelectClassNameField(),
+                $this->getSelectFieldNameField(),
             );
         } else {
             $fields = parent::getCMSFields();
@@ -169,8 +198,10 @@ class Instruction extends DataObject
                 'Root.Details',
                 $fields->dataFieldByName('ByID')
             );
-            $this->addCastingFieldsNow($fields);
-
+            Injector::inst()->get(AddCastedVariablesHelper::class)->AddCastingFields(
+                $this,
+                $fields,
+            );
             if (! $this->StartedProcess) {
                 $exampleRecord = $this->getRecordExample();
                 if ($exampleRecord) {
@@ -473,17 +504,17 @@ class Instruction extends DataObject
         if ($obj) {
             $db = $obj->config()->get('db');
             $type = $db[$this->FieldToChange] ?? 'Error: Field does not exist';
-            return Converters::standardised_field_type($type);
+            return ClassAndFieldInfo::standard_short_field_type_name($type);
         }
         return 'Error: Class does not exist';
     }
 
-    public function getLLMProvidedBy()
+    public function getLLMProvidedBy(): string
     {
         return ConnectorBaseClass::inst()->getClientNameNice();
     }
 
-    public function getLLMModelUsed()
+    public function getLLMModelUsed(): string
     {
         return ConnectorBaseClass::inst()->getModelNice();
     }
@@ -657,15 +688,22 @@ class Instruction extends DataObject
     }
 
 
-    protected function getSelectClassNameField(?bool $withInstructions = true, ?bool $onlyShowSelectedvalue = false): OptionsetField
+    protected function getSelectClassNameField(): GroupedDropdownField|ReadonlyField
     {
-        $field = OptionsetField::create(
-            'ClassNameToChange',
-            $this->fieldLabel('ClassNameToChange'),
-            $this->getListOfClasses()
-        );
-        if ($withInstructions) {
-            $field->setDescription(
+        if ($this->HasValidClassName()) {
+            $field = ReadonlyField::create(
+                'ClassNameToChangeNice',
+                $this->fieldLabel('ClassNameToChange'),
+                $this->getClassNameToChangeNice()
+            );
+        } else {
+            $field = GroupedDropdownField::create(
+                'ClassNameToChange',
+                $this->fieldLabel('ClassNameToChange'),
+                Injector::inst()->get(ClassAndFieldInfo::class)->getListOfClasses(
+                    ['Grouped' => true],
+                )
+            )->setDescription(
                 '
                     Please select the record type you want to change.
                     This will be used to create a list of records to process.
@@ -673,75 +711,36 @@ class Instruction extends DataObject
                 '
             );
         }
-        if ($onlyShowSelectedvalue) {
-            $source = $field->getSource();
-            $field->setSource([
-                $this->ClassNameToChange => $source[$this->ClassNameToChange] ?? 'ERROR! Class not found',
-            ]);
-        }
-
         return $field;
     }
 
 
 
-    protected function getSelectFieldNameField(?bool $withInstructions = true, ?bool $onlyShowSelectedvalue = false): OptionsetField
+    protected function getSelectFieldNameField(): OptionsetField|ReadonlyField
     {
-        $listOfFieldNames = Injector::inst()->get(ClassAndFieldInfo::class)
-            ->getListOfFieldNames(
-                $this,
-                $this->ClassNameToChange,
-                ['db']
+        if ($this->HasValidClassName()) {
+            $field = ReadonlyField::create(
+                'ClassNameToChangeNice',
+                $this->fieldLabel('ClassNameToChange'),
+                $this->getFieldNameToChangeNice()
             );
-        $field = OptionsetField::create(
-            'FieldToChange',
-            $this->fieldLabel('FieldToChange'),
-            $listOfFieldNames
-        );
-        if ($withInstructions) {
-            $field->setDescription(
+        } else {
+            $field = OptionsetField::create(
+                'ClassNameToChange',
+                $this->fieldLabel('ClassNameToChange'),
+                Injector::inst()->get(ClassAndFieldInfo::class)->getListOfFieldNames(
+                    $this->ClassNameToChange,
+                    ['db'],
+                    ['Grouped' => false],
+                )
+            )->setDescription(
                 '
-                    Please select the field you want to change.
+                    Please select the record type you want to change.
+                    This will be used to create a list of records to process.
                     Once selected, please save the record to continue.
                 '
             );
         }
-        if ($onlyShowSelectedvalue) {
-            $field->setSource([
-                $this->FieldToChange => $field->getSource()[$this->FieldToChange],
-            ]);
-        }
         return $field;
-    }
-
-    protected function IsValidClassName(string $className): bool
-    {
-        if ($className && class_exists($className)) {
-            return true;
-        }
-        return false;
-    }
-
-
-    protected function IsValidFieldType(string $type): bool
-    {
-        //It removes everything from the first (  to the end
-        $type = Converters::standardised_field_type($type);
-        switch ($type) {
-            case 'Varchar':
-            case 'Text':
-            case 'HTMLText':
-            case 'HTMLVarchar':
-            case 'Boolean':
-            case 'Int':
-            case 'Float':
-            case 'Decimal':
-            case 'Datetime':
-            case 'Date':
-            case 'Time':
-                return true;
-            default:
-                return false;
-        }
     }
 }

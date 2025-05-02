@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sunnysideup\AutomatedContentManagement\Model\Api\Connectors;
+namespace Sunnysideup\AutomatedContentManagement\Api\Connectors;
 
 use Anthropic;
 use Exception;
@@ -12,7 +12,7 @@ use SilverStripe\Core\Injector\Injectable;
 use OpenAI;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Injector\Injector;
-use Sunnysideup\AutomatedContentManagement\Model\Api\ConnectorBaseClass;
+use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
 
 class ClaudeConnector extends ConnectorBaseClass
 {
