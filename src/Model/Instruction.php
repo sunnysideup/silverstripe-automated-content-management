@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
-use SilverStripe\CMS\Model\SiteTree;
-use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\GridField\GridField;
@@ -13,7 +11,6 @@ use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
 use SilverStripe\Forms\GridField\GridFieldAddNewButton;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\Forms\GridField\GridFieldDeleteAction;
-use SilverStripe\Forms\GroupedDropdownField;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\Forms\OptionsetField;
 use SilverStripe\Forms\ReadonlyField;
@@ -21,19 +18,17 @@ use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\ToggleCompositeField;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
-use SilverStripe\ORM\FieldType\DBField;
+
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
-use Sunnysideup\AutomatedContentManagement\Api\Converters;
 use Sunnysideup\AutomatedContentManagement\Api\InstructionsForInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
-use Sunnysideup\AutomatedContentManagement\Traits\CMSFieldsExtras;
 use Sunnysideup\AutomatedContentManagement\Traits\MakeFieldsRoadOnly;
 use Sunnysideup\ClassesAndFieldsInfo\Api\ClassAndFieldInfo;
-use Sunnysideup\ClassesAndFieldsInfo\Traits\ClassesAndFieldsTrait;
+use Sunnysideup\OptionsetFieldGrouped\Forms\OptionsetGroupedField;
 
 class Instruction extends DataObject
 {
@@ -679,7 +674,7 @@ class Instruction extends DataObject
     }
 
 
-    protected function getSelectClassNameField(): GroupedDropdownField|ReadonlyField
+    protected function getSelectClassNameField(): OptionsetGroupedField|ReadonlyField
     {
         if ($this->HasValidClassName()) {
             $field = ReadonlyField::create(
@@ -688,11 +683,11 @@ class Instruction extends DataObject
                 $this->getClassNameToChangeNice()
             );
         } else {
-            $field = GroupedDropdownField::create(
+            $field = OptionsetGroupedField::create(
                 'ClassNameToChange',
                 $this->fieldLabel('ClassNameToChange'),
                 Injector::inst()->get(ClassAndFieldInfo::class)->getListOfClasses(
-                    $this->Config()->get('class_and_field_inclusion_exclusion_schema'),
+                    array_replace($this->Config()->get('class_and_field_inclusion_exclusion_schema'), ['grouped' => true]),
 
                 )
             )->setDescription(
@@ -708,22 +703,22 @@ class Instruction extends DataObject
 
 
 
-    protected function getSelectFieldNameField(): OptionsetField|ReadonlyField
+    protected function getSelectFieldNameField(): OptionsetGroupedField|ReadonlyField
     {
-        if ($this->HasValidClassName()) {
+        if ($this->HasValidFieldName()) {
             $field = ReadonlyField::create(
                 'ClassNameToChangeNice',
                 $this->fieldLabel('ClassNameToChange'),
                 $this->getFieldNameToChangeNice()
             );
         } else {
-            $field = OptionsetField::create(
+            $field = OptionsetGroupedField::create(
                 'ClassNameToChange',
                 $this->fieldLabel('ClassNameToChange'),
                 Injector::inst()->get(ClassAndFieldInfo::class)->getListOfFieldNames(
                     $this->ClassNameToChange,
                     ['db'],
-                    $this->Config()->get('class_and_field_inclusion_exclusion_schema'),
+                    array_replace($this->Config()->get('class_and_field_inclusion_exclusion_schema'), ['grouped' => true]),
                 )
             )->setDescription(
                 '
