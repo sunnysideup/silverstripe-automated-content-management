@@ -48,11 +48,6 @@ class Instruction extends DataObject
     private static string $non_error_prepend = 'OK';
 
     private static array $class_and_field_inclusion_exclusion_schema = [
-        'only_include_models_with_cmseditlink' => true,
-        'only_include_models_with_records' => true,
-        'excluded_models' => [],
-        'included_models' => [],
-        'excluded_fields' => [],
         'included_fields' => [
             'Varchar',
             'Text',
@@ -66,11 +61,7 @@ class Instruction extends DataObject
             'Date',
             'Time',
         ],
-        'excluded_field_types' => [],
-        'included_field_types' => [],
-        'excluded_class_field_combos' => [],
-        'included_class_field_combos' => [],
-        'grouped' => false,
+        'grouped' => true,
     ];
 
     private static $defaults = [
@@ -701,7 +692,8 @@ class Instruction extends DataObject
                 'ClassNameToChange',
                 $this->fieldLabel('ClassNameToChange'),
                 Injector::inst()->get(ClassAndFieldInfo::class)->getListOfClasses(
-                    ['Grouped' => true],
+                    $this->Config()->get('class_and_field_inclusion_exclusion_schema'),
+
                 )
             )->setDescription(
                 '
@@ -731,7 +723,7 @@ class Instruction extends DataObject
                 Injector::inst()->get(ClassAndFieldInfo::class)->getListOfFieldNames(
                     $this->ClassNameToChange,
                     ['db'],
-                    ['Grouped' => false],
+                    $this->Config()->get('class_and_field_inclusion_exclusion_schema'),
                 )
             )->setDescription(
                 '
