@@ -180,39 +180,6 @@ class Instruction extends DataObject
                 Tab::create('Details'),
                 'RecordsToProcess'
             );
-            $fields->addFieldToTab(
-                'Root.Details',
-                $fields->dataFieldByName('ByID')
-            );
-            Injector::inst()->get(AddCastedVariablesHelper::class)->AddCastingFields(
-                $this,
-                $fields,
-            );
-            if (! $this->StartedProcess) {
-                $exampleRecord = $this->getRecordExample();
-                if ($exampleRecord) {
-                    $instructionsCreator = Injector::inst()->create(
-                        InstructionsForInstructions::class,
-                        $exampleRecord,
-                    );
-                    $fields->addFieldsToTab(
-                        'Root.Main',
-                        [
-                            ToggleCompositeField::create(
-                                'InstructionDetailsHolder',
-                                'Variables Available for Instructions',
-                                [
-                                    LiteralField::create(
-                                        'InstructionDetails',
-                                        $instructionsCreator->getInstructions()
-                                    ),
-                                ]
-                            )->setHeadingLevel(4)
-                        ],
-                        'AlwaysAddedInstruction',
-                    );
-                }
-            }
 
             $fields->dataFieldByName('ReadyToProcess')
                 ->setDescription(
@@ -303,6 +270,51 @@ class Instruction extends DataObject
                 ->getConfig()->removeComponentsByType(GridFieldAddNewButton::class)
                 ->removeComponentsByType(GridFieldDeleteAction::class)
                 ->removeComponentsByType(GridFieldAddExistingAutocompleter::class);
+
+            Injector::inst()->get(AddCastedVariablesHelper::class)->AddCastingFields(
+                $this,
+                $fields,
+            );
+
+            $fields->replaceField(
+                'ClassNameToChange',
+                $this->getSelectClassNameField()
+            );
+            $fields->replaceField(
+                'FieldToChange',
+                $this->getSelectFieldNameField()
+            );
+
+            $fields->addFieldToTab(
+                'Root.Details',
+                $fields->dataFieldByName('ByID')
+            );
+
+            if (! $this->StartedProcess) {
+                $exampleRecord = $this->getRecordExample();
+                if ($exampleRecord) {
+                    $instructionsCreator = Injector::inst()->create(
+                        InstructionsForInstructions::class,
+                        $exampleRecord,
+                    );
+                    $fields->addFieldsToTab(
+                        'Root.Main',
+                        [
+                            ToggleCompositeField::create(
+                                'InstructionDetailsHolder',
+                                'Variables Available for Instructions',
+                                [
+                                    LiteralField::create(
+                                        'InstructionDetails',
+                                        $instructionsCreator->getInstructions()
+                                    ),
+                                ]
+                            )->setHeadingLevel(4)
+                        ],
+                        'AlwaysAddedInstruction',
+                    );
+                }
+            }
 
             $this->makeFieldsReadonly($fields);
             return $fields;
@@ -472,7 +484,7 @@ class Instruction extends DataObject
         return 'ERROR: Class not found';
     }
 
-    public function getFieldToChangeNice(): string
+    public function getFieldNameToChangeNice(): string
     {
         $fieldName = $this->FieldToChange;
         if ($fieldName) {
@@ -542,7 +554,7 @@ class Instruction extends DataObject
             $this->ReadyToProcess = false;
         }
         if (! $this->Title && $this->HasValidClassName() && $this->HasValidFieldName()) {
-            $this->Title = 'Update ' . $this->getFieldToChangeNice() . ' fields in ' . $this->getClassNameToChangePluralNice() . ' records';
+            $this->Title = 'Update ' . $this->getFieldNameToChangeNice() . ' fields in ' . $this->getClassNameToChangePluralNice() . ' records';
         }
         if ($this->HasValidClassName() && $this->HasValidFieldName()) {
             if (!$this->AlwaysAddedInstruction || $this->isChanged('FindErrorsOnly')) {
@@ -707,14 +719,14 @@ class Instruction extends DataObject
     {
         if ($this->HasValidFieldName()) {
             $field = ReadonlyField::create(
-                'ClassNameToChangeNice',
-                $this->fieldLabel('ClassNameToChange'),
+                'FieldToChangeNice',
+                $this->fieldLabel('FieldToChange'),
                 $this->getFieldNameToChangeNice()
             );
         } else {
             $field = OptionsetGroupedField::create(
-                'ClassNameToChange',
-                $this->fieldLabel('ClassNameToChange'),
+                'FieldToChange',
+                $this->fieldLabel('FieldToChange'),
                 Injector::inst()->get(ClassAndFieldInfo::class)->getListOfFieldNames(
                     $this->ClassNameToChange,
                     ['db'],
