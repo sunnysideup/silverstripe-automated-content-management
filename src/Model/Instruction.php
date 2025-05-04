@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
@@ -16,6 +17,7 @@ use SilverStripe\Forms\OptionsetField;
 use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\ToggleCompositeField;
+use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 
@@ -29,6 +31,7 @@ use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 use Sunnysideup\AutomatedContentManagement\Traits\MakeFieldsRoadOnly;
 use Sunnysideup\ClassesAndFieldsInfo\Api\ClassAndFieldInfo;
 use Sunnysideup\OptionsetFieldGrouped\Forms\OptionsetGroupedField;
+use Sunnysideup\Selections\Model\Selection;
 
 class Instruction extends DataObject
 {
@@ -43,7 +46,7 @@ class Instruction extends DataObject
     private static string $non_error_prepend = 'OK';
 
     private static array $class_and_field_inclusion_exclusion_schema = [
-        'included_fields' => [
+        'included_field_types' => [
             'Varchar',
             'Text',
             'HTMLText',
@@ -82,6 +85,7 @@ class Instruction extends DataObject
 
     private static $has_one = [
         'By' => Member::class,
+        'Selection' => Selection::class,
     ];
 
     private static $has_many = [
@@ -111,6 +115,7 @@ class Instruction extends DataObject
         'RunTest' => 'Run test now',
         'ReadyToProcess' => 'Start process now',
         'Cancelled' => 'Cancel any further processing',
+        'FindErrorsOnly' => 'Find errors only - LLM will not update the record, but instead tell you if there are any errors.',
     ];
 
     private static $casting = [
@@ -183,13 +188,17 @@ class Instruction extends DataObject
 
             $fields->dataFieldByName('ReadyToProcess')
                 ->setDescription(
-                    'This will allow start the process of getting data from the large lange model (like ChatGPT). <br />' .
-                        'Please note that the process may not start immediately. <br />' .
-                        'You can only check this box once all the required data-entry has been completed.'
+                    'This will allow the system to start the process of getting data from the large lange model (like ChatGPT). <br />' .
+                        'Please note that the process may not start immediately as it runs in the background. <br />' .
+                        'Please enter all the required fields (*) first before you can check this box.<br />'
                 );
             $fields->dataFieldByName('RunTest')
                 ->setDescription(
-                    'Checking this option will allow you to run the results for just one (random) record without applying any of the suggested changes.'
+                    'Checking this option will allow you to run the results for just one randomly selected record. <br />
+                    The suggested changes will not be applied. <br />
+                    You will need to enter all the required fields first before you can check this box.<br />
+                    After you check the box, click save and then check the results in the Records tab. <br />
+                    '
                 );
             $grids = [
                 'Test Only' => RecordProcess::get()
@@ -286,8 +295,11 @@ class Instruction extends DataObject
             );
 
             $fields->addFieldToTab(
-                'Root.Details',
+                'Root.ⓘ',
                 $fields->dataFieldByName('ByID')
+                    ->setTitle(
+                        'User who created this instruction',
+                    )
             );
 
             if (! $this->StartedProcess) {
@@ -315,6 +327,23 @@ class Instruction extends DataObject
                     );
                 }
             }
+            $obj = Injector::inst()->get(Selection::class);
+            $source = Selection::get()
+                ->filter(['ModelClassName' => $this->ClassNameToChange]);
+            $dropdownField = DropdownField::create(
+                'SelectionID',
+                'Selection for this record type (optional)',
+                $source->map('ID', 'Title')
+            )
+                ->setDescription(
+                    'You can <a href="' . $obj->CMSAddLink() . '">create a new selection</a>  or chose an existing one for your selected record type.'
+                )
+                ->setEmptyString('-- use all records --');
+            $fields->addFieldToTab(
+                'Root.Main',
+                $dropdownField,
+                'FieldToChangeNice'
+            );
 
             $this->makeFieldsReadonly($fields);
             return $fields;
@@ -395,10 +424,7 @@ class Instruction extends DataObject
             return false;
         }
         $db = $obj->config()->get('db');
-        if (isset($db[$fieldName])) {
-            return true;
-        }
-        return false;
+        return isset($db[$fieldName]);
     }
 
     public function getIsReadyForProcessing(): bool
@@ -734,12 +760,28 @@ class Instruction extends DataObject
                 )
             )->setDescription(
                 '
-                    Please select the record type you want to change.
-                    This will be used to create a list of records to process.
-                    Once selected, please save the record to continue.
+                    Please select the field you would like to change.
                 '
             );
         }
         return $field;
+    }
+
+    protected function getList(): ?DataList
+    {
+        if ($this->SelectionID) {
+            $selection = $this->Selection();
+            if ($selection && $selection->exists()) {
+                $list = $selection->getSelectionDataList();
+                if ($list) {
+                    return $list;
+                }
+            }
+        }
+        $className = $this->ClassNameToChange;
+        if ($className) {
+            return $className::get();
+        }
+        return null;
     }
 }

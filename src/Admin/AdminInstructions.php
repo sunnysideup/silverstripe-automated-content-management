@@ -5,6 +5,7 @@ namespace Sunnysideup\AutomatedContentManagement\Admin;
 use SilverStripe\Admin\ModelAdmin;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
+use Sunnysideup\Selections\Model\Selection;
 
 class AdminInstructions extends ModelAdmin
 {
@@ -17,5 +18,6 @@ class AdminInstructions extends ModelAdmin
     private static $managed_models = [
         Instruction::class,
         RecordProcess::class,
+        Selection::class,
     ];
 }
