@@ -70,6 +70,8 @@ class RecordProcess extends DataObject
         'HydratedInstructions' => 'Text',
         'BeforeHumanValue' => 'Text',
         'AfterHumanValue' => 'Text',
+        'BeforeDatabaseValueForInspection' => 'Text',
+        'AfterDatabaseValueForInspection' => 'Text',
     ];
 
     private static $field_labels = [
@@ -149,10 +151,9 @@ class RecordProcess extends DataObject
      */
     public function getRecord()
     {
-        $className = $this->Instruction()->ClassNameToChange;
-        $recordID = $this->RecordID;
-        if ($className && $recordID) {
-            return $className::get()->byID($recordID);
+        $list = $this->Instruction()->getRecordList();
+        if ($list && $this->RecordID) {
+            return $list->byID($this->RecordID);
         }
         return null;
     }
@@ -181,6 +182,7 @@ class RecordProcess extends DataObject
                     $fieldName,
                     HTMLReadonlyField::create($fieldName . 'Nice', $fieldName, $this->dbObject($fieldName)->Raw())
                 );
+                // $fields-
             }
         }
         $fields->removeByName('RecordID');
@@ -281,6 +283,16 @@ class RecordProcess extends DataObject
         return $this->getHumanValue($this->After);
     }
 
+    public function getBeforeDatabaseValueForInspection(): string
+    {
+        return $this->makeDatabaseValueVisible($this->getBeforeDatabaseValue());
+    }
+
+    public function getAfterDatabaseValueForInspection(): string
+    {
+        return $this->makeDatabaseValueVisible($this->getAfterDatabaseValue());
+    }
+
     public function getIsErrorAnswer(?string $answer): bool
     {
         if (! $answer) {
@@ -345,6 +357,8 @@ class RecordProcess extends DataObject
                     return true;
                 }
                 return false;
+            case 'Date':
+                return date('Y-m-d', strtotime($value));
             case 'Datetime':
                 return date('Y-m-d H:i:s', strtotime($value));
             default:
@@ -373,5 +387,28 @@ class RecordProcess extends DataObject
     public function canDelete($member = null)
     {
         return false;
+    }
+
+    protected function makeDatabaseValueVisible(mixed $value): string
+    {
+        if ($value === null) {
+            return '[NULL]';
+        }
+        if ($value === '') {
+            return '[EMPTY]';
+        }
+        if ($value === false) {
+            return '[FALSE]';
+        }
+        if ($value === true) {
+            return '[TRUE]';
+        }
+        if (is_array($value)) {
+            return '[ARRAY]';
+        }
+        if (is_object($value)) {
+            return '[OBJECT]';
+        }
+        return '<textarea readonly rows="20">' . $value . '</textarea>';
     }
 }

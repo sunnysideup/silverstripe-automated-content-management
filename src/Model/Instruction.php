@@ -109,7 +109,9 @@ class Instruction extends DataObject
 
     private static $field_labels = [
         'ClassNameToChange' => '* Record Type you would like to update',
+        'ClassNameToChangeNice' => 'Record Type',
         'FieldToChange' => '* Field to change',
+        'FieldToChangeNice' => 'Field to change',
         'Title' => '* Title (internal use only, required)',
         'Description' => '* Instructions for the LLM (required)',
         'RunTest' => 'Run test now',
@@ -180,11 +182,6 @@ class Instruction extends DataObject
             );
         } else {
             $fields = parent::getCMSFields();
-            $fields->addFieldToTab(
-                'Root',
-                Tab::create('Details'),
-                'RecordsToProcess'
-            );
 
             $fields->dataFieldByName('ReadyToProcess')
                 ->setDescription(
@@ -471,10 +468,8 @@ class Instruction extends DataObject
 
     public function getNumberOfRecords(): int
     {
-        $className = $this->ClassNameToChange;
-        $fieldName = $this->FieldToChange;
-        if ($className && $fieldName) {
-            return $className::get()->count();
+        if ($this->HasValidClassName()) {
+            return $this->getRecordList()?->count() ?? 0;
         }
         return 0;
     }
@@ -554,8 +549,7 @@ class Instruction extends DataObject
     public function getRecordExample()
     {
         if ($this->HasValidClassName()) {
-            $className = $this->ClassNameToChange;
-            return $className::get()->orderBy(DB::get_conn()->random())->first();
+            return $this->getRecordList()?->orderBy(DB::get_conn()->random())->first() ?: null;
         }
     }
 
@@ -671,42 +665,43 @@ class Instruction extends DataObject
 
     protected function AddRecords(?bool $isTest = false, array|string|null $filter = null, ?int $limit = null): ?RecordProcess
     {
-        $className = $this->ClassNameToChange;
-        $list = $className::get();
-        if ($filter) {
-            if (is_array($filter)) {
-                $list = $list->filter($filter);
-            } else {
-                $list = $list->where($filter);
+        if ($this->HasValidClassName()) {
+            $list = $this->getRecordList();
+            if ($filter) {
+                if (is_array($filter)) {
+                    $list = $list->filter($filter);
+                } else {
+                    $list = $list->where($filter);
+                }
             }
-        }
-        if ($limit) {
-            $list = $list->limit($limit);
-        }
-        if ($isTest) {
-            $list = $list->orderBy(DB::get_conn()->random())->limit(1);
-        }
-        $ids = $list->columnUnique('ID');
-        if (empty($ids)) {
-            return null;
-        }
-        foreach ($ids as $id) {
-            $keyFields = [
-                'InstructionID' => $this->ID,
-                'IsTest' => $isTest,
-                'RecordID' => $id,
-            ];
+            if ($limit) {
+                $list = $list->limit($limit);
+            }
             if ($isTest) {
-                $keyFields['Skip'] = false;
+                $list = $list->orderBy(DB::get_conn()->random())->limit(1);
             }
-            $recordProcess = RecordProcess::get()->filter($keyFields)->first();
-            if (! $recordProcess || $isTest) {
-                $recordProcess = RecordProcess::create($keyFields);
+            $ids = $list->columnUnique('ID');
+            if (empty($ids)) {
+                return null;
             }
-            $recordProcess->write();
-        }
-        if ($isTest) {
-            return $recordProcess;
+            foreach ($ids as $id) {
+                $keyFields = [
+                    'InstructionID' => $this->ID,
+                    'IsTest' => $isTest,
+                    'RecordID' => $id,
+                ];
+                if ($isTest) {
+                    $keyFields['Skip'] = false;
+                }
+                $recordProcess = RecordProcess::get()->filter($keyFields)->first();
+                if (! $recordProcess || $isTest) {
+                    $recordProcess = RecordProcess::create($keyFields);
+                }
+                $recordProcess->write();
+            }
+            if ($isTest) {
+                return $recordProcess;
+            }
         }
         return null;
     }
@@ -767,7 +762,7 @@ class Instruction extends DataObject
         return $field;
     }
 
-    protected function getList(): ?DataList
+    public function getRecordList(): ?DataList
     {
         if ($this->SelectionID) {
             $selection = $this->Selection();
@@ -779,7 +774,7 @@ class Instruction extends DataObject
             }
         }
         $className = $this->ClassNameToChange;
-        if ($className) {
+        if ($this->HasValidClassName()) {
             return $className::get();
         }
         return null;
