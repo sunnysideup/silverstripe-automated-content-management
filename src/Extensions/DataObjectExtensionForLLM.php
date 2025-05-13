@@ -1,0 +1,38 @@
+<?php
+
+use Predis\Command\Argument\Search\SchemaFields\TextField;
+use SilverStripe\Core\Extension;
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\LiteralField;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\FieldType\DBField;
+use SilverStripe\SiteConfig\SiteConfig;
+use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
+use Sunnysideup\AutomatedContentManagement\Model\Instruction;
+use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
+
+class DataObjectExtensionForLLM extends Extension
+{
+
+    public function updateCMSFields(FieldList $fields)
+    {
+        $owner = $this->getOwner();
+        // Add your custom fields to the CMS fields here
+        if (SiteConfig::current_site_config()->isLLMEnabled()) {
+            $obj = Injector::inst()->create(DataObjectUpdateCMSFieldsHelper::class);
+            $obj->addLinksToInstructions($owner, $fields);
+            $obj->addGenericLinksToRecord($owner, $fields);
+        }
+    }
+
+    public function getCreateNewLLMInstructionForOneRecordLink(): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link('createinstructionforonerecord' . '/' . $this->owner->ClassName . '/' . $this->owner->ID);
+    }
+
+    public function getCreateNewLLMInstructionForOneRecordOneFieldLink(string $fieldName): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link('createinstructionforonerecordonefield' . '/' . $this->owner->ClassName . '/' . $this->owner->ID . '/' . $fieldName);
+    }
+}

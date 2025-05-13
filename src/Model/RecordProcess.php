@@ -11,6 +11,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\View\SSViewer_FromString;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
+use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Traits\MakeFieldsRoadOnly;
 
@@ -39,6 +40,7 @@ class RecordProcess extends DataObject
     ];
 
     private static $summary_fields = [
+        'LastEdited.Ago' => 'Last Updated',
         'Instruction.Title' => 'Action',
         'RecordTitle' => 'Record',
         'IsTest.Nice' => 'Test Only',
@@ -87,7 +89,7 @@ class RecordProcess extends DataObject
         'Instruction' => 'LLM Instruction',
     ];
 
-    private static $default_sort = 'ID';
+    private static $default_sort = 'ID DESC';
 
     public function getFindErrorsOnly(): bool
     {
@@ -410,5 +412,10 @@ class RecordProcess extends DataObject
             return '[OBJECT]';
         }
         return '<textarea readonly rows="20">' . $value . '</textarea>';
+    }
+
+    public function getResultPreviewLink(): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link('preview' . '/' . $this->InstructionID . '/' . $this->ID);
     }
 }

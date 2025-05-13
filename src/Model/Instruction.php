@@ -25,6 +25,7 @@ use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
+use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
 use Sunnysideup\AutomatedContentManagement\Api\InstructionsForInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
@@ -73,6 +74,7 @@ class Instruction extends DataObject
         'FindErrorsOnly' => 'Boolean',
         'Description' => 'Text',
         'AlwaysAddedInstruction' => 'Text',
+        'RecordIdsToAddToSelection' => 'Text',
         'NumberOfRecordsToProcessPerBatch' => 'Int',
         'RunTest' => 'Boolean',
         'ReadyToProcess' => 'Boolean',
@@ -324,24 +326,27 @@ class Instruction extends DataObject
                     );
                 }
             }
-            $obj = Injector::inst()->get(Selection::class);
-            $source = Selection::get()
-                ->filter(['ModelClassName' => $this->ClassNameToChange]);
-            $dropdownField = DropdownField::create(
-                'SelectionID',
-                'Selection for this record type (optional)',
-                $source->map('ID', 'Title')
-            )
-                ->setDescription(
-                    'You can <a href="' . $obj->CMSAddLink() . '">create a new selection</a>  or chose an existing one for your selected record type.'
+            if ($this->HasRecordIdsToAddToSelection()) {
+                $fields->removeByName('SelectionID');
+            } else {
+                $obj = Injector::inst()->get(Selection::class);
+                $source = Selection::get()
+                    ->filter(['ModelClassName' => $this->ClassNameToChange]);
+                $dropdownField = DropdownField::create(
+                    'SelectionID',
+                    'Selection for this record type (optional)',
+                    $source->map('ID', 'Title')
                 )
-                ->setEmptyString('-- use all records --');
-            $fields->addFieldToTab(
-                'Root.Main',
-                $dropdownField,
-                'FieldToChangeNice'
-            );
-
+                    ->setDescription(
+                        'You can <a href="' . $obj->CMSAddLink() . '">create a new selection</a>  or chose an existing one for your selected record type.'
+                    )
+                    ->setEmptyString('-- use all records --');
+                $fields->addFieldToTab(
+                    'Root.Main',
+                    $dropdownField,
+                    'FieldToChangeNice'
+                );
+            }
             $this->makeFieldsReadonly($fields);
             return $fields;
         }
@@ -365,11 +370,20 @@ class Instruction extends DataObject
             case 'Created':
             case 'LastEdited':
             case 'StartedProcess':
+            case 'RecordIdsToAddToSelection':
             case 'Completed':
             case 'ByID':
                 return true;
             default:
                 break;
+        }
+        if ($this->HasRecordIdsToAddToSelection() !== true) {
+            switch ($fieldName) {
+                case 'SelectionID':
+                    return true;
+                default:
+                    break;
+            }
         }
         if ($this->getIsReadyForProcessing() !== true) {
             switch ($fieldName) {
@@ -764,6 +778,11 @@ class Instruction extends DataObject
 
     public function getRecordList(): ?DataList
     {
+        $className = $this->ClassNameToChange;
+        if ($this->HasRecordIdsToAddToSelection()) {
+            $ids = explode(',', $this->RecordIdsToAddToSelection);
+            return $className::get()->filter(['ID' => $ids]);
+        }
         if ($this->SelectionID) {
             $selection = $this->Selection();
             if ($selection && $selection->exists()) {
@@ -773,10 +792,47 @@ class Instruction extends DataObject
                 }
             }
         }
-        $className = $this->ClassNameToChange;
         if ($this->HasValidClassName()) {
             return $className::get();
         }
         return null;
+    }
+
+    protected function HasRecordIdsToAddToSelection(): bool
+    {
+        return (bool) trim($this->RecordIdsToAddToSelection);
+    }
+
+    public function AddRecordsToInstruction(int|array $recordId)
+    {
+        if (! is_array($recordId)) {
+            $recordId = [(int) $recordId];
+        }
+        $existingList = $this->getRecordList();
+        $allPresent = false;
+        foreach ($recordId as $id) {
+            if (!$existingList->byID($id)) {
+                $allPresent = false;
+                break;
+            }
+        }
+        if ($allPresent) {
+            return;
+        }
+        $ids = explode(',', $this->RecordIdsToAddToSelection);
+        $ids = array_merge($ids, $recordId);
+        $ids = array_unique($ids);
+        $this->RecordIdsToAddToSelection = implode(',', $ids);
+        $this->write();
+    }
+
+
+    public function getSelectExistingLLMInstructionForOneRecordLink($record): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link('selectexistinginstructionforonerecord/' . $this->ID . '/' . $record->ID);
+    }
+    public function getSelectExistingLLMInstructionForOneRecordOneFieldLink($record, string $fieldName): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link('selectexistinginstructionforonerecordonefield/' . $this->ID . '/' . $record->ID . '/' . $fieldName);
     }
 }
