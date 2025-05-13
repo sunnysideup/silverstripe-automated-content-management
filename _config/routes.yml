@@ -1,0 +1,8 @@
+---
+Name: automated-content-management-routes
+After:
+  - "#coreroutes"
+---
+SilverStripe\Control\Director:
+  rules:
+    "llm-quick-edit//$Action/$ID/$OtherID/$FieldName": Sunnysideup\AutomatedContentManagement\Control\QuickEditController

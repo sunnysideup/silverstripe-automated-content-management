@@ -11,6 +11,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\View\SSViewer_FromString;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
+use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Traits\MakeFieldsRoadOnly;
@@ -417,5 +418,9 @@ class RecordProcess extends DataObject
     public function getResultPreviewLink(): string
     {
         return DataObjectUpdateCMSFieldsHelper::my_link('preview' . '/' . $this->InstructionID . '/' . $this->ID);
+    }
+    public function CMSEditLink(): string
+    {
+        return Injector::inst()->get(AdminInstructions::class)->getCMSEditLinkForManagedDataObject($this);
     }
 }

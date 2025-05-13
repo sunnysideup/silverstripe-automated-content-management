@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Api;
 
+use SilverStripe\SiteConfig\SiteConfig;
 use Anthropic;
 use Exception;
 use SilverStripe\Core\Config\Configurable;
@@ -46,13 +47,21 @@ abstract class ConnectorBaseClass
      */
     public static function inst(?string $client = null)
     {
+
         if (! $client) {
+            $client = SiteConfig::current_site_config()->LLMType;
+            if (! $client) {
+                $client = Environment::getEnv('SS_LLM_CLIENT_NAME');
+                if (! $client) {
+                    $client = Config::inst()->get(self::class, 'client_name');
+                }
+            }
             $client = (string) (
                 Environment::getEnv('SS_LLM_CLIENT_NAME') ?:
                 Config::inst()->get(self::class, 'client_name')
             );
-            $test = class_exists($client) && is_subclass_of($client, static::class);
-            if (! $test) {
+            $isValidClient = class_exists($client) && is_subclass_of($client, static::class);
+            if (! $isValidClient) {
                 $classes = ClassInfo::subclassesFor(self::class, false);
                 foreach ($classes as $class) {
                     if (Injector::inst()->get($class)->getShortName() === $client) {
@@ -80,14 +89,17 @@ abstract class ConnectorBaseClass
 
     protected function getApiKey(): string
     {
-        $v = Environment::getEnv('SS_LLM_CLIENT_API_KEY');
+        $v = SiteConfig::current_site_config()->LLMKey;
         if (! $v) {
-            $myVarName = Environment::getEnv('SS_LLM_CLIENT_API_KEY_' . strtoupper($this->getShortName()));
-            $v = Environment::getEnv($myVarName);
+            $v = Environment::getEnv('SS_LLM_CLIENT_API_KEY');
             if (! $v) {
-                throw new Exception(
-                    'The LLM Api key (using SS_LLM_CLIENT_API_KEY or ' . $myVarName . ')  is not configured in this environment.'
-                );
+                $myVarName = Environment::getEnv('SS_LLM_CLIENT_API_KEY_' . strtoupper($this->getShortName()));
+                $v = Environment::getEnv($myVarName);
+                if (! $v) {
+                    throw new Exception(
+                        'The LLM Api key (using SS_LLM_CLIENT_API_KEY or ' . $myVarName . ')  is not configured in this environment.'
+                    );
+                }
             }
         }
         return $v;
@@ -95,16 +107,22 @@ abstract class ConnectorBaseClass
 
     protected function getModel(?string $model = ''): string
     {
-        $v = Environment::getEnv('SS_LLM_CLIENT_MODEL');
+        $v = $model;
         if (! $v) {
+            $v = SiteConfig::current_site_config()->LLMModel;
             if (! $v) {
-                $v = Environment::getEnv('SS_LLM_CLIENT_MODEL_' . $this->getShortName());
+                $v = Environment::getEnv('SS_LLM_CLIENT_MODEL');
                 if (! $v) {
-                    $v = Config::inst()->get(static::class, 'client_model');
                     if (! $v) {
-                        $v = Config::inst()->get(static::class, 'client_model_' . strtolower($this->getShortName()));
+                        $v = Environment::getEnv('SS_LLM_CLIENT_MODEL_' . $this->getShortName());
                         if (! $v) {
-                            $v = $this->getDefaultModel();
+                            $v = Config::inst()->get(static::class, 'client_model');
+                            if (! $v) {
+                                $v = Config::inst()->get(static::class, 'client_model_' . strtolower($this->getShortName()));
+                                if (! $v) {
+                                    $v = $this->getDefaultModel();
+                                }
+                            }
                         }
                     }
                 }

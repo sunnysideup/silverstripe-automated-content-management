@@ -1,6 +1,6 @@
 <?php
 
-namespace Sunnysideup\AutomatedContentManagement\Extensions;
+namespace Sunnysideup\AutomatedContentManagement\Control;
 
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\HTTPResponse;
@@ -9,7 +9,7 @@ use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 
 class QuickEditController extends Controller
 {
-    private static $url_segment = 'admin/llm-edits-quick-edit';
+    private static $url_segment = 'llm-quick-edit';
     private static $allowed_actions = [
         'turnllmfunctionsonoroff' => 'LLMEdit',
         // create instruction for record

@@ -1,1 +1,11 @@
 # see https://docs.silverstripe.org/en/developer_guides/configuration/configuration/
+---
+name: automated-content-management
+---
+SilverStripe\SiteConfig\SiteConfig:
+  extensions:
+    - Sunnysideup\AutomatedContentManagement\Extensions\SiteConfigExtensionForLLM
+
+SilverStripe\ORM\DataObject:
+  extensions:
+    - Sunnysideup\AutomatedContentManagement\Extensions\DataObjectExtensionForLLM

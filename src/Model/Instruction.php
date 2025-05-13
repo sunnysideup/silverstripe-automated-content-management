@@ -24,6 +24,7 @@ use SilverStripe\ORM\DB;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
+use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
 use Sunnysideup\AutomatedContentManagement\Api\InstructionsForInstructions;
@@ -418,7 +419,7 @@ class Instruction extends DataObject
         return false;
     }
 
-    protected function HasValidClassName(): bool
+    public function HasValidClassName(): bool
     {
         $className = $this->ClassNameToChange;
         if ($className && class_exists($className)) {
@@ -427,7 +428,7 @@ class Instruction extends DataObject
         return false;
     }
 
-    protected function HasValidFieldName(): bool
+    public function HasValidFieldName(): bool
     {
         $fieldName = $this->FieldToChange;
         $obj = $this->getRecordSingleton();
@@ -780,7 +781,7 @@ class Instruction extends DataObject
     {
         $className = $this->ClassNameToChange;
         if ($this->HasRecordIdsToAddToSelection()) {
-            $ids = explode(',', $this->RecordIdsToAddToSelection);
+            $ids = explode(',', (string) $this->RecordIdsToAddToSelection);
             return $className::get()->filter(['ID' => $ids]);
         }
         if ($this->SelectionID) {
@@ -800,7 +801,7 @@ class Instruction extends DataObject
 
     protected function HasRecordIdsToAddToSelection(): bool
     {
-        return (bool) trim($this->RecordIdsToAddToSelection);
+        return (bool) trim((string) $this->RecordIdsToAddToSelection);
     }
 
     public function AddRecordsToInstruction(int|array $recordId)
@@ -819,10 +820,11 @@ class Instruction extends DataObject
         if ($allPresent) {
             return;
         }
-        $ids = explode(',', $this->RecordIdsToAddToSelection);
+        $ids = explode(',', (string) $this->RecordIdsToAddToSelection);
         $ids = array_merge($ids, $recordId);
         $ids = array_unique($ids);
-        $this->RecordIdsToAddToSelection = implode(',', $ids);
+        $ids = array_filter($ids);
+        $this->RecordIdsToAddToSelection = trim(trim(implode(',', $ids)), ',');
         $this->write();
     }
 
@@ -834,5 +836,10 @@ class Instruction extends DataObject
     public function getSelectExistingLLMInstructionForOneRecordOneFieldLink($record, string $fieldName): string
     {
         return DataObjectUpdateCMSFieldsHelper::my_link('selectexistinginstructionforonerecordonefield/' . $this->ID . '/' . $record->ID . '/' . $fieldName);
+    }
+
+    public function CMSEditLink(): string
+    {
+        return Injector::inst()->get(AdminInstructions::class)->getCMSEditLinkForManagedDataObject($this);
     }
 }

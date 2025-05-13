@@ -6,14 +6,16 @@ use SilverStripe\Control\Controller;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\SiteConfig\SiteConfig;
-use Sunnysideup\AutomatedContentManagement\Extensions\QuickEditController;
+use Sunnysideup\AutomatedContentManagement\Control\QuickEditController;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
+use Sunnysideup\ClassesAndFieldsInfo\Api\ClassAndFieldInfo;
 
 class DataObjectUpdateCMSFieldsHelper
 {
@@ -30,20 +32,21 @@ class DataObjectUpdateCMSFieldsHelper
         return $link;
     }
 
-    public static function find_instructions_by_class_and_field(
-        string $className,
-        string $fieldName
-    ): DataList {
-        return Instruction::get()
-            ->filter([
-                'ClassName' => $className,
-                'FieldName' => $fieldName,
-            ]);
-    }
-
 
     public function updateCMSFields($owner, FieldList $fields)
     {
+        if ($owner instanceof Instruction || $owner instanceof RecordProcess) {
+            return;
+        }
+        $acceptableClasses = Injector::inst()->get(ClassAndFieldInfo::class)->getListOfClasses(
+            array_replace(
+                Config::inst()->get(Instruction::class, 'class_and_field_inclusion_exclusion_schema'),
+                ['grouped' => false]
+            )
+        );
+        if (! in_array($owner->ClassName, $acceptableClasses)) {
+            return;
+        }
         // Add your custom fields to the CMS fields here
         if ($owner->ID && $owner->exists() && $owner->canEdit()) {
             $this->addLinksToInstructions($owner, $fields);
@@ -52,10 +55,21 @@ class DataObjectUpdateCMSFieldsHelper
     }
 
 
-    public function addLinksToInstructions($owner, $fields)
+    public function addLinksToInstructions($owner, FieldList $fields)
     {
-        $dataFields = $fields->dataFields();
-        foreach ($dataFields as $field) {
+        $acceptableFields = Injector::inst()->get(ClassAndFieldInfo::class)->getListOfFieldNames(
+            $owner->ClassName,
+            ['db'],
+            array_replace(
+                Config::inst()->get(Instruction::class, 'class_and_field_inclusion_exclusion_schema'),
+                ['grouped' => false]
+            ),
+        );
+        foreach ($acceptableFields as $acceptableField) {
+            $field = $fields->dataFieldByName($acceptableField);
+            if (! $field) {
+                continue;
+            }
             $this->addLinksToInstructionsToOneField($owner, $field);
         }
     }
@@ -98,9 +112,12 @@ class DataObjectUpdateCMSFieldsHelper
     }
 
     public function createDescriptionForOneRecordAndField($owner, ?string $fieldName = null)
-
     {
-        $desc = '';
+        $desc = '<div class="llm-field-explanation" style="
+            padding: 1rem;
+            background-color:#ffc10755;
+            border: 1px dashed #ffc107;
+        ">';
         $toUpdateName = $fieldName ? 'Field' : 'Record';
         if ($fieldName) {
             $link = $owner->getCreateNewLLMInstructionForOneRecordOneFieldLink($fieldName);
@@ -108,7 +125,6 @@ class DataObjectUpdateCMSFieldsHelper
             $link = $owner->getCreateNewLLMInstructionForOneRecordLink();
         }
         $desc .= '
-        <h5>Create LLM (AI) suggestion for this ' . $toUpdateName . '</h5>
         <p>
             <a href="' . $link . '">Create new LLM (AI) instructions to update this ' . $toUpdateName . '</a>
         </p>';
@@ -121,15 +137,14 @@ class DataObjectUpdateCMSFieldsHelper
             $toUpdateNameClass = 'Record Type';
         }
         $desc .= '
-        <h5>Create LLM (AI) suggestion for this record type</h5>
         <p>
             <a href="' . $link . '">Create new LLM (AI) instructions to update this ' . $toUpdateNameClass . '</a>
         </p>';
         if ($fieldName) {
             $allInstructions = Instruction::get()
                 ->filter([
-                    'ClassName' => $owner->ClassName,
-                    'FieldName' => $fieldName,
+                    'ClassNameToChange' => $owner->ClassName,
+                    'FieldToChange' => $fieldName,
                 ]);
         } else {
             $allInstructions = Instruction::get()
@@ -160,7 +175,7 @@ class DataObjectUpdateCMSFieldsHelper
         }
         $recordsProcessed = RecordProcess::get()
             ->filter([
-                'InstructionID' => $allInstructions->columnUnique('ID'),
+                'InstructionID' => $allInstructions->columnUnique('ID') + [-1 => -1],
                 'Completed' => 1,
             ]);
         if ($recordsProcessed && $recordsProcessed->exists()) {
@@ -175,13 +190,13 @@ class DataObjectUpdateCMSFieldsHelper
                     </p>';
             }
         }
-
+        $desc .= '</div>';
 
         // update field
         return $desc;
     }
 
-    public function addGenericLinksToRecord(FieldList $owner, $fields)
+    public function addGenericLinksToRecord($owner, FieldList $fields)
     {
         $isEnabled = SiteConfig::current_site_config()->isLLMEnabled();
         if ($isEnabled) {

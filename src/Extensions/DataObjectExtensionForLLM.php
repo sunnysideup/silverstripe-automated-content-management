@@ -1,16 +1,12 @@
 <?php
 
-use Predis\Command\Argument\Search\SchemaFields\TextField;
+namespace Sunnysideup\AutomatedContentManagement\Extensions;
+
 use SilverStripe\Core\Extension;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\LiteralField;
-use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\SiteConfig\SiteConfig;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
-use Sunnysideup\AutomatedContentManagement\Model\Instruction;
-use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class DataObjectExtensionForLLM extends Extension
 {
