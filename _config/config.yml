@@ -1,6 +1,6 @@
-# see https://docs.silverstripe.org/en/developer_guides/configuration/configuration/
 ---
-name: automated-content-management
+Name: automated-content-management
+After: "*"
 ---
 SilverStripe\SiteConfig\SiteConfig:
   extensions:

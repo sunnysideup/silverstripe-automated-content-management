@@ -11,6 +11,7 @@ use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
 use SilverStripe\Forms\GridField\GridFieldAddNewButton;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
+use SilverStripe\Forms\GridField\GridFieldConfig_RecordViewer;
 use SilverStripe\Forms\GridField\GridFieldDeleteAction;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\Forms\OptionsetField;
@@ -42,8 +43,8 @@ class Instruction extends DataObject
 
     private static $table_name = 'AutomatedContentManagementInstruction';
 
-    private static $singular_name = 'LLM Instruction';
-    private static $plural_name = 'LLM Instructions';
+    private static $singular_name = 'Automated Update Instruction for an LLM (AI)';
+    private static $plural_name = 'Automated Update Instructions for an LLM (AI)';
     private static string $error_prepend = 'HAS_ERROR: ';
     private static string $non_error_prepend = 'OK';
 
@@ -121,6 +122,7 @@ class Instruction extends DataObject
         'ReadyToProcess' => 'Start process now',
         'Cancelled' => 'Cancel any further processing',
         'FindErrorsOnly' => 'Find errors only - LLM will not update the record, but instead tell you if there are any errors.',
+        'RecordsToProcess' => 'Process Log',
     ];
 
     private static $casting = [
@@ -185,6 +187,15 @@ class Instruction extends DataObject
             );
         } else {
             $fields = parent::getCMSFields();
+            $fields->removeByName('RecordIdsToAddToSelection');
+
+            $fields->insertBefore(
+                'RecordsToProcess',
+                Tab::create(
+                    'TargetRecords',
+                )
+            );
+
 
             $fields->dataFieldByName('ReadyToProcess')
                 ->setDescription(
@@ -240,7 +251,7 @@ class Instruction extends DataObject
             foreach ($grids as $name => $list) {
                 $list = $list->filter(['InstructionID' => $this->ID]);
                 $fields->addFieldToTab(
-                    'Root.RecordsByStatus.' . $name,
+                    'Root.ProcessLogByStatus.' . $name,
                     new GridField(
                         'RecordsToProcess' . $name,
                         $name,
@@ -253,7 +264,7 @@ class Instruction extends DataObject
             }
             $recordsToProcessTab = $fields->fieldByName('Root.RecordsToProcess');
             if ($recordsToProcessTab) {
-                $recordsToProcessTab->setTitle('Records');
+                // $recordsToProcessTab->setTitle('Process Details');
             }
 
             $fields->addFieldsToTab(
@@ -342,12 +353,24 @@ class Instruction extends DataObject
                         'You can <a href="' . $obj->CMSAddLink() . '">create a new selection</a>  or chose an existing one for your selected record type.'
                     )
                     ->setEmptyString('-- use all records --');
-                $fields->addFieldToTab(
-                    'Root.Main',
-                    $dropdownField,
-                    'FieldToChangeNice'
+                $fields->addFieldsToTab(
+                    'Root.TargetRecords',
+                    [
+                        $dropdownField,
+                    ],
                 );
             }
+            $fields->addFieldsToTab(
+                'Root.TargetRecords',
+                [
+                    GridField::create(
+                        'TargetRecordSelection',
+                        'Target Records',
+                        $this->getRecordList(),
+                        GridFieldConfig_RecordViewer::create()
+                    )
+                ],
+            );
             $this->makeFieldsReadonly($fields);
             return $fields;
         }
@@ -377,14 +400,6 @@ class Instruction extends DataObject
                 return true;
             default:
                 break;
-        }
-        if ($this->HasRecordIdsToAddToSelection() !== true) {
-            switch ($fieldName) {
-                case 'SelectionID':
-                    return true;
-                default:
-                    break;
-            }
         }
         if ($this->getIsReadyForProcessing() !== true) {
             switch ($fieldName) {
@@ -520,7 +535,7 @@ class Instruction extends DataObject
         return 'ERROR: Class not found';
     }
 
-    public function getFieldNameToChangeNice(): string
+    public function getFieldToChangeNice(): string
     {
         $fieldName = $this->FieldToChange;
         if ($fieldName) {
@@ -589,7 +604,7 @@ class Instruction extends DataObject
             $this->ReadyToProcess = false;
         }
         if (! $this->Title && $this->HasValidClassName() && $this->HasValidFieldName()) {
-            $this->Title = 'Update ' . $this->getFieldNameToChangeNice() . ' fields in ' . $this->getClassNameToChangePluralNice() . ' records';
+            $this->Title = 'Update ' . $this->getFieldToChangeNice() . ' fields in ' . $this->getClassNameToChangePluralNice() . ' records';
         }
         if ($this->HasValidClassName() && $this->HasValidFieldName()) {
             if (!$this->AlwaysAddedInstruction || $this->isChanged('FindErrorsOnly')) {
@@ -622,7 +637,7 @@ class Instruction extends DataObject
             For example, if the field is a Varchar field, then please return a string.
             For HTMLText, please make sure all text is wrapped in any of the following tags: p, ul, ol, li, or h2 - h6
             also make sure that all HTML is valid.
-            Never wrap returns in things link ```html.'
+            Never wrap returns in things like ```html.'
         );
     }
 
@@ -757,7 +772,7 @@ class Instruction extends DataObject
             $field = ReadonlyField::create(
                 'FieldToChangeNice',
                 $this->fieldLabel('FieldToChange'),
-                $this->getFieldNameToChangeNice()
+                $this->getFieldToChangeNice()
             );
         } else {
             $field = OptionsetGroupedField::create(
@@ -801,7 +816,7 @@ class Instruction extends DataObject
 
     protected function HasRecordIdsToAddToSelection(): bool
     {
-        return (bool) trim((string) $this->RecordIdsToAddToSelection);
+        return (bool) (trim((string) $this->RecordIdsToAddToSelection) === '' ? false : true);
     }
 
     public function AddRecordsToInstruction(int|array $recordId)

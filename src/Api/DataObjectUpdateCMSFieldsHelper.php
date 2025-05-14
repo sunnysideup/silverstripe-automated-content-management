@@ -44,7 +44,7 @@ class DataObjectUpdateCMSFieldsHelper
                 ['grouped' => false]
             )
         );
-        if (! in_array($owner->ClassName, $acceptableClasses)) {
+        if (! isset($acceptableClasses[$owner->ClassName])) {
             return;
         }
         // Add your custom fields to the CMS fields here
@@ -65,8 +65,8 @@ class DataObjectUpdateCMSFieldsHelper
                 ['grouped' => false]
             ),
         );
-        foreach ($acceptableFields as $acceptableField) {
-            $field = $fields->dataFieldByName($acceptableField);
+        foreach (array_keys($acceptableFields) as $acceptableFieldName) {
+            $field = $fields->dataFieldByName($acceptableFieldName);
             if (! $field) {
                 continue;
             }
@@ -115,8 +115,11 @@ class DataObjectUpdateCMSFieldsHelper
     {
         $desc = '<div class="llm-field-explanation" style="
             padding: 1rem;
+            padding-bottom: 0;
             background-color:#ffc10755;
-            border: 1px dashed #ffc107;
+            border: 5px dashed #ffc107;
+            margin-bottom: 1rem;
+            border-radius: 1rem;
         ">';
         $toUpdateName = $fieldName ? 'Field' : 'Record';
         if ($fieldName) {
@@ -126,19 +129,19 @@ class DataObjectUpdateCMSFieldsHelper
         }
         $desc .= '
         <p>
-            <a href="' . $link . '">Create new LLM (AI) instructions to update this ' . $toUpdateName . '</a>
+            <a href="' . $link . '">Create LLM (AI) instructions to update this ' . $toUpdateName . '</a>
         </p>';
 
         if ($fieldName) {
             $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
-            $toUpdateNameClass = 'Field on this Record Type';
+            $toUpdateNameClass = 'Field on all Records of this Type';
         } else {
             $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
-            $toUpdateNameClass = 'Record Type';
+            $toUpdateNameClass = 'All Records of this Type';
         }
         $desc .= '
         <p>
-            <a href="' . $link . '">Create new LLM (AI) instructions to update this ' . $toUpdateNameClass . '</a>
+            <a href="' . $link . '">Create LLM (AI) instructions to update this ' . $toUpdateNameClass . '</a>
         </p>';
         if ($fieldName) {
             $allInstructions = Instruction::get()

@@ -8,6 +8,7 @@ use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
+
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class ProcessOneRecord
@@ -28,6 +29,7 @@ class ProcessOneRecord
             $recordProcess->Started = true;
             $recordProcess->write();
             $answer = $this->sendToLLM($question);
+            $answer = $this->removeQuotesFromAnswer($answer);
             $recordProcess->After = $answer;
             $recordProcess->Completed = $answer;
             if ($recordProcess->getFindErrorsOnly()) {
@@ -51,7 +53,7 @@ class ProcessOneRecord
             $record->$field = $recordProcess->getAfterDatabaseValue();
             $record->write();
             if ($isPublished) {
-                $record->publishRecursive();
+                $record->publishSingle();
             }
             $recordProcess->OriginalUpdated = true;
             $recordProcess->write();
@@ -64,5 +66,12 @@ class ProcessOneRecord
         // This is where you would send the instruction and before value to the LLM
         // For now, we will just return a dummy response
         return ConnectorBaseClass::inst()->askQuestion($question);
+    }
+
+    protected function removeQuotesFromAnswer(string $answer): string
+    {
+        // This is where you would clean the answer from the LLM
+        // For now, we will just return the answer as is
+        return preg_replace('/```[a-zA-Z0-9]+\n(.*?)```/s', '$1', $answer);
     }
 }

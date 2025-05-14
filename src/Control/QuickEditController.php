@@ -4,6 +4,7 @@ namespace Sunnysideup\AutomatedContentManagement\Control;
 
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\HTTPResponse;
+use SilverStripe\Control\RequestHandler;
 use SilverStripe\SiteConfig\SiteConfig;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 
@@ -27,7 +28,8 @@ class QuickEditController extends Controller
 
         // action result
         'acceptresult' => 'LLMEdit',
-        'declineresult' => 'LLMEdit',
+        'acceptresultandupdate' => 'LLMEdit',
+        'rejectresult' => 'LLMEdit',
     ];
 
     protected $record = null;
@@ -38,7 +40,6 @@ class QuickEditController extends Controller
     public function init()
     {
         parent::init();
-
         // Add any necessary initialization code here
     }
 
@@ -66,7 +67,6 @@ class QuickEditController extends Controller
         $this->deconstructParams(false);
 
         if ($this->instruction) {
-            return $this->redirect($this->instruction->CMSEditLink());
         }
         return $this->httpError(500, 'Could not create new instruction for this record type.');
     }
@@ -125,9 +125,49 @@ class QuickEditController extends Controller
 
 
 
-    public function previewresult($request)
+    public function preview($request)
     {
+        $this->deconstructParams(true);
+        if ($this->recordProcess) {
+            return $this->recordProcess->renderWith(self::class . '_preview');
+        } else {
+            return $this->httpError(404, 'Could not find preview results.');
+        }
         // Logic for saving the edited item
+    }
+
+    public function acceptresult($request)
+    {
+        $this->deconstructParams(true);
+        if ($this->recordProcess) {
+            $this->recordProcess->AcceptResult();
+            return $this->redirect($this->recordProcess->CMSEditLink());
+        } else {
+            return $this->httpError(404, 'Could not find results.');
+        }
+    }
+
+    public function acceptresultandupdate($request)
+    {
+        $this->deconstructParams(true);
+        if ($this->recordProcess) {
+            $this->recordProcess->AcceptResult();
+            $this->recordProcess->UpdateRecord();
+            return $this->redirect($this->recordProcess->CMSEditLink());
+        } else {
+            return $this->httpError(404, 'Could not find preview results.');
+        }
+    }
+
+    public function rejectresult($request)
+    {
+        $this->deconstructParams(true);
+        if ($this->recordProcess) {
+            $this->recordProcess->DeclineResult();
+            return $this->redirect($this->recordProcess->CMSEditLink());
+        } else {
+            return $this->httpError(404, 'Could not find results.');
+        }
     }
 
     protected function deconstructParams(?bool $getRecordProcess = false)
@@ -147,12 +187,14 @@ class QuickEditController extends Controller
                 $this->instruction->ClassNameToChange = $instructionIDOrClassName;
                 //to do -check if the field name is valid
                 if ($this->fieldName) {
-                    $this->instruction->FieldNameToChange = $this->fieldName;
+                    $this->instruction->FieldToChange = $this->fieldName;
                 }
                 if ($this->instruction->HasValidClassName()) {
                     $instructionID = $this->instruction->write();
                 }
             }
+        } else {
+            $instructionID = (int) $instructionIDOrClassName;
         }
         $instructionID = (int) $instructionID;
         if ($instructionID) {
@@ -160,10 +202,9 @@ class QuickEditController extends Controller
 
             if ($this->instruction && $this->instruction->HasValidClassName()) {
                 if ($this->fieldName) {
-                    if ($this->instruction->FieldNameToChange !== $this->fieldName) {
+                    if ($this->instruction->FieldToChange !== $this->fieldName) {
                         $this->instruction = null;
-                    }
-                    if (! $this->instruction->HasValidFieldName()) {
+                    } elseif (! $this->instruction->HasValidFieldName()) {
                         $this->instruction = null;
                     }
                 }
@@ -182,5 +223,21 @@ class QuickEditController extends Controller
                 }
             }
         }
+    }
+
+    /**
+     *
+     * no idea why we need this, but it is here
+     * @param string $url
+     * @param int $code
+     * @return never
+     */
+    public function redirect(string $url, int $code = 302): HTTPResponse
+    {
+        die('
+            <script>
+                window.location.href = "/' . $url . '";
+            </script>');
+        return RequestHandler::redirect($url, $code);
     }
 }

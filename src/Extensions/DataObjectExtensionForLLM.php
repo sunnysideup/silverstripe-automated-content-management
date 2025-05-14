@@ -17,8 +17,7 @@ class DataObjectExtensionForLLM extends Extension
         // Add your custom fields to the CMS fields here
         if (SiteConfig::current_site_config()->isLLMEnabled()) {
             $obj = Injector::inst()->create(DataObjectUpdateCMSFieldsHelper::class);
-            $obj->addLinksToInstructions($owner, $fields);
-            $obj->addGenericLinksToRecord($owner, $fields);
+            $obj->updateCMSFields($owner, $fields);
         }
     }
 

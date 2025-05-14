@@ -13,6 +13,7 @@ use SilverStripe\View\SSViewer_FromString;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
+use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Traits\MakeFieldsRoadOnly;
 
@@ -22,6 +23,8 @@ class RecordProcess extends DataObject
 
     private static $table_name = 'AutomatedContentManagementRecordProcess';
 
+    private static $singular_name = 'Process Log for an LLM (AI) Instruction';
+    private static $plural_name = 'Process Logs for an LLM (AI) Instruction';
     private static $db = [
         'RecordID' => 'Int',
         'Before' => 'Text',
@@ -70,6 +73,7 @@ class RecordProcess extends DataObject
         'CanProcess' => 'Boolean',
         'CanNotProcessAnymore' => 'Boolean',
         'RecordTitle' => 'Varchar',
+        'RecordLink' => 'Varchar',
         'HydratedInstructions' => 'Text',
         'BeforeHumanValue' => 'Text',
         'AfterHumanValue' => 'Text',
@@ -126,6 +130,19 @@ class RecordProcess extends DataObject
         return 'Error: record not found'; // (ID: #' . $this->RecordID . ')';
     }
 
+    public function getRecordLink(): string|null
+    {
+        $record = $this->getRecord();
+        if ($record->hasMethod('CMSEditLink')) {
+            $link = $record->CMSEditLink();
+        } elseif ($record->hasMethod('Link')) {
+            $link = $record->Link();
+        } else {
+            $link = null;
+        }
+        return $link;
+    }
+
     public function getHydratedInstructions(): string
     {
         $description = $this->Instruction()->Description;
@@ -179,13 +196,14 @@ class RecordProcess extends DataObject
             $this,
             $fields,
         );
+        $beforeFieldName = 'Before';
         if ($this->getRecordType() === 'HTMLText') {
             foreach (['Before', 'After'] as $fieldName) {
                 $fields->replaceField(
                     $fieldName,
                     HTMLReadonlyField::create($fieldName . 'Nice', $fieldName, $this->dbObject($fieldName)->Raw())
                 );
-                // $fields-
+                $beforeFieldName = 'BeforeNice';
             }
         }
         $fields->removeByName('RecordID');
@@ -206,13 +224,7 @@ class RecordProcess extends DataObject
         }
         $record = $this->getRecord();
         if ($record) {
-            if ($record->hasMethod('CMSEditLink')) {
-                $link = $record->CMSEditLink();
-            } elseif ($record->hasMethod('Link')) {
-                $link = $record->Link();
-            } else {
-                $link = null;
-            }
+            $link = $this->getRecordLink();
             if ($link) {
                 $title = '<a href="' . $link . '" target="_blank">' . $this->getRecordTitle() . '</a>';
             } else {
@@ -224,12 +236,18 @@ class RecordProcess extends DataObject
                     $fields->dataFieldByName('InstructionID'),
                     HTMLReadonlyField::create(
                         'ViewRecord',
-                        'Record',
+                        'Record Targetted',
                         $title
 
                     ),
+                    HTMLReadonlyField::create(
+                        'ResultPreviewLinkNice',
+                        'Compare Before / After',
+                        '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Compare Before / After and Apply / Decline</a>'
+                    ),
+
                 ],
-                'BeforeNice'
+                $beforeFieldName
             );
         }
         return $fields;
@@ -419,8 +437,43 @@ class RecordProcess extends DataObject
     {
         return DataObjectUpdateCMSFieldsHelper::my_link('preview' . '/' . $this->InstructionID . '/' . $this->ID);
     }
+
+    public function getAcceptLink(): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link('acceptresult' . '/' . $this->InstructionID . '/' . $this->ID);
+    }
+    public function getRejectLink(): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link('rejectresult' . '/' . $this->InstructionID . '/' . $this->ID);
+    }
+    public function getAcceptAndUpdateLink(): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link('acceptresultandupdate' . '/' . $this->InstructionID . '/' . $this->ID);
+    }
+
+
     public function CMSEditLink(): string
     {
         return Injector::inst()->get(AdminInstructions::class)->getCMSEditLinkForManagedDataObject($this);
+    }
+
+    public function AcceptResult()
+    {
+        $this->Accepted = true;
+        $this->Rejected = false;
+        $this->write();
+    }
+
+    public function UpdateRecord()
+    {
+        $obj = Injector::inst()->get(ProcessOneRecord::class);
+        $obj->updateOriginalRecord($this);
+    }
+
+    public function DeclineResult()
+    {
+        $this->Accepted = false;
+        $this->Rejected = true;
+        $this->write();
     }
 }
