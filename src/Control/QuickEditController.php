@@ -3,6 +3,7 @@
 namespace Sunnysideup\AutomatedContentManagement\Control;
 
 use SilverStripe\Control\Controller;
+use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPResponse;
 use SilverStripe\Control\RequestHandler;
 use SilverStripe\SiteConfig\SiteConfig;
@@ -174,9 +175,9 @@ class QuickEditController extends Controller
     {
         $request = $this->getRequest();
         //get request params
-        $instructionIDOrClassName = $request->param('ID');
+        $instructionIDOrClassName = rawurldecode((string) $request->param('ID'));
         $recordID = (int) $request->param('OtherID');
-        $this->fieldName = $request->param('FieldName');
+        $this->fieldName = rawurldecode((string) $request->param('FieldName'));
         //process params
         $instructionID = 0;
 
@@ -234,9 +235,12 @@ class QuickEditController extends Controller
      */
     public function redirect(string $url, int $code = 302): HTTPResponse
     {
+        if (! strpos($url, 'http')) {
+            $url = Director::absoluteURL($url);
+        }
         die('
             <script>
-                window.location.href = "/' . $url . '";
+                window.location.href = "' . $url . '";
             </script>');
         return RequestHandler::redirect($url, $code);
     }

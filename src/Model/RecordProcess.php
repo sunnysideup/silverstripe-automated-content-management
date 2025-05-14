@@ -442,20 +442,20 @@ class RecordProcess extends DataObject
 
     public function getResultPreviewLink(): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link('preview' . '/' . $this->InstructionID . '/' . $this->ID);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('preview', $this->InstructionID, $this->ID);
     }
 
     public function getAcceptLink(): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link('acceptresult' . '/' . $this->InstructionID . '/' . $this->ID);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('acceptresult', $this->InstructionID, $this->ID);
     }
     public function getRejectLink(): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link('rejectresult' . '/' . $this->InstructionID . '/' . $this->ID);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('rejectresult', $this->InstructionID, $this->ID);
     }
     public function getAcceptAndUpdateLink(): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link('acceptresultandupdate' . '/' . $this->InstructionID . '/' . $this->ID);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('acceptresultandupdate', $this->InstructionID, $this->ID);
     }
 
 

@@ -846,11 +846,12 @@ class Instruction extends DataObject
 
     public function getSelectExistingLLMInstructionForOneRecordLink($record): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link('selectexistinginstructionforonerecord/' . $this->ID . '/' . $record->ID);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('selectexistinginstructionforonerecord', $this->ID, $record->ID);
     }
+
     public function getSelectExistingLLMInstructionForOneRecordOneFieldLink($record, string $fieldName): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link('selectexistinginstructionforonerecordonefield/' . $this->ID . '/' . $record->ID . '/' . $fieldName);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('selectexistinginstructionforonerecordonefield', $this->ID, $record->ID, $fieldName);
     }
 
     public function CMSEditLink(): string

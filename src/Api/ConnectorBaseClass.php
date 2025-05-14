@@ -40,6 +40,22 @@ abstract class ConnectorBaseClass
         return $this->defaultModel;
     }
 
+    public static function is_ready(?string $client = null): bool
+    {
+        // $client = static::get_client_name();
+        // $isValidClient = class_exists($client) && is_subclass_of($client, static::class);
+        // if (! $isValidClient) {
+        //     $classes = ClassInfo::subclassesFor(self::class, false);
+        //     foreach ($classes as $class) {
+        //         if (Injector::inst()->get($class)->getShortName() === $client) {
+        //             $client = $class;
+        //             break;
+        //         }
+        //     }
+        // }
+        return true;
+    }
+
     /**
      * @param string|null $client
      * @throws Exception
@@ -47,7 +63,12 @@ abstract class ConnectorBaseClass
      */
     public static function inst(?string $client = null)
     {
+        $client = static::get_client_name($client);
+        return Injector::inst()->get($client);
+    }
 
+    protected static function get_client_name(?string $client = null): string
+    {
         if (! $client) {
             $client = SiteConfig::current_site_config()->LLMType;
             if (! $client) {
@@ -60,26 +81,12 @@ abstract class ConnectorBaseClass
                 Environment::getEnv('SS_LLM_CLIENT_NAME') ?:
                 Config::inst()->get(self::class, 'client_name')
             );
-            $isValidClient = class_exists($client) && is_subclass_of($client, static::class);
-            if (! $isValidClient) {
-                $classes = ClassInfo::subclassesFor(self::class, false);
-                foreach ($classes as $class) {
-                    if (Injector::inst()->get($class)->getShortName() === $client) {
-                        $client = $class;
-                        break;
-                    }
-                }
-            }
         }
-        if (class_exists($client) && is_subclass_of($client, static::class)) {
-            return Injector::inst()->get($client);
-        } else {
-            throw new Exception('
-                Client requires a class name, but --' . ($client ?: 'NOTHING HERE') . '-- is not a class.
-                You can set this in your .env file using SS_LLM_CLIENT_NAME, as static property ConnectorBaseClass::client_name, or pass it in as a parameter.
-                You can provide the full class name, or just the short name (e.g. "OpenAIConnector" or "Sunnysideup\AutomatedContentManagement\Api\Connectors\OpenAIConnector").
-            ');
+        if (! (class_exists($client) && is_subclass_of($client, static::class))) {
+            $client = TestConnector::class;
         }
+
+        return $client;
     }
 
     /**

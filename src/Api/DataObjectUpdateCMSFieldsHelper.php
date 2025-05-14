@@ -23,6 +23,14 @@ class DataObjectUpdateCMSFieldsHelper
     use Configurable;
 
 
+    public static function my_link_builder(mixed ...$args): string
+    {
+        foreach ($args as $key => $arg) {
+            $args[$key] = rawurlencode($arg);
+        }
+        return self::my_link(Controller::join_links(...$args));
+    }
+
     public static function my_link(?string $action = null): string
     {
         $link = Controller::join_links(
@@ -78,11 +86,11 @@ class DataObjectUpdateCMSFieldsHelper
             if (isset(self::$fields_completed[$owner->ClassName][$acceptableFieldName])) {
                 continue;
             }
-            self::$fields_completed[$owner->ClassName][$acceptableFieldName] = true;
             $field = $fields->dataFieldByName($acceptableFieldName);
             if (! $field) {
                 continue;
             }
+            self::$fields_completed[$owner->ClassName][$acceptableFieldName] = true;
             $this->addLinksToInstructionsToOneField($owner, $field);
         }
     }
@@ -229,11 +237,11 @@ class DataObjectUpdateCMSFieldsHelper
 
     public function getCreateNewLLMInstructionForClassLink(string $className): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link('createinstructionforclass' . '/' . $className);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforclass', $className);
     }
 
     public function getCreateNewLLMInstructionForClassOneFieldLink(string $className, string $fieldName): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link('createinstructionforclassonefield' . '/' . $className . '/0/' . $fieldName);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforclassonefield', $className, $fieldName);
     }
 }

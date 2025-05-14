@@ -63,6 +63,25 @@ Sunnysideup\AutomatedContentManagement\Model\Instruction:
 
 ```
 
+### getting CMS Fields to work
+
+You may need to add this to your `getCMSFields` method:
+```php
+
+class MyPage extends Page {
+    public function getCMSFields() {
+        $fields = parent::getCMSFields();
+        if (SiteConfig::current_site_config()->isLLMEnabled()) {
+            $obj = Injector::inst()->create(DataObjectUpdateCMSFieldsHelper::class);
+            $obj->updateCMSFields($this, $fields);
+        }
+
+        return $fields;
+    }
+}
+
+```
+
 ### Custom Record Processor
 
 Use a custom record processor to change how content is processed:
@@ -159,6 +178,8 @@ class CustomRecordProcessor extends ProcessOneRecord
     }
 }
 ```
+
+
 
 ### Workflow
 

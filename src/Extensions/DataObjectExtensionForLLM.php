@@ -32,12 +32,12 @@ class DataObjectExtensionForLLM extends Extension
 
     public function getCreateNewLLMInstructionForOneRecordLink(): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link('createinstructionforonerecord' . '/' . $this->owner->ClassName . '/' . $this->owner->ID);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforonerecord', $this->owner->ClassName, $this->owner->ID);
     }
 
     public function getCreateNewLLMInstructionForOneRecordOneFieldLink(string $fieldName): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link('createinstructionforonerecordonefield' . '/' . $this->owner->ClassName . '/' . $this->owner->ID . '/' . $fieldName);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforonerecordonefield', $this->owner->ClassName, $this->owner->ID, $fieldName);
     }
     private function callProtectedMethod(object $object, string $methodName, array $args = [])
     {
