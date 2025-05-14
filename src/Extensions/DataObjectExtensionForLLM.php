@@ -15,10 +15,19 @@ class DataObjectExtensionForLLM extends Extension
     {
         $owner = $this->getOwner();
         // Add your custom fields to the CMS fields here
-        if (SiteConfig::current_site_config()->isLLMEnabled()) {
-            $obj = Injector::inst()->create(DataObjectUpdateCMSFieldsHelper::class);
-            $obj->updateCMSFields($owner, $fields);
-        }
+
+        $this->callProtectedMethod(
+            $this->owner,
+            'afterUpdateCMSFields',
+            [
+                function (FieldList $fields) use ($owner) {
+                    if (SiteConfig::current_site_config()->isLLMEnabled()) {
+                        $obj = Injector::inst()->create(DataObjectUpdateCMSFieldsHelper::class);
+                        $obj->updateCMSFields($owner, $fields);
+                    }
+                }
+            ]
+        );
     }
 
     public function getCreateNewLLMInstructionForOneRecordLink(): string
@@ -29,5 +38,11 @@ class DataObjectExtensionForLLM extends Extension
     public function getCreateNewLLMInstructionForOneRecordOneFieldLink(string $fieldName): string
     {
         return DataObjectUpdateCMSFieldsHelper::my_link('createinstructionforonerecordonefield' . '/' . $this->owner->ClassName . '/' . $this->owner->ID . '/' . $fieldName);
+    }
+    private function callProtectedMethod(object $object, string $methodName, array $args = [])
+    {
+        $refMethod = new \ReflectionMethod($object, $methodName);
+        $refMethod->setAccessible(true); // still needed for unrelated classes
+        return $refMethod->invokeArgs($object, $args);
     }
 }

@@ -1,6 +1,5 @@
 ---
 Name: automated-content-management
-After: "*"
 ---
 SilverStripe\SiteConfig\SiteConfig:
   extensions:
@@ -9,3 +8,7 @@ SilverStripe\SiteConfig\SiteConfig:
 SilverStripe\ORM\DataObject:
   extensions:
     - Sunnysideup\AutomatedContentManagement\Extensions\DataObjectExtensionForLLM
+
+SilverStripe\Admin\LeftAndMain:
+  extra_requirements_css:
+    - "sunnysideup/automated-content-management:client/dist/automated-content-management.css"

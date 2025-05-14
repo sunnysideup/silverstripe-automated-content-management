@@ -24,7 +24,9 @@ class RecordProcess extends DataObject
     private static $table_name = 'AutomatedContentManagementRecordProcess';
 
     private static $singular_name = 'Process Log for an LLM (AI) Instruction';
+
     private static $plural_name = 'Process Logs for an LLM (AI) Instruction';
+
     private static $db = [
         'RecordID' => 'Int',
         'Before' => 'Text',
@@ -32,6 +34,7 @@ class RecordProcess extends DataObject
         'ErrorFound' => 'Boolean',
         'Skip' => 'Boolean',
         'Started' => 'Boolean',
+        'Question' => 'Text',
         'Completed' => 'Boolean',
         'Accepted' => 'Boolean',
         'Rejected' => 'Boolean',
@@ -92,6 +95,7 @@ class RecordProcess extends DataObject
         'OriginalUpdated' => 'Original Record updated with new value',
         'IsTest' => 'Is test only',
         'Instruction' => 'LLM Instruction',
+        'HydratedInstructions' => 'Question',
     ];
 
     private static $default_sort = 'ID DESC';
@@ -145,6 +149,9 @@ class RecordProcess extends DataObject
 
     public function getHydratedInstructions(): string
     {
+        if ($this->Question) {
+            return $this->Question;
+        }
         $description = $this->Instruction()->Description;
         $record = $this->getRecord();
         $v = '';

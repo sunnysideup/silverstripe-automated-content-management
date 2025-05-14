@@ -1,0 +1,56 @@
+.llm-field-explanation {
+  padding: 1rem;
+  background-color: #ffc10755;
+  border: 5px dashed #ffc107;
+  margin-bottom: 1rem;
+  border-radius: 1rem;
+  position: relative;
+  max-height: 200px;
+  overflow-y: auto;
+
+  h2 {
+    padding: 10px 0;
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    clear: both;
+  }
+
+
+  a {
+    text-decoration: none;
+    display: block;
+    padding: 7px;
+    background-color: #0071c415;
+    width: 100%;
+    border-radius: 3px;
+    margin: 0.5rem 0;
+  }
+
+  a:hover {
+    background-color: #0071c4 !important;
+    color: #fff !important;
+  }
+
+  .edit-settings-llm-instructions,
+  .turn-off-llm-instructions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0.5rem;
+
+    a {
+      border: none !important;
+    }
+
+  }
+
+  .edit-settings-llm-instructions {
+    right: 2.5em;
+  }
+
+  .turn-off-llm-instructions {
+    right: 0em;
+  }
+
+}

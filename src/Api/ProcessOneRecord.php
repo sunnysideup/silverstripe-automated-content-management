@@ -27,6 +27,7 @@ class ProcessOneRecord
         }
         if ($recordProcess->getCanProcess()) {
             $recordProcess->Started = true;
+            $recordProcess->Question = $question;
             $recordProcess->write();
             $answer = $this->sendToLLM($question);
             $answer = $this->removeQuotesFromAnswer($answer);
