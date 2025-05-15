@@ -8,10 +8,12 @@ use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\SiteConfig\SiteConfig;
+use SilverStripe\View\HTML;
 use Sunnysideup\AutomatedContentManagement\Control\QuickEditController;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
@@ -82,24 +84,26 @@ class DataObjectUpdateCMSFieldsHelper
                 ['grouped' => false]
             ),
         );
+        // print_r($acceptableFields);
         foreach (array_keys($acceptableFields) as $acceptableFieldName) {
             if (isset(self::$fields_completed[$owner->ClassName][$acceptableFieldName])) {
                 continue;
             }
             $field = $fields->dataFieldByName($acceptableFieldName);
             if (! $field) {
+                // echo 'Field not found: ' . $acceptableFieldName . "\n";
                 continue;
             }
 
-            self::$fields_completed[$owner->ClassName][$acceptableFieldName] = true;
-            $this->addLinksToInstructionsToOneField($owner, $field);
+            // echo 'Field found: ' . $acceptableFieldName . "\n";
+            $this->addLinksToInstructionsToOneField($owner, $field, $fields);
         }
     }
 
-    public function addLinksToInstructionsToOneField($owner, $field)
+    public function addLinksToInstructionsToOneField($owner, $field, $fields)
     {
-        $hasDescField = $field->hasMethod('setRightTitle');
-        $hasRightTitlteField = $field->hasMethod('setDescription');
+        $hasDescField = $field->hasMethod('setDescription');
+        $hasRightTitlteField = $field->hasMethod('setRightTitle');
         if (! $hasDescField && !$hasRightTitlteField) {
             return;
         }
@@ -119,21 +123,22 @@ class DataObjectUpdateCMSFieldsHelper
             $getMethod = 'getRightTitle';
             $setMethod = 'setRightTitle';
         }
-        $description = $field->$getMethod();
-        if ($description instanceof DBField) {
-            $description = $description->getValue();
-        }
         $fieldName = $field->getName();
         if ($fieldName) {
+            self::$fields_completed[$owner->ClassName][$fieldName] = true;
+            $description = $field->$getMethod();
+            if ($description instanceof DBField) {
+                $description = $description->getValue();
+            }
             $description .= $this->createDescriptionForOneRecordAndField(
                 $owner,
                 $field->getName()
             );
             $field->$setMethod($description);
+            $field->addExtraClass('llm-field');
         }
 
         // update field
-        $field->addExtraClass('llm-field');
     }
 
     public function createDescriptionForOneRecordAndField($owner, ?string $fieldName = null)
