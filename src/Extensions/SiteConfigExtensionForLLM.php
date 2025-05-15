@@ -6,12 +6,14 @@ use SilverStripe\Core\Extension;
 use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\Forms\TextField;
+use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
 
 class SiteConfigExtensionForLLM extends Extension
 {
     private static $db = [
-        'LLMType' => 'Varchar(50)',
+        'LLMClient' => 'Varchar(50)',
         'LLMModel' => 'Varchar(50)',
         'LLMKey' => 'Text',
         'LLMEnabled' => 'Boolean',
@@ -28,12 +30,28 @@ class SiteConfigExtensionForLLM extends Extension
         $fields->addFieldsToTab(
             'Root.LLM',
             [
-                DropdownField::create('LLMType', 'Type of LLM you are using.', ['OpenAI' => 'OpenAI', 'Anthropic' => 'Anthropic (Claude)', 'Google' => 'Google'])
-                    ->setEmptyString('Select LLM Type'),
+                DropdownField::create(
+                    'LLMClient',
+                    'Type of LLM you are using.',
+                    ConnectorBaseClass::inst()->getClientNameList()
+                )
+                    ->setEmptyString('-- Select LLM Type --'),
                 TextField::create('LLMModel', 'Engine you are using')
                     ->setDescription('e.g. gpt-3.5-turbo, gpt-4, claude-2, just leave blank for default'),
                 TextField::create('LLMKey', 'LLM Key - this is the key you get from OpenAI or any other LLM provider.'),
                 CheckboxField::create('LLMEnabled', 'Enable LLM (AI) functions for this site - only turn this on while you are using these functions.'),
+                HTMLReadonlyField::create(
+                    'LLMKeyInfo',
+                    'LLM Key Info',
+                    'You can get your key from the LLM provider.
+                    <br> For OpenAI, you can get it from <a href="https://platform.openai.com/account/api-keys" target="_blank">here</a>.
+                    <br> For Anthropic, you can get it from <a href="https://console.anthropic.com/keys" target="_blank">here</a>.'
+                ),
+                HTMLReadonlyField::create(
+                    'TestYourLLM',
+                    'Test your LLM',
+                    '<a href="' . ConnectorBaseClass::inst()->getTestLink() . '" target="_blank">Test your LLM</a>',
+                ),
             ]
         );
     }

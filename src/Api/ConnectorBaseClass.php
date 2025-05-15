@@ -42,17 +42,6 @@ abstract class ConnectorBaseClass
 
     public static function is_ready(?string $client = null): bool
     {
-        // $client = static::get_client_name();
-        // $isValidClient = class_exists($client) && is_subclass_of($client, static::class);
-        // if (! $isValidClient) {
-        //     $classes = ClassInfo::subclassesFor(self::class, false);
-        //     foreach ($classes as $class) {
-        //         if (Injector::inst()->get($class)->getShortName() === $client) {
-        //             $client = $class;
-        //             break;
-        //         }
-        //     }
-        // }
         return true;
     }
 
@@ -70,7 +59,7 @@ abstract class ConnectorBaseClass
     protected static function get_client_name(?string $client = null): string
     {
         if (! $client) {
-            $client = SiteConfig::current_site_config()->LLMType;
+            $client = SiteConfig::current_site_config()->LLMClient;
             if (! $client) {
                 $client = Environment::getEnv('SS_LLM_CLIENT_NAME');
                 if (! $client) {
@@ -82,11 +71,26 @@ abstract class ConnectorBaseClass
                 Config::inst()->get(self::class, 'client_name')
             );
         }
-        if (! (class_exists($client) && is_subclass_of($client, static::class))) {
+        $isValidClient = self::get_client_is_valid($client);
+        if (! $isValidClient) {
+            $classes = ClassInfo::subclassesFor(self::class, false);
+            foreach ($classes as $class) {
+                if (Injector::inst()->get($class)->getShortName() === $client) {
+                    $client = $class;
+                    break;
+                }
+            }
+        }
+        if (self::get_client_is_valid($client) !== true) {
             $client = TestConnector::class;
         }
 
         return $client;
+    }
+
+    protected static function get_client_is_valid(string $client): bool
+    {
+        return class_exists($client) && is_subclass_of($client, static::class);
     }
 
     /**
@@ -146,5 +150,21 @@ abstract class ConnectorBaseClass
     public function getModelNice(): string
     {
         return $this->getModel();
+    }
+
+    public function getClientNameList(): array
+    {
+        $list = [];
+        $classes = ClassInfo::subclassesFor(self::class, false);
+        foreach ($classes as $class) {
+            $obj = Injector::inst()->get($class);
+            $list[$obj->getShortName()] = $obj->getClientNameNice();
+        }
+        return $list;
+    }
+
+    public function getTestLink(): string
+    {
+        return '/dev/tasks/acm-test-llm';
     }
 }

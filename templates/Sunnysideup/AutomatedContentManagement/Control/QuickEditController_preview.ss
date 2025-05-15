@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="$BaseURL" />
     <title>$Title</title>
     <style>
         body {
@@ -20,7 +21,6 @@
         .other-info {
             gap: 20px;
             margin: 0 auto;
-            padding: 0 20px;
         }
         .columns {
             display: flex;
@@ -87,18 +87,16 @@
 
     <h1>LLM (AI) Suggestion</h1>
     <h3>Instruction: <a href="$CMSEditLink">$Instruction.Title</a></h3>
-    <h3>Record: <a href="$RecordLink">$RecordTitle</a> (ID: $RecordID)</h3>
-    <h3>Field: $Instruction.FieldToChangeNice</h3>
+    <h3>Record to updated: <a href="$RecordLink">$RecordTitle</a> (ID: $RecordID)</h3>
+    <h3>Field to be updated: $Instruction.FieldToChangeNice</h3>
+    <h3>Log: <a href="$CMSEditLink">$Title</a></h3>
 
+    <h2>Before ➔ After</h2>
     <div class="columns">
         <div class="column">
-            <h2>Before</h2>
-            <hr />
             <div class="value">$BeforeHumanValue</div>
         </div>
         <div class="column">
-            <h2>After</h2>
-            <hr />
             <div class="value">$AfterHumanValue</div>
         </div>
     </div>

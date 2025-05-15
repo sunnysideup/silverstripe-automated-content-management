@@ -66,6 +66,7 @@ Sunnysideup\AutomatedContentManagement\Model\Instruction:
 ### getting CMS Fields to work
 
 You may need to add this to your `getCMSFields` method:
+
 ```php
 
 class MyPage extends Page {

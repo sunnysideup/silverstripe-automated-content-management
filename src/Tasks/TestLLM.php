@@ -32,6 +32,8 @@ class TestLLM extends BuildTask
         }
         echo 'Question: ' . $question;
         echo '<hr>';
+        echo '<hr>';
+        echo '<hr>';
         echo 'Answer: ' . $obj->askQuestion($question);
     }
 }

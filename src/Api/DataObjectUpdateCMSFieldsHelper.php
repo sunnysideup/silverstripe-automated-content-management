@@ -90,6 +90,7 @@ class DataObjectUpdateCMSFieldsHelper
             if (! $field) {
                 continue;
             }
+
             self::$fields_completed[$owner->ClassName][$acceptableFieldName] = true;
             $this->addLinksToInstructionsToOneField($owner, $field);
         }
@@ -97,7 +98,7 @@ class DataObjectUpdateCMSFieldsHelper
 
     public function addLinksToInstructionsToOneField($owner, $field)
     {
-        $hasDescField = $field->hasMethod('setDescription');
+        $hasDescField = $field->hasMethod('setRightTitle');
         $hasRightTitlteField = $field->hasMethod('setDescription');
         if (! $hasDescField && !$hasRightTitlteField) {
             return;
@@ -106,6 +107,9 @@ class DataObjectUpdateCMSFieldsHelper
             return;
         }
         if ($field->hasExtraClass('llm-field-skip')) {
+            return;
+        }
+        if ($field->isReadonly()) {
             return;
         }
         if ($hasDescField) {
@@ -154,11 +158,11 @@ class DataObjectUpdateCMSFieldsHelper
 
         $title = '<span class="font-icon-menu-settings"></span>';
         $action = '/admin/settings#Root_LLM';
-        $desc .= '<div class="edit-settings-llm-instructions"><a href="' . $action . '">' . $title . '</a></div>';
+        $desc .= '<div class="edit-settings-llm-instructions"><a href="' . $action . '" title="Edit LLM Settings">' . $title . '</a></div>';
 
         $title = '<span class="font-icon-cancel"></span>';
         $action = self::my_link('turnllmfunctionsonoroff/off');
-        $desc .= '<div class="turn-off-llm-instructions"><a href="' . $action . '">' . $title . '</a></div>';
+        $desc .= '<div class="turn-off-llm-instructions"><a href="' . $action . '" title="Stop LLM Editing for now">' . $title . '</a></div>';
 
 
         $recordsProcessed = RecordProcess::get()
@@ -174,7 +178,7 @@ class DataObjectUpdateCMSFieldsHelper
             foreach ($recordsProcessed as $recordProcessed) {
                 $desc .= '
                     <div>
-                        <a href="' . $recordProcessed->CMSEditLink() . '" class="icon-on-right"><span class="font-icon-menu-settings"></span></a>
+                        <a href="' . $recordProcessed->CMSEditLink() . '" class="icon-on-right" title="Review log"><span class="font-icon-info-circled"></span></a>
                         ' . $recordProcessed->getTitle() . ':
                         ' . $recordProcessed->getResultPreviewLinkHTML() . '
                     </div>';
@@ -191,14 +195,22 @@ class DataObjectUpdateCMSFieldsHelper
             $desc .= '
                 <h2>Use existing instruction to update this ' . $toUpdateName . '</h2>';
             foreach ($existingLLMInstructionsForRunning as $instruction) {
-                if ($fieldName) {
-                    $link = $instruction->getSelectExistingLLMInstructionForOneRecordOneFieldLink($owner, $fieldName);
+                $existsAlready = $instruction->getRecordList()->filter(['ID' => $owner->ID]);
+                if ($existsAlready) {
+                    $action = 'Already Added';
+                    $link = $instruction->CMSEditLink();
                 } else {
-                    $link = $instruction->getSelectExistingLLMInstructionForOneRecordLink($owner);
+                    $action = 'Add this Record';
+                    if ($fieldName) {
+                        $link = $instruction->getSelectExistingLLMInstructionForOneRecordOneFieldLink($owner, $fieldName);
+                    } else {
+                        $link = $instruction->getSelectExistingLLMInstructionForOneRecordLink($owner);
+                    }
                 }
                 $desc .= '
                     <div>
-                        <a href="' . $link . '">' . $instruction->getTitle() . '</a>
+                        <a href="' . $instruction->CMSEditLink() . '" class="icon-on-right"><span class="font-icon-info-circled"></span></a>
+                        ' . $instruction->getTitle() . ': <a href="' . $link . '">' . $action . '</a>
                     </div>';
             }
         }
@@ -218,10 +230,10 @@ class DataObjectUpdateCMSFieldsHelper
         if (self::$record_count_cache[$owner->ClassName] > 1) {
             if ($fieldName) {
                 $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
-                $toUpdateNameClass = 'Field on all Records of this Type';
+                $toUpdateNameClass = 'Field on All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type';
             } else {
                 $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
-                $toUpdateNameClass = 'All Records of this Type';
+                $toUpdateNameClass = 'All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type ';
             }
             $desc .= '<div><a href="' . $link . '">++ Create LLM (AI) instructions to update this ' . $toUpdateNameClass . '</a></div>';
         }

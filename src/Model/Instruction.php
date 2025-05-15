@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
+use Page;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
@@ -13,9 +14,11 @@ use SilverStripe\Forms\GridField\GridFieldAddNewButton;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordViewer;
 use SilverStripe\Forms\GridField\GridFieldDeleteAction;
+use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\Forms\OptionsetField;
 use SilverStripe\Forms\ReadonlyField;
+use SilverStripe\Forms\SearchableMultiDropdownField;
 use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\ToggleCompositeField;
 use SilverStripe\ORM\DataList;
@@ -99,8 +102,10 @@ class Instruction extends DataObject
     private static $summary_fields = [
         'Created.Ago' => 'Created',
         'Title' => 'Title',
-        'StartedProcess.Nice' => 'Started',
-        'Completed.Nice' => 'Completed',
+        'ClassNameToChangeNice' => 'Record Type',
+        'FieldToChangeNice' => 'Field to change',
+        'NumberOfTargetRecords' => 'Number of Target Records',
+        'PercentageCompleted' => 'Percentage Completed',
     ];
 
     private static $searchable_fields = [
@@ -121,14 +126,17 @@ class Instruction extends DataObject
         'RunTest' => 'Run test now',
         'ReadyToProcess' => 'Start process now',
         'Cancelled' => 'Cancel any further processing',
-        'FindErrorsOnly' => 'Find errors only - LLM will not update the record, but instead tell you if there are any errors.',
+        'FindErrorsOnly' => 'Find errors only - LLM will not update the record, but instead tell you if there are any errors (based on your instruction).',
         'RecordsToProcess' => 'Process Log',
+        'NumberOfTargetRecords' => 'Number of Target Records',
+        'NumberOfRecords' => 'Number of records (to be) processed',
     ];
 
     private static $casting = [
         'IsReadyForProcessing' => 'Boolean',
         'IsReadyForReview' => 'Boolean',
         'ReviewCompleted' => 'Boolean',
+        'NumberOfTargetRecords' => 'Int',
         'NumberOfRecords' => 'Int',
         'ProcessedRecords' => 'Int',
         'PercentageCompleted' => 'Percentage',
@@ -305,12 +313,19 @@ class Instruction extends DataObject
                 $this->getSelectFieldNameField()
             );
 
-            $fields->addFieldToTab(
+            $fields->addFieldsToTab(
                 'Root.ⓘ',
-                $fields->dataFieldByName('ByID')
-                    ->setTitle(
-                        'User who created this instruction',
-                    )
+                [
+                    $fields->dataFieldByName('ByID')
+                        ->setTitle(
+                            'User who created this instruction',
+                        ),
+                    HTMLReadonlyField::create(
+                        'RunLinkNice',
+                        'Run Now',
+                        '<a href="' . $this->getRunLink() . '" target="_blank">Run Now - please use with care - we could recommend you ask your developer to set this up</a>'
+                    ),
+                ]
             );
 
             if (! $this->StartedProcess) {
@@ -368,7 +383,7 @@ class Instruction extends DataObject
                         'Target Records',
                         $this->getRecordList(),
                         GridFieldConfig_RecordViewer::create()
-                    )
+                    ),
                 ],
             );
             $this->makeFieldsReadonly($fields);
@@ -394,7 +409,6 @@ class Instruction extends DataObject
             case 'Created':
             case 'LastEdited':
             case 'StartedProcess':
-            case 'RecordIdsToAddToSelection':
             case 'Completed':
             case 'ByID':
                 return true;
@@ -494,6 +508,14 @@ class Instruction extends DataObject
             ->filter(['Accepted' => false, 'Rejected' => false])
             ->count() === 0;
         return ($this->Completed && $allReviewsDone) ? true : false;
+    }
+
+    public function getNumberOfTargetRecords(): int
+    {
+        if ($this->HasValidClassName()) {
+            return $this->getRecordList()?->count() ?? 0;
+        }
+        return 0;
     }
 
     public function getNumberOfRecords(): int
@@ -618,6 +640,27 @@ class Instruction extends DataObject
         if ($this->NumberOfRecordsToProcessPerBatch > 1000 || $this->NumberOfRecordsToProcessPerBatch < 1) {
             $this->NumberOfRecordsToProcessPerBatch = $this->Config()->get('defaults')['NumberOfRecordsToProcessPerBatch'] ?? 100;
         }
+        if ($this->Title && !$this->isInDB() || $this->isChanged('Title')) {
+            $this->Title = $this->ensureUniqueTitle((string) $this->Title);
+        }
+    }
+    protected function ensureUniqueTitle(?string $baseTitle = null): string
+    {
+        if (!$baseTitle) {
+            return '';
+        }
+        $suffix = 1;
+        $newTitle = $baseTitle;
+
+        while (
+            $suffix < 99 &&
+            Instruction::get()->filter(['Title' => $newTitle])->exclude(['ID' => $this->ID ?: 0])->exists()
+        ) {
+            $suffix++;
+            $newTitle = $baseTitle . ' #' . $suffix;
+        }
+
+        return $newTitle;
     }
 
     protected function getFindErrorsOnlyInstruction(): string
@@ -857,5 +900,10 @@ class Instruction extends DataObject
     public function CMSEditLink(): string
     {
         return Injector::inst()->get(AdminInstructions::class)->getCMSEditLinkForManagedDataObject($this);
+    }
+
+    public function getRunLink(): string
+    {
+        return '/dev/tasks/acm-process-instructions/?instruction=' . $this->ID;
     }
 }

@@ -22,10 +22,25 @@ class ProcessInstructions extends BuildTask
 
     protected $processor;
 
+    protected $instruction = null;
+
+    public function setInstruction(Instruction $instruction)
+    {
+        $this->instruction = $instruction;
+        return $this;
+    }
+
     public function run($request)
     {
         DB::alteration_message($this->title);
         DB::alteration_message('... ' . $this->description);
+        if ($request && $request->getVar('instruction')) {
+            $this->instruction = Instruction::get()->byID($request->getVar('instruction'));
+            if (! $this->instruction) {
+                DB::alteration_message('... Instruction not found', 'error');
+                return;
+            }
+        }
         $this->processor = Injector::inst()->get(ProcessOneRecord::class);
         $this->cleanupInstructions();
         $this->getAnswers();
@@ -41,6 +56,11 @@ class ProcessInstructions extends BuildTask
             'Completed' => false,
             'Cancelled' => false,
         ]);
+        if ($this->instruction) {
+            $instructions = $instructions->filter([
+                'ID' => $this->instruction->ID,
+            ]);
+        }
         foreach ($instructions as $instruction) {
             if ($instruction->getIsReadyForProcessing()) {
                 DB::alteration_message('... Writing instruction: ' . $instruction->getTitle());
@@ -58,6 +78,11 @@ class ProcessInstructions extends BuildTask
             'Cancelled' => true,
             'Completed' => true,
         ]);
+        if ($this->instruction) {
+            $instructions = $instructions->filter([
+                'ID' => $this->instruction->ID,
+            ]);
+        }
         foreach ($instructions as $instruction) {
             DB::alteration_message('Processing instruction: ' . $instruction->getTitle());
             if (! $instruction->RunTest) {
@@ -93,6 +118,11 @@ class ProcessInstructions extends BuildTask
             'Accepted' => true,
             'IsTest' => false,
         ]);
+        if ($this->instruction) {
+            $recordProcesses = $recordProcesses->filter([
+                'InstructionID' => $this->instruction->ID,
+            ]);
+        }
         foreach ($recordProcesses as $recordProcess) {
             DB::alteration_message('... Updating original record: ' . $recordProcess->getRecordTitle(), 'created');
             $this->processor->updateOriginalRecord($recordProcess);
@@ -108,6 +138,9 @@ class ProcessInstructions extends BuildTask
             ['Rejected' => true],
             ['RecordID' => 0],
         ];
+        if ($this->instruction) {
+            $filters['InstructionID'] = $this->instruction->ID;
+        }
         foreach ($filters as $filter) {
             DB::alteration_message('... Deleting by filter: ' . json_encode($filter), 'deleted');
             $recordProcesses = RecordProcess::get()->filter($filter);
@@ -117,6 +150,11 @@ class ProcessInstructions extends BuildTask
             }
         }
         $recordProcesses = RecordProcess::get();
+        if ($this->instruction) {
+            $recordProcesses = $recordProcesses->filter([
+                'InstructionID' => $this->instruction->ID,
+            ]);
+        }
         foreach ($recordProcesses as $recordProcess) {
             DB::alteration_message('... Deleting record process without record: ' . $recordProcess->ID, 'deleted');
             if (! $recordProcess->getRecord()) {

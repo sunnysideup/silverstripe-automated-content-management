@@ -26,8 +26,11 @@ class ProcessOneRecord
             return;
         }
         if ($recordProcess->getCanProcess()) {
+            $connector = ConnectorBaseClass::inst();
             $recordProcess->Started = true;
             $recordProcess->Question = $question;
+            $recordProcess->LLMClient = $connector->getClientNameNice();
+            $recordProcess->LLMModel = $connector->getModelNice();
             $recordProcess->write();
             $answer = $this->sendToLLM($question);
             $answer = $this->removeQuotesFromAnswer($answer);

@@ -9,6 +9,7 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
+use SilverStripe\ORM\FieldType\DBHTMLText;
 use SilverStripe\View\SSViewer_FromString;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
@@ -31,6 +32,7 @@ class RecordProcess extends DataObject
         'RecordID' => 'Int',
         'Before' => 'Text',
         'After' => 'Text',
+        'IsTest' => 'Boolean',
         'ErrorFound' => 'Boolean',
         'Skip' => 'Boolean',
         'Started' => 'Boolean',
@@ -39,7 +41,8 @@ class RecordProcess extends DataObject
         'Accepted' => 'Boolean',
         'Rejected' => 'Boolean',
         'OriginalUpdated' => 'Boolean',
-        'IsTest' => 'Boolean',
+        'LLMClient' => 'Varchar(40)',
+        'LLMModel' => 'Varchar(40)',
     ];
 
     private static $has_one = [
@@ -51,8 +54,8 @@ class RecordProcess extends DataObject
         'Instruction.Title' => 'Action',
         'RecordTitle' => 'Record',
         'IsTest.Nice' => 'Test Only',
-        'Started.Nice' => 'Started Processing',
         'Completed.Nice' => 'Completed Processing',
+        'ResultPreviewLinkHTML' => 'Preview',
         'Accepted.Nice' => 'Change Accepted',
         'OriginalUpdated.Nice' => 'Originating Record Updated',
     ];
@@ -188,16 +191,16 @@ class RecordProcess extends DataObject
     }
 
 
-    public function getResultPreviewLinkHTML(): string
+    public function getResultPreviewLinkHTML(): DBHTMLText
     {
         if ($this->getCanProcess()) {
-            return 'not processed yet';
-        }
-        if ($this->getCanBeReviewed()) {
-            return '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review</a>';
+            $v = 'not processed yet';
+        } else if ($this->getCanBeReviewed()) {
+            $v = '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review Suggestion</a>';
         } else {
-            return '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review completed</a>';
+            $v = '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review completed</a>';
         }
+        return DBHTMLText::create_field('HTMLText', $v);
     }
 
     /**
@@ -227,6 +230,7 @@ class RecordProcess extends DataObject
     public function getCMSFields()
     {
         $fields = parent::getCMSFields();
+        $fields->removeByName(['Question', 'InstructionID', 'RecordID']);
         Injector::inst()->get(AddCastedVariablesHelper::class)->AddCastingFields(
             $this,
             $fields,
@@ -241,7 +245,6 @@ class RecordProcess extends DataObject
                 $beforeFieldName = 'BeforeNice';
             }
         }
-        $fields->removeByName('RecordID');
 
         $this->makeFieldsReadonly($fields);
         if ($this->getFindErrorsOnly()) {
@@ -305,6 +308,9 @@ class RecordProcess extends DataObject
             case 'Completed':
             case 'OriginalUpdated':
             case 'IsTest':
+            case 'LLMClient':
+            case 'LLMModel':
+            case 'Question':
                 return true;
             default:
                 break;
@@ -330,7 +336,7 @@ class RecordProcess extends DataObject
 
     public function getTitle(): string
     {
-        return $this->getRecordTitle();
+        return 'Updating ' . $this->getRecordTitle() . ' using ' . $this->Instruction()->Title;
     }
 
 

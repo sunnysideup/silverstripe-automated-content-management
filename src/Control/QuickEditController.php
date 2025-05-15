@@ -68,6 +68,7 @@ class QuickEditController extends Controller
         $this->deconstructParams(false);
 
         if ($this->instruction) {
+            return $this->redirect($this->instruction->CMSEditLink());
         }
         return $this->httpError(500, 'Could not create new instruction for this record type.');
     }
