@@ -85,11 +85,10 @@
 </head>
 <body>
 
-    <h1>Review Large Language Model (LLM / AI) Edit: $Title</h1>
-    <p>
-        This instruction ran on <a href="$RecordLink">$RecordTitle</a> (ID: $RecordID)
-        as part of the LLM Instruction named: <a href="$CMSEditLink">$Instruction.Title</a>.
-    </p>
+    <h1>LLM (AI) Suggestion</h1>
+    <h3>Instruction: <a href="$CMSEditLink">$Instruction.Title</a></h3>
+    <h3>Record: <a href="$RecordLink">$RecordTitle</a> (ID: $RecordID)</h3>
+    <h3>Field: $Instruction.FieldToChangeNice</h3>
 
     <div class="columns">
         <div class="column">
@@ -117,9 +116,13 @@
     </div>
 
     <div class="footer-buttons">
+    <% if CanBeReviewed %>
         <button class="button good-button"><a href="/$AcceptLink">Accept</a></button>
         <button class="button warning-button"><a href="/$AcceptAndUpdateLink">Accept and Update Record</a></button>
         <button class="button bad-button"><a href="/$RejectLink">Reject Suggestion</a></button>
+    <% else %>
+    <p>Sorry, you cannot review this suggestion.</p>
+    <% end_if %>
     </div>
 <script>
 document.querySelectorAll('button').forEach(button => {

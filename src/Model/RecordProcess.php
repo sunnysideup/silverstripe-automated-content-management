@@ -75,9 +75,12 @@ class RecordProcess extends DataObject
         'FindErrorsOnly' => 'Boolean',
         'CanProcess' => 'Boolean',
         'CanNotProcessAnymore' => 'Boolean',
+        'CanBeReviewed' => 'Boolean',
+        'AcceptedOrRejected' => 'Boolean',
         'RecordTitle' => 'Varchar',
         'RecordLink' => 'Varchar',
         'HydratedInstructions' => 'Text',
+        'ResultPreviewLinkHTML' => 'HTMLText',
         'BeforeHumanValue' => 'Text',
         'AfterHumanValue' => 'Text',
         'BeforeDatabaseValueForInspection' => 'Text',
@@ -125,6 +128,18 @@ class RecordProcess extends DataObject
         return $instruction->Cancelled || $this->Completed || $this->Skip;
     }
 
+    public function getCanBeReviewed(): bool
+    {
+        $instruction = $this->Instruction();
+        return !$instruction->Cancelled && $this->Completed && !$this->Accepted && !$this->Rejected && !$this->Skip;
+    }
+
+    public function getAcceptedOrRejected(): bool
+    {
+        $instruction = $this->Instruction();
+        return $instruction->Cancelled || $this->Accepted || $this->Rejected;
+    }
+
     public function getRecordTitle()
     {
         $record = $this->getRecord();
@@ -170,6 +185,19 @@ class RecordProcess extends DataObject
             $v .= PHP_EOL . PHP_EOL . $add;
         }
         return $v;
+    }
+
+
+    public function getResultPreviewLinkHTML(): string
+    {
+        if ($this->getCanProcess()) {
+            return 'not processed yet';
+        }
+        if ($this->getCanBeReviewed()) {
+            return '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review</a>';
+        } else {
+            return '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review completed</a>';
+        }
     }
 
     /**
@@ -233,14 +261,19 @@ class RecordProcess extends DataObject
         if ($record) {
             $link = $this->getRecordLink();
             if ($link) {
-                $title = '<a href="' . $link . '" target="_blank">' . $this->getRecordTitle() . '</a>';
+                $title = '<a href="' . $link . '">' . $this->getRecordTitle() . '</a>';
             } else {
                 $title = $this->getRecordTitle();
             }
             $fields->addFieldsToTab(
                 'Root.Main',
                 [
-                    $fields->dataFieldByName('InstructionID'),
+                    HTMLReadonlyField::create(
+                        'InstructionLink',
+                        'LLM (AI) Instruction',
+                        '<a href="' . $this->Instruction()->CMSEditLink() . '">' . $this->Instruction()->Title . '</a>'
+
+                    ),
                     HTMLReadonlyField::create(
                         'ViewRecord',
                         'Record Targetted',
@@ -248,9 +281,9 @@ class RecordProcess extends DataObject
 
                     ),
                     HTMLReadonlyField::create(
-                        'ResultPreviewLinkNice',
+                        'ResultPreviewLinkHTML',
                         'Compare Before / After',
-                        '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Compare Before / After and Apply / Decline</a>'
+                        $this->getResultPreviewLinkHTML()
                     ),
 
                 ],

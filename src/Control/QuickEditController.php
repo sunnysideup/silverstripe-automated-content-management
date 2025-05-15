@@ -154,6 +154,11 @@ class QuickEditController extends Controller
         if ($this->recordProcess) {
             $this->recordProcess->AcceptResult();
             $this->recordProcess->UpdateRecord();
+            $record = $this->recordProcess->getRecord();
+            $link = $record?->CMSEditLink();
+            if ($link) {
+                return $this->redirect($link);
+            }
             return $this->redirect($this->recordProcess->CMSEditLink());
         } else {
             return $this->httpError(404, 'Could not find preview results.');
