@@ -143,11 +143,13 @@ class DataObjectUpdateCMSFieldsHelper
                 ->filter([
                     'ClassNameToChange' => $owner->ClassName,
                     'FieldToChange' => $fieldName,
+                    'Cancelled' => 0,
                 ]);
         } else {
             $allInstructions = Instruction::get()
                 ->filter([
                     'ClassName' => $owner->ClassName,
+                    'Cancelled' => 0,
                 ]);
         }
 
@@ -171,6 +173,7 @@ class DataObjectUpdateCMSFieldsHelper
                 'Completed' => 1,
                 'Rejected' => 0,
                 'Accepted' => 0,
+
             ]);
         if ($recordsProcessed && $recordsProcessed->exists()) {
             $desc .= '
@@ -189,7 +192,6 @@ class DataObjectUpdateCMSFieldsHelper
         $existingLLMInstructionsForRunning = $allInstructions
             ->filter([
                 'StartedProcess' => 0,
-                'Cancelled' => 0,
             ]);
         if ($existingLLMInstructionsForRunning && $existingLLMInstructionsForRunning->exists()) {
             $desc .= '

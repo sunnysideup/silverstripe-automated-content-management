@@ -80,6 +80,7 @@ class RecordProcess extends DataObject
         'CanNotProcessAnymore' => 'Boolean',
         'CanBeReviewed' => 'Boolean',
         'AcceptedOrRejected' => 'Boolean',
+        'CanUpdateOriginalRecord' => 'Boolean',
         'RecordTitle' => 'Varchar',
         'RecordLink' => 'Varchar',
         'HydratedInstructions' => 'Text',
@@ -134,13 +135,34 @@ class RecordProcess extends DataObject
     public function getCanBeReviewed(): bool
     {
         $instruction = $this->Instruction();
-        return !$instruction->Cancelled && $this->Completed && !$this->Accepted && !$this->Rejected && !$this->Skip;
+        return
+            ! $instruction->Cancelled &&
+            $this->Completed &&
+            ! $this->Accepted &&
+            ! $this->Rejected &&
+            ! $this->Skip;
+    }
+
+    public function getCanUpdateOriginalRecord(): bool
+    {
+        $instruction = $this->Instruction();
+        return
+            ! $instruction->Cancelled &&
+            ! $instruction->FindErrorsOnly &&
+            $this->Accepted &&
+            ! $this->Skip &&
+            ! $this->OriginalUpdated;
     }
 
     public function getAcceptedOrRejected(): bool
     {
         $instruction = $this->Instruction();
-        return $instruction->Cancelled || $this->Accepted || $this->Rejected;
+        return
+            $instruction->Cancelled ||
+            $this->Accepted ||
+            $this->Rejected ||
+            $this->OriginalUpdated ||
+            $this->Skip;
     }
 
     public function getRecordTitle()

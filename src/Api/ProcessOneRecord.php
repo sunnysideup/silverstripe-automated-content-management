@@ -45,7 +45,7 @@ class ProcessOneRecord
 
     public function updateOriginalRecord(RecordProcess $recordProcess)
     {
-        if ($recordProcess->Accepted) {
+        if ($recordProcess->getCanUpdateOriginalRecord()) {
             $record = $recordProcess->getRecord();
             $isPublished = $record->hasMethod('isPublished') && $record->isPublished();
             if ($isPublished) {
