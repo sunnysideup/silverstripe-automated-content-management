@@ -10,6 +10,7 @@ use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\FieldType\DBHTMLText;
+use SilverStripe\Security\Permission;
 use SilverStripe\View\SSViewer_FromString;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
@@ -486,6 +487,11 @@ class RecordProcess extends DataObject
     public function canCreate($member = null, $context = [])
     {
         return false;
+    }
+
+    public function canView($member = null): bool
+    {
+        return Permission::check('CMS_ACCESS_LLMEDITOR', 'any', $member);
     }
 
     public function canEdit($member = null)

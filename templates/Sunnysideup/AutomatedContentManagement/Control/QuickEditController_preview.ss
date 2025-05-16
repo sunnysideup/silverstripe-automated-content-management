@@ -85,11 +85,10 @@
 </head>
 <body>
 
-    <h1>LLM (AI) Suggestion</h1>
+    <h1><a href="$CMSEditLink">LLM (AI) Suggestion</a></h1>
     <h3>Instruction: <a href="$CMSEditLink">$Instruction.Title</a></h3>
     <h3>Record to updated: <a href="$RecordLink">$RecordTitle (ID: $RecordID)</a></h3>
     <h3>Field to be updated: <i>$Instruction.FieldToChangeNice</i></h3>
-    <h3><a href="$CMSEditLink">View Log</a></h3>
 
     <h2>Before ➔ After</h2>
     <div class="columns">
@@ -109,7 +108,7 @@
         </div>
         <div class="column">
             <h3>When was it lodged?</h3>
-            <p>Ran about {$Created.Ago}</p>
+            <p>About {$Created.Ago}</p>
             <h3>Status</h3>
             <p>$Status</p>
         </div>
@@ -121,7 +120,7 @@
         <button class="button warning-button"><a href="/$AcceptAndUpdateLink">Accept and Update Record</a></button>
         <button class="button bad-button"><a href="/$RejectLink">Reject Suggestion</a></button>
     <% else %>
-    <p>Sorry, you cannot review this suggestion.</p>
+    <p>You can not change the status of this suggestion.</p>
     <% end_if %>
     </div>
 <script>

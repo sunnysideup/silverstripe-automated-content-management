@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Api;
 
+use SilverStripe\Core\ClassInfo;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectInterface;
+use SilverStripe\ORM\FieldType\DBBoolean;
+use SilverStripe\ORM\FieldType\DBEnum;
 use SilverStripe\ORM\FieldType\DBString;
 
 class InstructionsForInstructions
@@ -18,6 +21,26 @@ class InstructionsForInstructions
             throw new \InvalidArgumentException('Record must be an instance of DataObject. Provided: ' . get_class($record));
         }
         $this->record = $record;
+    }
+
+    public function getExampleInstruction(string $fieldName): string
+    {
+        $fieldNameNice = $this->record->fieldLabel($fieldName);
+        $nameOfRecord = $this->record->i18n_singular_name();
+        return '
+        <div style="font-style: italic; ">
+        I am trying to update a ' . $nameOfRecord . ' record.
+        <br />I would like to improve the "' . $fieldNameNice . '" field in this record.
+        The current value of the ' . $fieldNameNice . ' is:
+        <br />
+        <br />
+        <strong>$' . $fieldName . '</strong>
+        <br />
+        (N.B. This variable will (with the dollar sign) be converted to the actual value for the record. More variables are listed below.)
+        <br />
+        <br />
+        Can you please improve it  ... here you put how you would like to impove it (e.g. make it shorter).
+        </div>';
     }
 
     public function getInstructions(): string
@@ -44,7 +67,8 @@ class InstructionsForInstructions
         }
 
         return
-            '<h2>Examples of variable usage in your instructions</h2>'
+            '<div style="padding: 2rem;">'
+            .  '<h2>Examples of variable usage in your instructions</h2>'
             . '<p>'
             . 'e.g. if you have a record with a Title, Description Field and you are trying to get a summary for each record then your instruction could be something like:'
             . '<br ><em>Consider the Title: $Title and the Description: "$Description" and summarise it in less than five words.</em>'
@@ -52,7 +76,8 @@ class InstructionsForInstructions
             . '<br /><em>Consider the Title: $Title <% if $Description %>and the Description: $Description<% end_if %> value(s) for this record and summarise it in less than five words.</em>.'
             . '</p>'
             . '<p>To use values from the record at hand, use the following field variables:</p>'
-            . $sectionsHtml;
+            . $sectionsHtml
+            . '</div>';
     }
 
     protected function getListOfFields(): array
@@ -77,8 +102,8 @@ class InstructionsForInstructions
             ? ($fieldLabels[$prefix] ?? $prefix)
             : $record->i18n_singular_name();
 
-        $mainKey  = 'Main fields for <strong>' . $prefixName . '</strong>';
-        $otherKey = 'Other fields <strong>' . $prefixName . '</strong>';
+        $mainKey  = 'Main fields for <i>' . $prefixName . '</i>';
+        $otherKey = 'Other fields for <i>' . $prefixName . '</i>';
 
         $mainFields  = [];
         $otherFields = [];
@@ -86,17 +111,65 @@ class InstructionsForInstructions
         foreach ($record->config()->get('db') as $name => $type) {
             $label       = $fieldLabels[$name] ?? $name;
             $placeholder = $prefixString . $name;
-
-            if ($record->dbObject($name) instanceof DBString) {
+            $obj = $record->dbObject($name);
+            $type = $this->typeOfField($obj);
+            $label .=  ' (' . $type . ')';
+            $placeholder .= $this->qualifierToAdd($obj);
+            if ($this->isMainField($obj)) {
                 $mainFields[$label]  = $placeholder;
             } else {
                 $otherFields[$label] = $placeholder;
             }
         }
-
+        asort($mainFields);
+        asort($otherFields);
         return [
             $mainKey  => $mainFields,
             $otherKey => $otherFields,
         ];
+    }
+
+    protected function isMainField($obj): bool
+    {
+        if ($obj instanceof DBEnum) {
+            return false;
+        }
+        if ($obj instanceof DBString) {
+            return true;
+        }
+        return false;
+    }
+
+    protected function typeOfField($obj): string
+    {
+        $string = get_class($obj);
+        $string = ClassInfo::shortName(nameOrObject: $string);
+        if (str_starts_with($string, 'DB')) {
+            $string = substr($string, 2);
+        }
+        switch ($string) {
+            case 'HTMLText':
+                return 'HTML';
+            case 'HTMLVarchar':
+                return 'HTML';
+            case 'Varchar':
+                return 'Short Text';
+            case 'Text':
+                return 'Long Text';
+            case 'Boolean':
+                return 'True/False';
+            case 'Enum':
+                return 'Predefined List';
+            default:
+                return $string;
+        }
+    }
+
+    protected function qualifierToAdd($obj): string
+    {
+        if ($obj instanceof DBBoolean) {
+            return '.Nice';
+        }
+        return '';
     }
 }

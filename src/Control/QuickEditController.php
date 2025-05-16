@@ -6,31 +6,33 @@ use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPResponse;
 use SilverStripe\Control\RequestHandler;
+use SilverStripe\Security\PermissionProvider;
 use SilverStripe\SiteConfig\SiteConfig;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 
 class QuickEditController extends Controller
 {
+
     private static $url_segment = 'llm-quick-edit';
     private static $allowed_actions = [
-        'turnllmfunctionsonoroff' => 'LLMEdit',
+        'turnllmfunctionsonoroff' => 'CMS_ACCESS_LLMEDITOR',
         // create instruction for record
-        'createinstructionforonerecord' => 'LLMEdit',
-        'createinstructionforonerecordonefield' => 'LLMEdit',
+        'createinstructionforonerecord' => 'CMS_ACCESS_LLMEDITOR',
+        'createinstructionforonerecordonefield' => 'CMS_ACCESS_LLMEDITOR',
         // for instruction for class
-        'createinstructionforclass' => 'LLMEdit',
-        'createinstructionforclassonefield' => 'LLMEdit',
+        'createinstructionforclass' => 'CMS_ACCESS_LLMEDITOR',
+        'createinstructionforclassonefield' => 'CMS_ACCESS_LLMEDITOR',
         // add record to instruction
-        'selectexistinginstructionforonerecord' => 'LLMEdit',
-        'selectexistinginstructionforonerecordonefield' => 'LLMEdit',
+        'selectexistinginstructionforonerecord' => 'CMS_ACCESS_LLMEDITOR',
+        'selectexistinginstructionforonerecordonefield' => 'CMS_ACCESS_LLMEDITOR',
 
         // preview results
-        'preview' => 'LLMEdit',
+        'preview' => 'CMS_ACCESS_LLMEDITOR',
 
         // action result
-        'acceptresult' => 'LLMEdit',
-        'acceptresultandupdate' => 'LLMEdit',
-        'rejectresult' => 'LLMEdit',
+        'acceptresult' => 'ADMIN',
+        'acceptresultandupdate' => 'ADMIN',
+        'rejectresult' => 'CMS_ACCESS_LLMEDITOR',
     ];
 
     protected $record = null;

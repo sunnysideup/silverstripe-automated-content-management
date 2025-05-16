@@ -14,6 +14,7 @@ use SilverStripe\Forms\GridField\GridFieldAddNewButton;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordViewer;
 use SilverStripe\Forms\GridField\GridFieldDeleteAction;
+use SilverStripe\Forms\HTMLEditor\HTMLEditorField_Readonly;
 use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\Forms\OptionsetField;
@@ -26,6 +27,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 
 use SilverStripe\Security\Member;
+use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
@@ -214,9 +216,11 @@ class Instruction extends DataObject
             $fields->dataFieldByName('RunTest')
                 ->setDescription(
                     'Checking this option will allow you to run the results for just one randomly selected record. <br />
-                    The suggested changes will not be applied. <br />
+                    The suggested changes will not be applied until you manually approve them. <br />
                     You will need to enter all the required fields first before you can check this box.<br />
-                    After you check the box, click save and then check the results in the Records tab. <br />
+                    After you check the box, click save and then check the results in the Process Log. <br />
+                    <strong>Please do this with care as processing a large number of records will cost time and money.</strong>
+                    <br />
                     '
                 );
             $grids = [
@@ -338,6 +342,11 @@ class Instruction extends DataObject
                     $fields->addFieldsToTab(
                         'Root.Main',
                         [
+                            HTMLEditorField_Readonly::create(
+                                'InstructionsForInstructions',
+                                'Example Instructions',
+                                $instructionsCreator->getExampleInstruction($this->FieldToChange)
+                            ),
                             ToggleCompositeField::create(
                                 'InstructionDetailsHolder',
                                 'Variables Available for Instructions',
@@ -678,9 +687,7 @@ class Instruction extends DataObject
             'Please return the answer as a value suitable for insertion into a
             ' . $this->getRecordType() . ' field type in a Silverstripe CMS Database.
             For example, if the field is a Varchar field, then please return a string.
-            For HTMLText, please make sure all text is wrapped in any of the following tags: p, ul, ol, li, or h2 - h6
-            also make sure that all HTML is valid.
-            Never wrap returns in things like ```html.'
+            For HTML, please make sure all text is wrapped in any of the following html tags: p, ul, ol, li, or h2 - h6 only. Do not add styles or classes to the tags.'
         );
     }
 
@@ -718,23 +725,8 @@ class Instruction extends DataObject
     }
 
 
-    public function canEdit($member = null)
-    {
-        if ($this->Cancelled || $this->getReviewCompleted()) {
-            return false;
-        }
-        return parent::canEdit($member);
-    }
 
 
-
-    public function canDelete($member = null)
-    {
-        if ($this->StartedProcess) {
-            return false;
-        }
-        return parent::canDelete($member);
-    }
 
     protected function AddRecords(?bool $isTest = false, array|string|null $filter = null, ?int $limit = null): ?RecordProcess
     {
@@ -905,5 +897,28 @@ class Instruction extends DataObject
     public function getRunLink(): string
     {
         return '/dev/tasks/acm-process-instructions/?instruction=' . $this->ID;
+    }
+
+
+    public function canView($member = null): bool
+    {
+        return Permission::check('CMS_ACCESS_LLMEDITOR', 'any', $member);
+    }
+
+
+    public function canEdit($member = null)
+    {
+        if ($this->Cancelled || $this->getReviewCompleted()) {
+            return false;
+        }
+        return Permission::check('CMS_ACCESS_LLMEDITOR', 'any', $member);
+    }
+
+    public function canDelete($member = null)
+    {
+        if ($this->StartedProcess) {
+            return false;
+        }
+        return $this->canEdit($member);
     }
 }

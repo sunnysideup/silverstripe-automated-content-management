@@ -236,10 +236,10 @@ class DataObjectUpdateCMSFieldsHelper
         if (self::$record_count_cache[$owner->ClassName] > 1) {
             if ($fieldName) {
                 $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
-                $toUpdateNameClass = 'for this Field (' . $fieldNameNice . ') on All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type (' . $owner->i18m_singular_name() . ')';
+                $toUpdateNameClass = 'for this Field (' . $fieldNameNice . ') on All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type (' . $owner->i18n_singular_name() . ')';
             } else {
                 $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
-                $toUpdateNameClass = 'for All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type (' . $owner->i18_singular_name() . ')';
+                $toUpdateNameClass = 'for All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type (' . $owner->i18n_singular_name() . ')';
             }
             $desc .= '<div><a href="' . $link . '">++ Update ' . $toUpdateNameClass . '</a></div>';
         }
