@@ -143,6 +143,11 @@ class QuickEditController extends Controller
         $this->deconstructParams(true);
         if ($this->recordProcess) {
             $this->recordProcess->AcceptResult();
+            $record = $this->recordProcess->getRecord();
+            $link = $record?->CMSEditLink();
+            if ($link) {
+                return $this->redirect($link);
+            }
             return $this->redirect($this->recordProcess->CMSEditLink());
         } else {
             return $this->httpError(404, 'Could not find results.');
@@ -171,6 +176,11 @@ class QuickEditController extends Controller
         $this->deconstructParams(true);
         if ($this->recordProcess) {
             $this->recordProcess->DeclineResult();
+            $record = $this->recordProcess->getRecord();
+            $link = $record?->CMSEditLink();
+            if ($link) {
+                return $this->redirect($link);
+            }
             return $this->redirect($this->recordProcess->CMSEditLink());
         } else {
             return $this->httpError(404, 'Could not find results.');

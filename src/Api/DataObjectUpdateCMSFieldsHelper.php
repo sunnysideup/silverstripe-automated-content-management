@@ -143,6 +143,7 @@ class DataObjectUpdateCMSFieldsHelper
 
     public function createDescriptionForOneRecordAndField($owner, ?string $fieldName = null)
     {
+        $fieldNameNice = $owner->fieldLabel($fieldName);
         if ($fieldName) {
             $allInstructions = Instruction::get()
                 ->filter([
@@ -158,7 +159,7 @@ class DataObjectUpdateCMSFieldsHelper
                 ]);
         }
 
-        $toUpdateName = $fieldName ? 'Field' : 'Record';
+        $toUpdateName = $fieldName ? 'Field (' . $fieldNameNice . ')' : 'Record';
 
         $desc = '<div class="llm-field-explanation">';
 
@@ -224,28 +225,24 @@ class DataObjectUpdateCMSFieldsHelper
 
         $desc .= '<h2>Create new LLM (AI) instructions</h2>';
 
-
         if ($fieldName) {
             $link = $owner->getCreateNewLLMInstructionForOneRecordOneFieldLink($fieldName);
+            $add = 'for this record';
         } else {
             $link = $owner->getCreateNewLLMInstructionForOneRecordLink();
+            $add = '';
         }
-        $desc .= '
-        <div>
-            <a href="' . $link . '">+ Create LLM (AI) instructions to update this ' . $toUpdateName . '</a>
-        </div>';
+        $desc .= '<div><a href="' . $link . '">+ for this ' . $toUpdateName . ' ' . $add . '</a></div>';
         if (self::$record_count_cache[$owner->ClassName] > 1) {
             if ($fieldName) {
                 $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
-                $toUpdateNameClass = 'Field on All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type';
+                $toUpdateNameClass = 'for this Field (' . $fieldNameNice . ') on All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type (' . $owner->i18m_singular_name() . ')';
             } else {
                 $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
-                $toUpdateNameClass = 'All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type ';
+                $toUpdateNameClass = 'for All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type (' . $owner->i18_singular_name() . ')';
             }
-            $desc .= '<div><a href="' . $link . '">++ Create LLM (AI) instructions to update this ' . $toUpdateNameClass . '</a></div>';
+            $desc .= '<div><a href="' . $link . '">++ Update ' . $toUpdateNameClass . '</a></div>';
         }
-
-
 
         $desc .= '</div>';
 

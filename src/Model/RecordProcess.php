@@ -89,6 +89,7 @@ class RecordProcess extends DataObject
         'AfterHumanValue' => 'Text',
         'BeforeDatabaseValueForInspection' => 'Text',
         'AfterDatabaseValueForInspection' => 'Text',
+        'Status' => 'Varchar',
     ];
 
     private static $field_labels = [
@@ -216,11 +217,11 @@ class RecordProcess extends DataObject
     public function getResultPreviewLinkHTML(): DBHTMLText
     {
         if ($this->getCanProcess()) {
-            $v = 'not processed yet';
+            $v = 'Not processed yet';
         } else if ($this->getCanBeReviewed()) {
             $v = '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review Suggestion</a>';
         } else {
-            $v = '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review completed</a>';
+            $v = '<a href="' . $this->getResultPreviewLink() . '" target="_blank">View Review Outcome</a>';
         }
         return DBHTMLText::create_field('HTMLText', $v);
     }
@@ -380,6 +381,28 @@ class RecordProcess extends DataObject
     public function getAfterDatabaseValueForInspection(): string
     {
         return $this->makeDatabaseValueVisible($this->getAfterDatabaseValue());
+    }
+
+    public function getStatus(): string
+    {
+        $a = [];
+        if ($this->IsTest) {
+            $a[] = 'Is a Test Only';
+        }
+        if ($this->OriginalUpdated) {
+            $a[] = 'Updated';
+        } elseif ($this->Accepted) {
+            $a[] = 'Result Accepted';
+        } elseif ($this->Rejected) {
+            $a[] = 'Result Rejected';
+        } elseif ($this->Completed) {
+            $a[] = 'Question Completed';
+        } elseif ($this->Started) {
+            $a[] = 'Started';
+        } else {
+            $a[] = 'Processing not started yet';
+        }
+        return implode(', ', $a);
     }
 
     public function getIsErrorAnswer(?string $answer): bool
