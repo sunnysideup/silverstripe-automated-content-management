@@ -196,15 +196,15 @@ class RecordProcess extends DataObject
         }
         $description = $this->Instruction()->Description;
         $record = $this->getRecord();
-        $v = '';
+        $value =  '';
         if ($record) {
             $template = SSViewer_FromString::create($description);
             //FUTURE: SSViewer::create()->renderString($description);
             $return = $template->process($record);
             if ($return instanceof DBField) {
-                $v = $return->forTemplate();
+                $value =  $return->forTemplate();
             } else {
-                $v = $return;
+                $value =  $return;
             }
         }
         $add = $this->getAlwaysAddedInstruction();
@@ -218,11 +218,11 @@ class RecordProcess extends DataObject
     public function getResultPreviewLinkHTML(): DBHTMLText
     {
         if ($this->getCanProcess()) {
-            $v = 'Not processed yet';
+            $value =  'Not processed yet';
         } else if ($this->getCanBeReviewed()) {
-            $v = '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review Suggestion</a>';
+            $value =  '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review Suggestion</a>';
         } else {
-            $v = '<a href="' . $this->getResultPreviewLink() . '" target="_blank">View Review Outcome</a>';
+            $value =  '<a href="' . $this->getResultPreviewLink() . '" target="_blank">View Review Outcome</a>';
         }
         return DBHTMLText::create_field('HTMLText', $v);
     }
@@ -458,25 +458,48 @@ class RecordProcess extends DataObject
     {
         $type = $this->getRecordType();
         switch ($type) {
+            case 'HTMLText':
+            case 'HTMLVarchar':
+            case 'HTML':
+                break;
             case 'Varchar':
             case 'Text':
-                return (string) $value;
+                $value =  (string) strip_tags((string) $value);
+                break;
             case 'Int':
-                return (int) $value;
+                $value = strip_tags((string) $value);
+                $value =  (int) $value;
+                break;
             case 'Float':
-                return (float) $value;
+            case 'Currency':
+                $value = strip_tags((string) $value);
+                $value =  (float) $value;
+                break;
             case 'Boolean':
-                if ($value === 'true' || $value === '1' || $value === 'yes' || $value === 'on' || $value === 'True' || $value === true) {
-                    return true;
+                if ($value === 1 || $value === true) {
+                    $value = true;
+                } else {
+                    $value = strtolower(strip_tags((string) $value));
+                    if ($value === 'true' || $value === '1' || $value === 'yes' || $value === 'on') {
+                        $value =  true;
+                    } else {
+                        $value =  false;
+                    }
                 }
-                return false;
+                break;
             case 'Date':
-                return date('Y-m-d', strtotime($value));
+                $value = strip_tags((string) $value);
+                $value =  date('Y-m-d', strtotime($value));
+                break;
             case 'Datetime':
-                return date('Y-m-d H:i:s', strtotime($value));
+                $value = strip_tags((string) $value);
+                $value =  date('Y-m-d H:i:s', strtotime($value));
+                break;
             default:
-                return (string) $value;
+                $value = strip_tags((string) $value);
+                $value =  (string) $value;
         }
+        return $value;
     }
 
     public function getRecordType(): ?string
