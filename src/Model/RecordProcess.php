@@ -209,9 +209,9 @@ class RecordProcess extends DataObject
         }
         $add = $this->getAlwaysAddedInstruction();
         if ($add) {
-            $v .= PHP_EOL . PHP_EOL . $add;
+            $value .= PHP_EOL . PHP_EOL . $add;
         }
-        return $v;
+        return $value;
     }
 
 
@@ -224,7 +224,7 @@ class RecordProcess extends DataObject
         } else {
             $value =  '<a href="' . $this->getResultPreviewLink() . '" target="_blank">View Review Outcome</a>';
         }
-        return DBHTMLText::create_field('HTMLText', $v);
+        return DBHTMLText::create_field('HTMLText', $value);
     }
 
     /**
