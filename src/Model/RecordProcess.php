@@ -360,7 +360,7 @@ class RecordProcess extends DataObject
 
     public function getTitle(): string
     {
-        return 'Updating ' . $this->getRecordTitle() . ' using ' . $this->Instruction()->Title;
+        return 'Updating record "' . $this->getRecordTitle() . '" using instruction "' . $this->Instruction()->Title . '"';
     }
 
 

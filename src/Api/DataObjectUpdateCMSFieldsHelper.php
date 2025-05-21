@@ -24,16 +24,19 @@ class DataObjectUpdateCMSFieldsHelper
     use Injectable;
     use Configurable;
 
+    private static string $tab_name = 'Root.LLM';
+
 
     public static function my_link_builder(mixed ...$args): string
     {
         foreach ($args as $key => $arg) {
+            $arg = str_replace('\\', '-', $arg);
             $args[$key] = rawurlencode($arg);
         }
         return self::my_link(Controller::join_links(...$args));
     }
 
-    public static function my_link(?string $action = null): string
+    private static function my_link(?string $action = null): string
     {
         $link = Controller::join_links(
             Config::inst()->get(QuickEditController::class, 'url_segment'),
@@ -47,9 +50,6 @@ class DataObjectUpdateCMSFieldsHelper
 
     public function updateCMSFields($owner, FieldList $fields)
     {
-        if ($owner instanceof Instruction || $owner instanceof RecordProcess) {
-            return;
-        }
         $acceptableClasses = Injector::inst()->get(ClassAndFieldInfo::class)->getListOfClasses(
             array_replace(
                 Config::inst()->get(Instruction::class, 'class_and_field_inclusion_exclusion_schema'),
@@ -61,10 +61,6 @@ class DataObjectUpdateCMSFieldsHelper
         }
         // Add your custom fields to the CMS fields here
         if ($owner->ID && $owner->exists() && $owner->canEdit()) {
-            if (! isset(self::$record_count_cache[$owner->ClassName])) {
-                $className = $owner->ClassName;
-                self::$record_count_cache[$owner->ClassName] = $className::get()->count();
-            }
             if (!isset(self::$fields_completed[$owner->ClassName])) {
                 self::$fields_completed[$owner->ClassName] = [];
             }
@@ -91,10 +87,8 @@ class DataObjectUpdateCMSFieldsHelper
             }
             $field = $fields->dataFieldByName($acceptableFieldName);
             if (! $field) {
-                // echo 'Field not found: ' . $acceptableFieldName . "\n";
                 continue;
             }
-
             // echo 'Field found: ' . $acceptableFieldName . "\n";
             $this->addLinksToInstructionsToOneField($owner, $field, $fields);
         }
@@ -130,7 +124,7 @@ class DataObjectUpdateCMSFieldsHelper
             if ($description instanceof DBField) {
                 $description = $description->getValue();
             }
-            $description .= $this->createDescriptionForOneRecordAndField(
+            $description .= $this->getDescriptionForOneRecordAndField(
                 $owner,
                 $field->getName()
             );
@@ -141,127 +135,136 @@ class DataObjectUpdateCMSFieldsHelper
         // update field
     }
 
-    public function createDescriptionForOneRecordAndField($owner, ?string $fieldName = null)
+    public function getDescriptionForOneRecordAndField($owner, ?string $fieldName = null)
     {
-        $fieldNameNice = $owner->fieldLabel($fieldName);
-        if ($fieldName) {
-            $allInstructions = Instruction::get()
-                ->filter([
-                    'ClassNameToChange' => $owner->ClassName,
-                    'FieldToChange' => $fieldName,
-                    'Cancelled' => 0,
-                ]);
-        } else {
-            $allInstructions = Instruction::get()
-                ->filter([
-                    'ClassName' => $owner->ClassName,
-                    'Cancelled' => 0,
-                ]);
-        }
+        if ($this->IsEnabledClassName($owner) && $this->IsEnabledFieldName($fieldName)) {
 
-        $toUpdateName = $fieldName ? 'Field (' . $fieldNameNice . ')' : 'Record';
-
-        $desc = '<div class="llm-field-explanation">';
-
-
-        $title = '<span class="font-icon-menu-settings"></span>';
-        $action = '/admin/settings#Root_LLM';
-        $desc .= '<div class="edit-settings-llm-instructions"><a href="' . $action . '" title="Edit LLM Settings">' . $title . '</a></div>';
-
-        $title = '<span class="font-icon-cancel"></span>';
-        $action = self::my_link('turnllmfunctionsonoroff/off');
-        $desc .= '<div class="turn-off-llm-instructions"><a href="' . $action . '" title="Stop LLM Editing for now">' . $title . '</a></div>';
-
-
-        $recordsProcessed = RecordProcess::get()
-            ->filter([
-                'InstructionID' => $allInstructions->columnUnique('ID') + [-1 => -1],
-                'Completed' => 1,
-                'Rejected' => 0,
-                'Accepted' => 0,
-
-            ]);
-        if ($recordsProcessed && $recordsProcessed->exists()) {
-            $desc .= '
-                <h2>Review processed LLM (AI) instructions to accept / decline</h2>';
-            foreach ($recordsProcessed as $recordProcessed) {
-                $desc .= '
-                    <div>
-                        <a href="' . $recordProcessed->CMSEditLink() . '" class="icon-on-right" title="Review log"><span class="font-icon-info-circled"></span></a>
-                        ' . $recordProcessed->getTitle() . ':
-                        ' . $recordProcessed->getResultPreviewLinkHTML() . '
-                    </div>';
-            }
-        }
-
-
-        $existingLLMInstructionsForRunning = $allInstructions
-            ->filter([
-                'StartedProcess' => 0,
-            ]);
-        if ($existingLLMInstructionsForRunning && $existingLLMInstructionsForRunning->exists()) {
-            $desc .= '
-                <h2>Use existing instruction to update this ' . $toUpdateName . '</h2>';
-            foreach ($existingLLMInstructionsForRunning as $instruction) {
-                $existsAlready = $instruction->getRecordList()->filter(['ID' => $owner->ID]);
-                if ($existsAlready) {
-                    $action = 'Already Added';
-                    $link = $instruction->CMSEditLink();
-                } else {
-                    $action = 'Add this Record';
-                    if ($fieldName) {
-                        $link = $instruction->getSelectExistingLLMInstructionForOneRecordOneFieldLink($owner, $fieldName);
-                    } else {
-                        $link = $instruction->getSelectExistingLLMInstructionForOneRecordLink($owner);
-                    }
-                }
-                $desc .= '
-                    <div>
-                        <a href="' . $instruction->CMSEditLink() . '" class="icon-on-right"><span class="font-icon-info-circled"></span></a>
-                        ' . $instruction->getTitle() . ': <a href="' . $link . '">' . $action . '</a>
-                    </div>';
-            }
-        }
-
-        $desc .= '<h2>Create new LLM (AI) instructions</h2>';
-
-        if ($fieldName) {
-            $link = $owner->getCreateNewLLMInstructionForOneRecordOneFieldLink($fieldName);
-            $add = 'for this record';
-        } else {
-            $link = $owner->getCreateNewLLMInstructionForOneRecordLink();
-            $add = '';
-        }
-        $desc .= '<div><a href="' . $link . '">+ for this ' . $toUpdateName . ' ' . $add . '</a></div>';
-        if (self::$record_count_cache[$owner->ClassName] > 1) {
+            $fieldNameNice = $owner->fieldLabel($fieldName);
+            $recordNameNice = $owner->i18n_singular_name();
             if ($fieldName) {
-                $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
-                $toUpdateNameClass = 'for this Field (' . $fieldNameNice . ') on All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type (' . $owner->i18n_singular_name() . ')';
+                $allInstructions = Instruction::get()
+                    ->filter([
+                        'ClassNameToChange' => $owner->ClassName,
+                        'FieldToChange' => $fieldName,
+                        'Cancelled' => 0,
+                    ]);
             } else {
-                $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
-                $toUpdateNameClass = 'for All Records (' . self::$record_count_cache[$owner->ClassName] . ') of this Type (' . $owner->i18n_singular_name() . ')';
+                $allInstructions = Instruction::get()
+                    ->filter([
+                        'ClassName' => $owner->ClassName,
+                        'Cancelled' => 0,
+                    ]);
             }
-            $desc .= '<div><a href="' . $link . '">++ Update ' . $toUpdateNameClass . '</a></div>';
+
+            $toUpdateName = $fieldName ? 'Field (' . $fieldNameNice . ')' : 'Record (' . $recordNameNice . ')';
+
+            $desc = '<div class="llm-field-explanation">';
+
+
+            $title = '<span class="font-icon-menu-settings"></span>';
+            $action = '/admin/settings#Root_LLM';
+            $desc .= '<div class="edit-settings-llm-instructions"><a href="' . $action . '" title="Edit LLM Settings">' . $title . '</a></div>';
+
+            $title = '<span class="font-icon-cancel"></span>';
+            $action = self::my_link_builder('turnllmfunctionsonoroff', 'off');
+            $desc .= '<div class="turn-off-llm-instructions"><a href="' . $action . '" title="Stop LLM Editing for now">' . $title . '</a></div>';
+
+
+            $recordsProcessed = RecordProcess::get()
+                ->filter([
+                    'InstructionID' => $allInstructions->columnUnique('ID') + [-1 => -1],
+                    'Completed' => 1,
+                    'Rejected' => 0,
+                    'Accepted' => 0,
+
+                ]);
+            if ($recordsProcessed && $recordsProcessed->exists()) {
+                $desc .= '
+                    <h2>Review processed LLM (AI) instructions to accept / decline</h2>';
+                foreach ($recordsProcessed as $recordProcessed) {
+                    $desc .= '
+                        <div>
+                            <a href="' . $recordProcessed->CMSEditLink() . '" class="icon-on-right" title="Review log"><span class="font-icon-info-circled"></span></a>
+                            ' . $recordProcessed->getResultPreviewLinkHTML() . ' made by
+                            "' . $recordProcessed->Instruction()->Title . '"
+                        </div>';
+                }
+            }
+
+
+            $existingLLMInstructionsForRunning = $allInstructions
+                ->filter([
+                    'StartedProcess' => 0,
+                ]);
+            if ($existingLLMInstructionsForRunning && $existingLLMInstructionsForRunning->exists()) {
+                $desc .= '
+                    <h2>Use existing instruction to update this ' . $toUpdateName . '</h2>';
+                foreach ($existingLLMInstructionsForRunning as $instruction) {
+                    $existsAlready = $instruction->getRecordList()->filter(['ID' => $owner->ID]);
+                    if ($existsAlready) {
+                        $action = 'this record is already included in the instruction';
+                        $link = $instruction->CMSEditLink();
+                    } else {
+                        $action = 'add this Record';
+                        if ($fieldName) {
+                            $link = $instruction->getSelectExistingLLMInstructionForOneRecordOneFieldLink($owner, $fieldName);
+                        } else {
+                            $link = $instruction->getSelectExistingLLMInstructionForOneRecordLink($owner);
+                        }
+                    }
+                    $desc .= '
+                        <div>
+                            <a href="' . $instruction->CMSEditLink() . '" class="icon-on-right"><span class="font-icon-info-circled"></span></a>
+                            <a href="' . $link . '">' . $instruction->getTitle() . '</a>: ' . $action . '
+                        </div>';
+                }
+            }
+
+            $desc .= '<h2>Create new LLM (AI) instructions</h2>';
+
+            if ($fieldName) {
+                $link = $owner->getCreateNewLLMInstructionForOneRecordOneFieldLink($fieldName);
+                $add = 'for this record (' . $recordNameNice . ')';
+            } else {
+                $link = $owner->getCreateNewLLMInstructionForOneRecordLink();
+                $add = '';
+            }
+            $desc .= '<div><a href="' . $link . '">+ for this ' . $toUpdateName . ' ' . $add . '</a></div>';
+            $count = $this->getRecordCount($owner);
+            if ($count > 1) {
+                if ($fieldName) {
+                    $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
+                    $toUpdateNameClass = 'for this field (' . $fieldNameNice . ') on All Records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
+                } else {
+                    $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
+                    $toUpdateNameClass = 'for all records (' . $count . ') of this Type (' . $owner->i18n_singular_name() . ')';
+                }
+                $desc .= '<div><a href="' . $link . '">++ Update ' . $toUpdateNameClass . '</a></div>';
+            }
+
+            $desc .= '</div>';
+        } else {
+            // 🤖
+            $link = $this->getBestEnableLink($owner, $fieldName);
+            $desc = '<div class="llm-field-action">
+                <a href="' . $link . '" onclick="loadContentForLLMFunction(event)" title="edit with LLM (large language model / ai)">✨</a>
+            </div>';
         }
-
-        $desc .= '</div>';
-
-
         // update field
         return $desc;
     }
 
     public function addGenericLinksToRecord($owner, FieldList $fields)
     {
-        $tabName = 'Root.LLM';
+        $tabName = $this->Config()->get('tab_name');
         if (isset(self::$fields_completed[$owner->ClassName][$tabName])) {
             return;
         }
         self::$fields_completed[$owner->ClassName][$tabName] = true;
-        $fields->addFieldToTab(
-            $tabName,
-            LiteralField::create('LLMInstructions', $this->createDescriptionForOneRecordAndField($owner))
-        );
+        //     $fields->addFieldToTab(
+        //         $tabName,
+        //         LiteralField::create('LLMInstructions', $this->getDescriptionForOneRecordAndField($owner))
+        //     );
     }
 
     public function getCreateNewLLMInstructionForClassLink(string $className): string
@@ -272,5 +275,55 @@ class DataObjectUpdateCMSFieldsHelper
     public function getCreateNewLLMInstructionForClassOneFieldLink(string $className, string $fieldName): string
     {
         return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforclassonefield', $className, $fieldName);
+    }
+
+    public function getBestEnableLink($owner, ?string $fieldName = null): string
+    {
+        if ($fieldName) {
+            return $this->getEnableFieldLink($owner, $fieldName);
+        }
+        return $this->getEnableClassLink($owner);
+    }
+
+    public function getEnableClassLink($owner): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder($owner, 'enable', $owner->ClassName, $owner->ID);
+    }
+
+    public function getEnableFieldLink($owner, $fieldName): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('enable', $owner->ClassName, $owner->ID, $fieldName);
+    }
+
+    public function IsEnabledClassName($owner): bool
+    {
+        $siteConfig = SiteConfig::current_site_config();
+        if ($siteConfig->LLMEnabledClassNames) {
+            $enabledClasses = explode(',', $siteConfig->LLMEnabledClassNames);
+            return in_array($owner->ClassName, $enabledClasses);
+        }
+        return false;
+    }
+
+    public function IsEnabledFieldName(?string $fieldName = null): bool
+    {
+        if (!$fieldName) {
+            return true;
+        }
+        $siteConfig = SiteConfig::current_site_config();
+        if ($siteConfig->LLMEnabledFieldNames) {
+            $enabledFields = explode(',', $siteConfig->LLMEnabledFieldNames);
+            return in_array($fieldName, $enabledFields);
+        }
+        return true;
+    }
+
+    protected function getRecordCount($owner): int
+    {
+        if (! isset(self::$record_count_cache[$owner->ClassName])) {
+            $className = $owner->ClassName;
+            self::$record_count_cache[$owner->ClassName] = $className::get()->count();
+        }
+        return self::$record_count_cache[$owner->ClassName];
     }
 }

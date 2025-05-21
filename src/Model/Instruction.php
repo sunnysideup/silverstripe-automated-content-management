@@ -67,6 +67,10 @@ class Instruction extends DataObject
             'Date',
             'Time',
         ],
+        'excluded_models' => [
+            Instruction::class,
+            RecordProcess::class,
+        ],
         'grouped' => true,
     ];
 
@@ -327,7 +331,7 @@ class Instruction extends DataObject
                     HTMLReadonlyField::create(
                         'RunLinkNice',
                         'Run Now',
-                        '<a href="' . $this->getRunLink() . '" target="_blank">Run Now - please use with care - we could recommend you ask your developer to set this up</a>'
+                        '<a href="' . $this->getRunLink() . '" target="_blank">Run any LLM Processing now - please use with care - we could recommend you ask your developer to set this up</a>'
                     ),
                 ]
             );
@@ -362,34 +366,29 @@ class Instruction extends DataObject
                     );
                 }
             }
-            if ($this->HasRecordIdsToAddToSelection()) {
-                $fields->removeByName('SelectionID');
-            } else {
-                $obj = Injector::inst()->get(Selection::class);
-                $source = Selection::get()
-                    ->filter(['ModelClassName' => $this->ClassNameToChange]);
-                $dropdownField = DropdownField::create(
-                    'SelectionID',
-                    'Selection for this record type (optional)',
-                    $source->map('ID', 'Title')
+
+            $obj = Injector::inst()->get(Selection::class);
+            $dropdownField = DropdownField::create(
+                'SelectionID',
+                'Selection for this record type (optional)',
+                $this->getListForSelections()
+            )
+                ->setDescription(
+                    'You can <a href="' . $obj->CMSAddLink() . '">create a new selection</a>  or chose an existing one for your selected record type.'
                 )
-                    ->setDescription(
-                        'You can <a href="' . $obj->CMSAddLink() . '">create a new selection</a>  or chose an existing one for your selected record type.'
-                    )
-                    ->setEmptyString('-- use all records --');
-                $fields->addFieldsToTab(
-                    'Root.TargetRecords',
-                    [
-                        $dropdownField,
-                    ],
-                );
-            }
+                ->setEmptyString('-- use all records --');
+            $fields->addFieldsToTab(
+                'Root.TargetRecords',
+                [
+                    $dropdownField,
+                ],
+            );
             $fields->addFieldsToTab(
                 'Root.TargetRecords',
                 [
                     GridField::create(
                         'TargetRecordSelection',
-                        'Target Records',
+                        'Records to be processed by this instruction',
                         $this->getRecordList(),
                         GridFieldConfig_RecordViewer::create()
                     ),
@@ -832,9 +831,11 @@ class Instruction extends DataObject
         $className = $this->ClassNameToChange;
         if ($this->HasRecordIdsToAddToSelection()) {
             $ids = explode(',', (string) $this->RecordIdsToAddToSelection);
+            if ($this->SelectionID > 0) {
+                $ids = array_merge($ids, $this->Selection()->getSelectionDataList()->column('ID'));
+            }
             return $className::get()->filter(['ID' => $ids]);
-        }
-        if ($this->SelectionID) {
+        } elseif ($this->SelectionID > 0) {
             $selection = $this->Selection();
             if ($selection && $selection->exists()) {
                 $list = $selection->getSelectionDataList();
@@ -853,6 +854,26 @@ class Instruction extends DataObject
     {
         return (bool) (trim((string) $this->RecordIdsToAddToSelection) === '' ? false : true);
     }
+
+    protected function RecordIdsToAddToSelectionCount(): int
+    {
+        if (! $this->HasRecordIdsToAddToSelection()) {
+            return 0;
+        }
+        return count($this->getRecordIdsToAddToSelection());
+    }
+
+    protected function getRecordIdsToAddToSelection(): array
+    {
+        if ($this->HasRecordIdsToAddToSelection()) {
+            $ids = explode(',', (string) $this->RecordIdsToAddToSelection);
+            $ids = array_filter($ids);
+            $ids = array_unique($ids);
+            return $ids;
+        }
+        return [];
+    }
+
 
     public function AddRecordsToInstruction(int|array $recordId)
     {
@@ -920,5 +941,22 @@ class Instruction extends DataObject
             return false;
         }
         return $this->canEdit($member);
+    }
+
+    protected function getListForSelections()
+    {
+        $hasRecordIdsToAddToSelection = $this->HasRecordIdsToAddToSelection();
+        if ($hasRecordIdsToAddToSelection) {
+            $array[-2] = '-- Manually added records only (' . $this->RecordIdsToAddToSelectionCount() . ') --';
+        }
+        $className = $this->ClassNameToChange;
+        $count = $className::get()->count();
+        $array = [
+            0 => '-- All records (' . $count . ') --',
+        ];
+        $source = Selection::get()
+            ->filter(['ModelClassName' => $this->ClassNameToChange]);
+        $sourceArray = $source->map('ID', 'Title')->toArray();
+        return $array + $sourceArray;
     }
 }
