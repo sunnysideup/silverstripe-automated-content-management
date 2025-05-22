@@ -158,7 +158,7 @@ class DataObjectUpdateCMSFieldsHelper
 
             $toUpdateName = $fieldName ? 'Field (' . $fieldNameNice . ')' : 'Record (' . $recordNameNice . ')';
 
-            $desc = '<div class="llm-field-explanation">';
+            $desc = '<div class="llm-field-explanation llm-ajax-holder">';
 
 
             $title = '<span class="font-icon-menu-settings"></span>';
@@ -166,8 +166,8 @@ class DataObjectUpdateCMSFieldsHelper
             $desc .= '<div class="edit-settings-llm-instructions"><a href="' . $action . '" title="Edit LLM Settings">' . $title . '</a></div>';
 
             $title = '<span class="font-icon-cancel"></span>';
-            $action = self::my_link_builder('turnllmfunctionsonoroff', 'off');
-            $desc .= '<div class="turn-off-llm-instructions"><a href="' . $action . '" title="Stop LLM Editing for now">' . $title . '</a></div>';
+            $action = $this->getBestDisableLink($owner, $fieldName);
+            $desc .= '<div class="turn-off-llm-instructions"><a href="' . $action . '" title="Stop LLM Editing for now" onclick="loadContentForLLMFunction(event);">' . $title . '</a></div>';
 
 
             $recordsProcessed = RecordProcess::get()
@@ -234,19 +234,21 @@ class DataObjectUpdateCMSFieldsHelper
             if ($count > 1) {
                 if ($fieldName) {
                     $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
-                    $toUpdateNameClass = 'for this field (' . $fieldNameNice . ') on All Records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
+                    $toUpdateNameClass = 'for this field (' . $fieldNameNice . ') on all records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
                 } else {
                     $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
                     $toUpdateNameClass = 'for all records (' . $count . ') of this Type (' . $owner->i18n_singular_name() . ')';
                 }
-                $desc .= '<div><a href="' . $link . '">++ Update ' . $toUpdateNameClass . '</a></div>';
+                $desc .= '<div><a href="' . $link . '">++ ' . $toUpdateNameClass . '</a></div>';
             }
-
+            $desc .= '<h2>Try it now</h2>';
+            $desc .= '<p>To try out now, please enter some instructions below</p>';
+            $desc .= '<textarea data-field-name="' . $fieldName . '"  rows="5" cols="50"></textarea>';
             $desc .= '</div>';
         } else {
             // 🤖
             $link = $this->getBestEnableLink($owner, $fieldName);
-            $desc = '<div class="llm-field-action">
+            $desc = '<div class="llm-field-action llm-ajax-holder">
                 <a href="' . $link . '" onclick="loadContentForLLMFunction(event)" title="edit with LLM (large language model / ai)">✨</a>
             </div>';
         }
@@ -293,6 +295,24 @@ class DataObjectUpdateCMSFieldsHelper
     public function getEnableFieldLink($owner, $fieldName): string
     {
         return DataObjectUpdateCMSFieldsHelper::my_link_builder('enable', $owner->ClassName, $owner->ID, $fieldName);
+    }
+
+    public function getBestDisableLink($owner, ?string $fieldName = null): string
+    {
+        if ($fieldName) {
+            return $this->getDisableFieldLink($owner, $fieldName);
+        }
+        return $this->getDisableClassLink($owner);
+    }
+
+    public function getDisableClassLink($owner): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder($owner, 'disable', $owner->ClassName, $owner->ID);
+    }
+
+    public function getDisableFieldLink($owner, $fieldName): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('disable', $owner->ClassName, $owner->ID, $fieldName);
     }
 
     public function IsEnabledClassName($owner): bool

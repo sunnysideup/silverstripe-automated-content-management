@@ -21,10 +21,11 @@ class SiteConfigExtensionForLLM extends Extension
         'LLMEnabledFieldNames' => 'Text',
     ];
 
-    public function isLLMEnabled(): bool
+    public function IsLLMEnabled(): bool
     {
         // to do - check credentials
-        return (bool) $this->owner->LLMEnabled;
+        return (bool) $this->owner->LLMEnabled &&
+            (!$this->owner->LLMClient || $this->owner->LLMKey);
     }
 
     public function updateCMSFields(FieldList $fields)
@@ -39,7 +40,7 @@ class SiteConfigExtensionForLLM extends Extension
                 )
                     ->setEmptyString('-- Select LLM Type --'),
                 TextField::create('LLMModel', 'Engine you are using')
-                    ->setDescription('e.g. gpt-3.5-turbo, gpt-4, claude-2, just leave blank for default'),
+                    ->setDescription('e.g. gpt-3.5-turbo, gpt-4, claude-2, just leave blank for default.'),
                 TextField::create('LLMKey', 'LLM Key - this is the key you get from OpenAI or any other LLM provider.')
                     ->setDescription('e.g. sk-1234<br />
                     You can get your key from your LLM provider.

@@ -21,7 +21,7 @@ class DataObjectExtensionForLLM extends Extension
             'afterUpdateCMSFields',
             [
                 function (FieldList $fields) use ($owner) {
-                    if (SiteConfig::current_site_config()->isLLMEnabled()) {
+                    if (SiteConfig::current_site_config()->IsLLMEnabled()) {
                         $obj = Injector::inst()->create(DataObjectUpdateCMSFieldsHelper::class);
                         $obj->updateCMSFields($owner, $fields);
                     }

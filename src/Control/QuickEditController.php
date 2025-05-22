@@ -12,14 +12,17 @@ use SilverStripe\Security\PermissionProvider;
 use SilverStripe\SiteConfig\SiteConfig;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
+use Sunnysideup\Selections\Model\Selection;
 
 class QuickEditController extends Controller
 {
 
     private static $url_segment = 'llm-quick-edit';
     private static $allowed_actions = [
+        'createselection' => 'CMS_ACCESS_LLMEDITOR',
         'turnllmfunctionsonoroff' => 'CMS_ACCESS_LLMEDITOR',
         'enable' => 'CMS_ACCESS_LLMEDITOR',
+        'disable' => 'CMS_ACCESS_LLMEDITOR',
         // create instruction for record
         'createinstructionforonerecord' => 'CMS_ACCESS_LLMEDITOR',
         'createinstructionforonerecordonefield' => 'CMS_ACCESS_LLMEDITOR',
@@ -57,6 +60,18 @@ class QuickEditController extends Controller
         return Controller::join_links(Director::baseURL(), self::config()->get('url_segment'), $action);
     }
 
+    public function createselection($request)
+    {
+        $this->deconstructParams(false, false);
+        if ($this->providedClassName) {
+            $selection = Selection::create();
+            $selection->ModelClassName = $this->providedClassName;
+            $selection->write();
+            return $this->redirect($selection->CMSEditLink());
+        }
+        return $this->httpError(500, 'Could not create new instruction for this record.');
+    }
+
     public function turnllmfunctionsonoroff($request)
     {
         $this->deconstructParams(false, false);
@@ -79,22 +94,46 @@ class QuickEditController extends Controller
     {
         $this->deconstructParams(false, false);
         if ($this->providedClassName) {
-            $this->setSiteConfigArrayField('LLMEnabledClassNames', $this->providedClassName);
+            $this->addSiteConfigArrayField('LLMEnabledClassNames', $this->providedClassName);
         }
         if ($this->fieldName) {
-            $this->setSiteConfigArrayField('LLMEnabledFieldNames', $this->fieldName);
+            $this->addSiteConfigArrayField('LLMEnabledFieldNames', $this->fieldName);
+        }
+        if (Director::is_ajax()) {
+            $html = Injector::inst()->get(DataObjectUpdateCMSFieldsHelper::class)
+                ->getDescriptionForOneRecordAndField($this->record,  $this->fieldName);
+            die($html);
+            // // this throws a weird error.
+            // $response = HTTPResponse::create();
+            // $response->addHeader('Content-Type', 'text/html');
+            // $response->setBody(
+            //     DBHTMLText::create()->setValue($html)->forTemplate()
+            // );
+            // return $response;
+        }
+        return $this->redirectBack();
+    }
+
+    public function disable($request)
+    {
+        $this->deconstructParams(false, false);
+        if ($this->providedClassName) {
+            $this->removeSiteConfigArrayField('LLMEnabledClassNames', $this->providedClassName);
+        }
+        if ($this->fieldName) {
+            $this->removeSiteConfigArrayField('LLMEnabledFieldNames', $this->fieldName);
         }
         if (Director::is_ajax()) {
             $html = Injector::inst()->get(DataObjectUpdateCMSFieldsHelper::class)
                 ->getDescriptionForOneRecordAndField($this->record,  $this->fieldName);
             die($html);
             // this throws a weird error.
-            $response = HTTPResponse::create();
-            $response->addHeader('Content-Type', 'text/html');
-            $response->setBody(
-                DBHTMLText::create()->setValue($html)->forTemplate()
-            );
-            return $response;
+            // $response = HTTPResponse::create();
+            // $response->addHeader('Content-Type', 'text/html');
+            // $response->setBody(
+            //     DBHTMLText::create()->setValue($html)->forTemplate()
+            // );
+            // return $response;
         }
         return $this->redirectBack();
     }
@@ -321,7 +360,19 @@ class QuickEditController extends Controller
         return RequestHandler::redirect($url, $code);
     }
 
-    protected function setSiteConfigArrayField(string $fieldName, $value)
+    protected function removeSiteConfigArrayField(string $fieldName, $value)
+    {
+        $siteConfig = SiteConfig::current_site_config();
+        $currentValue = $siteConfig->$fieldName ?: '';
+        $enabledClassNamesArray = explode(',', $currentValue);
+        if (in_array($value, $enabledClassNamesArray)) {
+            $enabledClassNamesArray = array_diff($enabledClassNamesArray, [$value]);
+            $siteConfig->$fieldName = implode(',', $enabledClassNamesArray);
+            $siteConfig->write();
+        }
+    }
+
+    protected function addSiteConfigArrayField(string $fieldName, $value)
     {
         $siteConfig = SiteConfig::current_site_config();
         $currentValue = $siteConfig->$fieldName ?: '';

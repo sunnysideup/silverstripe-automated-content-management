@@ -1,8 +1,9 @@
 async function loadContentForLLMFunction (event) {
   event.preventDefault()
   const atag = event.currentTarget
+  atag.innerHTML = '⏳'
   const url = atag.href
-  const parent = atag.closest('div')
+  const parent = atag.closest('div.llm-ajax-holder')
 
   if (!url || !parent) return
   let html = ''
