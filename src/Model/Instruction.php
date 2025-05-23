@@ -62,10 +62,13 @@ class Instruction extends DataObject
             'Boolean',
             'Int',
             'Float',
+            'Double',
             'Decimal',
             'Datetime',
+            'ExternalURL',
             'Date',
             'Time',
+            'Currency',
         ],
         'grouped' => true,
     ];
