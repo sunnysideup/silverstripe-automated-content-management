@@ -12,3 +12,5 @@ SilverStripe\ORM\DataObject:
 SilverStripe\Admin\LeftAndMain:
   extra_requirements_css:
     - "sunnysideup/automated-content-management:client/dist/automated-content-management.css"
+  extra_requirements_javascript:
+    - "sunnysideup/automated-content-management:client/dist/automated-content-management.js"

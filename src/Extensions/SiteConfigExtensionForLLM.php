@@ -17,12 +17,15 @@ class SiteConfigExtensionForLLM extends Extension
         'LLMModel' => 'Varchar(50)',
         'LLMKey' => 'Text',
         'LLMEnabled' => 'Boolean',
+        'LLMEnabledClassNames' => 'Text',
+        'LLMEnabledFieldNames' => 'Text',
     ];
 
-    public function isLLMEnabled(): bool
+    public function IsLLMEnabled(): bool
     {
         // to do - check credentials
-        return (bool) $this->owner->LLMEnabled;
+        return (bool) $this->owner->LLMEnabled &&
+            (!$this->owner->LLMClient || $this->owner->LLMKey);
     }
 
     public function updateCMSFields(FieldList $fields)
@@ -37,16 +40,13 @@ class SiteConfigExtensionForLLM extends Extension
                 )
                     ->setEmptyString('-- Select LLM Type --'),
                 TextField::create('LLMModel', 'Engine you are using')
-                    ->setDescription('e.g. gpt-3.5-turbo, gpt-4, claude-2, just leave blank for default'),
-                TextField::create('LLMKey', 'LLM Key - this is the key you get from OpenAI or any other LLM provider.'),
+                    ->setDescription('e.g. gpt-3.5-turbo, gpt-4, claude-2, just leave blank for default.'),
+                TextField::create('LLMKey', 'LLM Key - this is the key you get from OpenAI or any other LLM provider.')
+                    ->setDescription('e.g. sk-1234<br />
+                    You can get your key from your LLM provider.
+                    For OpenAI, you can get it from <a href="https://platform.openai.com/account/api-keys" target="_blank">here</a>.
+                    For Anthropic, you can get it from <a href="https://console.anthropic.com/keys" target="_blank">here</a>.'),
                 CheckboxField::create('LLMEnabled', 'Enable LLM (AI) functions for this site - only turn this on while you are using these functions.'),
-                HTMLReadonlyField::create(
-                    'LLMKeyInfo',
-                    'LLM Key Info',
-                    'You can get your key from the LLM provider.
-                    <br> For OpenAI, you can get it from <a href="https://platform.openai.com/account/api-keys" target="_blank">here</a>.
-                    <br> For Anthropic, you can get it from <a href="https://console.anthropic.com/keys" target="_blank">here</a>.'
-                ),
                 HTMLReadonlyField::create(
                     'TestYourLLM',
                     'Test your LLM',
@@ -54,5 +54,13 @@ class SiteConfigExtensionForLLM extends Extension
                 ),
             ]
         );
+    }
+
+    public function onBeforeWrite()
+    {
+        if (!$this->owner->LLMEnabled) {
+            $this->owner->LLMEnabledClassNames = '';
+            $this->owner->LLMEnabledFieldNames = '';
+        }
     }
 }
