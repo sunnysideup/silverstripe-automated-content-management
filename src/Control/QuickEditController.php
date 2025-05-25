@@ -26,9 +26,13 @@ class QuickEditController extends Controller
         // create instruction for record
         'createinstructionforonerecord' => 'CMS_ACCESS_LLMEDITOR',
         'createinstructionforonerecordonefield' => 'CMS_ACCESS_LLMEDITOR',
+        // quick edit
+        'createinstructionforonerecordonefieldtestnow' => 'CMS_ACCESS_LLMEDITOR',
+        'createinstructionforonerecordonefieldtestnowerror' => 'CMS_ACCESS_LLMEDITOR',
         // for instruction for class
         'createinstructionforclass' => 'CMS_ACCESS_LLMEDITOR',
         'createinstructionforclassonefield' => 'CMS_ACCESS_LLMEDITOR',
+
         // add record to instruction
         'selectexistinginstructionforonerecord' => 'CMS_ACCESS_LLMEDITOR',
         'selectexistinginstructionforonerecordonefield' => 'CMS_ACCESS_LLMEDITOR',
@@ -40,6 +44,8 @@ class QuickEditController extends Controller
         'acceptresult' => 'ADMIN',
         'acceptresultandupdate' => 'ADMIN',
         'rejectresult' => 'CMS_ACCESS_LLMEDITOR',
+
+
     ];
 
     protected $instruction = null;
@@ -158,6 +164,66 @@ class QuickEditController extends Controller
         }
         return $this->httpError(500, 'Could not create new instruction for this record type field.');
     }
+
+    public function createinstructionforonerecordonefieldtestnow($request)
+    {
+        return $this->runTestForInstruction($request, false);
+    }
+
+    public function createinstructionforonerecordonefieldtestnowerror($request)
+    {
+        return $this->runTestForInstruction($request, true);
+    }
+
+    protected function runTestForInstruction($request, $findErrorsOnly = false)
+    {
+        $this->deconstructParams(false, true);
+        if ($this->instruction) {
+            $description = $request->postVar('description');
+            if ($description) {
+                $this->instruction->Description = $description;
+                $this->instruction->RunTest = true;
+                $this->instruction->FindErrorsOnly = $findErrorsOnly;
+                $this->instruction->RecordIdsToAddToSelection = $this->recordID;
+                $this->instruction->write();
+                sleep(1);
+                $lastItem = $this->instruction->RecordsToProcess()
+                    ->filter(
+                        [
+                            'IsTest' => true,
+                            'RecordID' => $this->recordID,
+                            'Completed' => true,
+                            'Instruction.FindErrorsOnly' => $findErrorsOnly
+                        ]
+                    )
+                    ->sort('ID', 'DESC')
+                    ->first();
+                $v = '<h2>Answer</h2>';
+                if ($lastItem) {
+                    if ($findErrorsOnly) {
+                        if ($lastItem->getIsErrorAnswer()) {
+                            $v .= '<h3 style="color: red;">ERROR</h3>';
+                        } else {
+                            $v .= '<h3 style="color: green;">OK</h3>';
+                        }
+                    } else {
+                        $v .= $lastItem->getAfterHumanValue();
+                    }
+                } else {
+                    $v .= '<h3 style="color: red;">No results found.</h3>';
+                }
+                die($v);
+            } else {
+                die('
+                    <h2>ERROR</h2>
+                    <p>There is no instruction provided.</p>
+                    <p>Please provide an instruction in the form.</p>
+                ');
+            }
+        }
+        return $this->httpError(500, 'Could not create new instruction for this record type.');
+    }
+
 
     public function createinstructionforonerecord($request)
     {

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Sunnysideup\AutomatedContentManagement\Api;
 
 use SilverStripe\Core\ClassInfo;
+use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectInterface;
 use SilverStripe\ORM\FieldType\DBBoolean;
@@ -13,6 +15,9 @@ use SilverStripe\ORM\FieldType\DBString;
 
 class InstructionsForInstructions
 {
+
+    use Injectable;
+    use Configurable;
     protected $record;
 
     public function __construct($record)
@@ -23,11 +28,13 @@ class InstructionsForInstructions
         $this->record = $record;
     }
 
-    public function getExampleInstruction(string $fieldName): string
+    public function getExampleInstruction(?string $fieldName = null, ?bool $withHtml = true, ?bool $includeErrorCheck = false): string
     {
-        $fieldNameNice = $this->record->fieldLabel($fieldName);
         $nameOfRecord = $this->record->i18n_singular_name();
-        return '
+        if ($fieldName) {
+            $fieldNameNice = $this->record->fieldLabel($fieldName);
+
+            $v = '
         <div style="font-style: italic; ">
         I am trying to update a ' . $nameOfRecord . ' record.
         <br />I would like to improve the "' . $fieldNameNice . '" field in this record.
@@ -39,8 +46,29 @@ class InstructionsForInstructions
         (N.B. This variable will (with the dollar sign) be converted to the actual value for the record. More variables are listed below.)
         <br />
         <br />
-        Can you please improve it  ... here you put how you would like to impove it (e.g. make it shorter).
+        Can you please improve it  ... here you put how you would like to improve it (e.g. make it shorter).
         </div>';
+        } else {
+            $v = '
+        <div style="font-style: italic; ">
+        I am trying to update a ' . $nameOfRecord . ' record.
+        <br />I would like to improve the this record.
+        <br />
+        <br />
+        Can you please improve it  ... here you put how you would like to improve it (e.g. make it shorter).
+        </div>';
+        }
+        if (! $withHtml) {
+            $v = preg_replace('/<br\s*\/?>/i', "\n", $v);
+            $v = strip_tags($v);
+            $v = html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $v = preg_replace('/[ \t]+/', ' ', $v);
+            $v = preg_replace('/\n{2,}/', "\n", $v);
+            $v = preg_replace('/ +\n/', "\n", $v);
+            $v = preg_replace('/\n +/', "\n", $v);
+            $v = trim($v);
+        }
+        return $v;
     }
 
     public function getInstructions(): string

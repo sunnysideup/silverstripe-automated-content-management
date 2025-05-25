@@ -225,26 +225,30 @@ class DataObjectUpdateCMSFieldsHelper
             if ($fieldName) {
                 $link = $owner->getCreateNewLLMInstructionForOneRecordOneFieldLink($fieldName);
                 $add = 'for this record (' . $recordNameNice . ')';
-            } else {
-                $link = $owner->getCreateNewLLMInstructionForOneRecordLink();
-                $add = '';
-            }
-            $desc .= '<div><a href="' . $link . '">+ for this ' . $toUpdateName . ' ' . $add . '</a></div>';
-            $count = $this->getRecordCount($owner);
-            if ($count > 1) {
-                if ($fieldName) {
-                    $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
-                    $toUpdateNameClass = 'for this field (' . $fieldNameNice . ') on all records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
-                } else {
-                    $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
-                    $toUpdateNameClass = 'for all records (' . $count . ') of this Type (' . $owner->i18n_singular_name() . ')';
+                $desc .= '<div><a href="' . $link . '">+ for this ' . $toUpdateName . ' ' . $add . '</a></div>';
+                $count = $this->getRecordCount($owner);
+                if ($count > 1) {
+                    if ($fieldName) {
+                        $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
+                        $toUpdateNameClass = 'for this field (' . $fieldNameNice . ') on all records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
+                    } else {
+                        $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
+                        $toUpdateNameClass = 'for all records (' . $count . ') of this Type (' . $owner->i18n_singular_name() . ')';
+                    }
+                    $desc .= '<div><a href="' . $link . '">++ ' . $toUpdateNameClass . '</a></div>';
                 }
-                $desc .= '<div><a href="' . $link . '">++ ' . $toUpdateNameClass . '</a></div>';
+                $randomName = 'ta_' . uniqid();
+                $link = $this->getCreateNewLLMInstructionForClassOneFieldLinkTestNow($owner->ClassName, $fieldName, $owner);
+                $iForI = Injector::inst()->get(InstructionsForInstructions::class, false, [$owner]);
+                $desc .= '<h2>Try it now</h2>';
+                $desc .= '<p>To try out now, please enter some instructions below</p>';
+                $desc .= '<textarea name="' . $randomName . '"  rows="20">' . $iForI->getExampleInstruction($fieldName, false, true) . '</textarea>';
+                $desc .= '<div class="llm-ajax-actions">';
+                $desc .= '<a href="' . $link . '" data-description="' . $randomName . '" class="btn action btn-outline-primary font-icon-tick" onclick="loadContentForLLMFunction(event)">Request Improvement Ideas</a>';
+                // $desc .= '<a href="' . $link . '" class="btn action btn-outline-primary font-icon-tick" onclick="loadContentForLLMFunction(event)">Check for Errors</a>';
+                $desc .= '</div>';
+                $desc .= '</div>';
             }
-            $desc .= '<h2>Try it now</h2>';
-            $desc .= '<p>To try out now, please enter some instructions below</p>';
-            $desc .= '<textarea data-field-name="' . $fieldName . '"  rows="5" cols="50"></textarea>';
-            $desc .= '</div>';
         } else {
             // 🤖
             $link = $this->getBestEnableLink($owner, $fieldName);
@@ -277,6 +281,16 @@ class DataObjectUpdateCMSFieldsHelper
     public function getCreateNewLLMInstructionForClassOneFieldLink(string $className, string $fieldName): string
     {
         return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforclassonefield', $className, $fieldName);
+    }
+
+    public function getCreateNewLLMInstructionForClassOneFieldLinkTestNow(string $className, string $fieldName, $owner): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforonerecordonefieldtestnow', $className, $owner->ID, $fieldName);
+    }
+
+    public function getCreateNewLLMInstructionForClassOneFieldLinkTestNowError(string $className, string $fieldName, $owner): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforonerecordonefieldtestnowerror', $className, $owner->ID, $fieldName);
     }
 
     public function getBestEnableLink($owner, ?string $fieldName = null): string
