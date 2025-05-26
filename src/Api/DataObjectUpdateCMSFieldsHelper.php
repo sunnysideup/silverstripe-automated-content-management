@@ -9,6 +9,7 @@ use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
+use SilverStripe\Forms\HTMLEditor\HTMLEditorField_Readonly;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\FieldType\DBField;
@@ -137,6 +138,7 @@ class DataObjectUpdateCMSFieldsHelper
 
     public function getDescriptionForOneRecordAndField($owner, ?string $fieldName = null)
     {
+        $desc = '';
         if ($this->IsEnabledClassName($owner) && $this->IsEnabledFieldName($fieldName)) {
 
             $fieldNameNice = $owner->fieldLabel($fieldName);
@@ -158,7 +160,7 @@ class DataObjectUpdateCMSFieldsHelper
 
             $toUpdateName = $fieldName ? 'Field (' . $fieldNameNice . ')' : 'Record (' . $recordNameNice . ')';
 
-            $desc = '<div class="llm-field-explanation llm-ajax-holder">';
+            $desc .= '<div class="llm-field-explanation llm-ajax-holder">';
 
 
             $title = '<span class="font-icon-menu-settings"></span>';
@@ -220,8 +222,8 @@ class DataObjectUpdateCMSFieldsHelper
                 }
             }
 
-            $desc .= '<h2>Create new LLM (AI) instructions</h2>';
 
+            $desc .= '<h2>Create new LLM (AI) instructions</h2>';
             if ($fieldName) {
                 $link = $owner->getCreateNewLLMInstructionForOneRecordOneFieldLink($fieldName);
                 $add = 'for this record (' . $recordNameNice . ')';
@@ -247,12 +249,15 @@ class DataObjectUpdateCMSFieldsHelper
                 $desc .= '<a href="' . $link . '" data-description="' . $randomName . '" class="btn action btn-outline-primary font-icon-tick" onclick="loadContentForLLMFunction(event)">Request Improvement Ideas</a>';
                 // $desc .= '<a href="' . $link . '" class="btn action btn-outline-primary font-icon-tick" onclick="loadContentForLLMFunction(event)">Check for Errors</a>';
                 $desc .= '</div>';
-                $desc .= '</div>';
+            } else {
+                $link = $owner->getCreateNewLLMInstructionForOneRecordLink();
+                $desc .= '<div><a href="' . $link . '">+ for this ' . $toUpdateName . '</a></div>';
             }
+            $desc .= '</div>';
         } else {
             // 🤖
             $link = $this->getBestEnableLink($owner, $fieldName);
-            $desc = '<div class="llm-field-action llm-ajax-holder">
+            $desc .= '<div class="llm-field-action llm-ajax-holder">
                 <a href="' . $link . '" onclick="loadContentForLLMFunction(event)" title="edit with LLM (large language model / ai)">✨</a>
             </div>';
         }
@@ -267,10 +272,12 @@ class DataObjectUpdateCMSFieldsHelper
             return;
         }
         self::$fields_completed[$owner->ClassName][$tabName] = true;
-        //     $fields->addFieldToTab(
-        //         $tabName,
-        //         LiteralField::create('LLMInstructions', $this->getDescriptionForOneRecordAndField($owner))
-        //     );
+        $fields->addFieldsToTab(
+            $tabName,
+            [
+                HTMLEditorField_Readonly::create('LLMInstructionsForClass', 'Edit Record', $this->getDescriptionForOneRecordAndField($owner))
+            ]
+        );
     }
 
     public function getCreateNewLLMInstructionForClassLink(string $className): string
@@ -303,7 +310,7 @@ class DataObjectUpdateCMSFieldsHelper
 
     public function getEnableClassLink($owner): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link_builder($owner, 'enable', $owner->ClassName, $owner->ID);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('enable', $owner->ClassName, $owner->ID);
     }
 
     public function getEnableFieldLink($owner, $fieldName): string
@@ -321,7 +328,7 @@ class DataObjectUpdateCMSFieldsHelper
 
     public function getDisableClassLink($owner): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link_builder($owner, 'disable', $owner->ClassName, $owner->ID);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('disable', $owner->ClassName, $owner->ID);
     }
 
     public function getDisableFieldLink($owner, $fieldName): string

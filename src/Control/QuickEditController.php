@@ -198,7 +198,7 @@ class QuickEditController extends Controller
                     )
                     ->sort('ID', 'DESC')
                     ->first();
-                $v = '<h2>Answer</h2>';
+                $v = '<h2>Recommendation</h2>';
                 if ($lastItem) {
                     if ($findErrorsOnly) {
                         if ($lastItem->getIsErrorAnswer()) {
@@ -208,6 +208,11 @@ class QuickEditController extends Controller
                         }
                     } else {
                         $v .= $lastItem->getAfterHumanValue();
+                        $v .= '<p>
+                        <a href="' . $lastItem->getAcceptAndUpdateLink() . '" target="_blank">update record</a> |
+                        <a href="' . $lastItem->getRejectLink() . '" target="_blank">reject change</a> |
+                            <a href="' . $lastItem->getResultPreviewLink() . '" target="_blank">see more details</a>
+                        </p>';
                     }
                 } else {
                     $v .= '<h3 style="color: red;">No results found.</h3>';

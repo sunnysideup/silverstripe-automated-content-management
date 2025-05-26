@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Extensions;
 
+use ReflectionMethod;
 use SilverStripe\Core\Extension;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\FieldList;
@@ -41,7 +42,7 @@ class DataObjectExtensionForLLM extends Extension
     }
     private function callProtectedMethod(object $object, string $methodName, array $args = [])
     {
-        $refMethod = new \ReflectionMethod($object, $methodName);
+        $refMethod = new ReflectionMethod($object, $methodName);
         $refMethod->setAccessible(true); // still needed for unrelated classes
         return $refMethod->invokeArgs($object, $args);
     }

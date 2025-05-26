@@ -85,9 +85,10 @@
 </head>
 <body>
 
-    <h1><a href="$CMSEditLink">LLM (AI) Suggestion</a></h1>
-    <h3>Instruction: <a href="$CMSEditLink">$Instruction.Title</a></h3>
-    <h3>Record to updated: <a href="$RecordLink">$RecordTitle (ID: $RecordID)</a></h3>
+    <h1>LLM (AI) Suggestion</h1>
+    <h3>Processing Record: <a href="$CMSEditLink">$Instruction.Title</a></h3>
+    <h3>Based on: <a href="$Instruction.CMSEditLink">$Instruction.Title</a></h3>
+    <h3>Record to be updated: <a href="$RecordLink">$RecordTitle (ID: $RecordID)</a></h3>
     <h3>Field to be updated: <i>$Instruction.FieldToChangeNice</i></h3>
 
     <h2>Before ➔ After</h2>

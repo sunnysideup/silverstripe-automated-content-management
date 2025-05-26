@@ -438,6 +438,9 @@ class RecordProcess extends DataObject
                 return $value ? 'Yes' : 'No';
             case 'Datetime':
                 return date('Y-m-d H:i:s', strtotime($value));
+            case 'Varchar':
+            case 'Text':
+                return strip_tags((string) $value);
             default:
                 return (string) $value;
         }

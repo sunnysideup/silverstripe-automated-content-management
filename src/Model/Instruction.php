@@ -716,7 +716,9 @@ class Instruction extends DataObject
             'Please return the answer as a value suitable for insertion into a
             ' . $this->getRecordType() . ' field type in a Silverstripe CMS Database.
             For example, if the field is a Varchar field, then please return a string.
-            For HTML, please make sure all text is wrapped in any of the following html tags: p, ul, ol, li, or h2 - h6 only. Do not add styles or classes to the tags.'
+            For HTML, please make sure all text is wrapped in any of the following html tags: p, ul, ol, li, or h2 - h6 only.
+            Do not add styles or classes to the tags.
+            Also - please only return the answer, no introduction or explanation.'
         );
     }
 

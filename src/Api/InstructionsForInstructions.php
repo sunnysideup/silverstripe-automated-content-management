@@ -43,7 +43,7 @@ class InstructionsForInstructions
         <br />
         <strong>$' . $fieldName . '</strong>
         <br />
-        (N.B. This variable will (with the dollar sign) be converted to the actual value for the record. More variables are listed below.)
+        (N.B. The variable here, with the dollar sign, be converted to the actual value for the record.)
         <br />
         <br />
         Can you please improve it  ... here you put how you would like to improve it (e.g. make it shorter).
