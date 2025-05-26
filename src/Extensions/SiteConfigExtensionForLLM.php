@@ -41,7 +41,7 @@ class SiteConfigExtensionForLLM extends Extension
                     ->setEmptyString('-- Select LLM Type --'),
                 TextField::create('LLMModel', 'Engine you are using')
                     ->setDescription('e.g. gpt-3.5-turbo, gpt-4, claude-2, just leave blank for default.'),
-                TextField::create('LLMKey', 'LLM Key - this is the key you get from OpenAI or any other LLM provider.')
+                TextField::create('LLMKey', 'LLM Key ')
                     ->setDescription('e.g. sk-1234<br />
                     You can get your key from your LLM provider.
                     For OpenAI, you can get it from <a href="https://platform.openai.com/account/api-keys" target="_blank">here</a>.

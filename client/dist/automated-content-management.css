@@ -1,9 +1,9 @@
 #Root {
   .llm-field-action {
     position: absolute;
-    margin-left: -1rem;
+    margin-right: -2rem;
     top: 0;
-    left: 0;
+    right: 0;
     line-height: 2.7;
     border: none !important;
     background-color: transparent !important;

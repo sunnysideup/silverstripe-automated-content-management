@@ -230,13 +230,8 @@ class DataObjectUpdateCMSFieldsHelper
                 $desc .= '<div><a href="' . $link . '">+ for this ' . $toUpdateName . ' ' . $add . '</a></div>';
                 $count = $this->getRecordCount($owner);
                 if ($count > 1) {
-                    if ($fieldName) {
-                        $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
-                        $toUpdateNameClass = 'for this field (' . $fieldNameNice . ') on all records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
-                    } else {
-                        $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
-                        $toUpdateNameClass = 'for all records (' . $count . ') of this Type (' . $owner->i18n_singular_name() . ')';
-                    }
+                    $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
+                    $toUpdateNameClass = 'for this field (' . $fieldNameNice . ') on all records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
                     $desc .= '<div><a href="' . $link . '">++ ' . $toUpdateNameClass . '</a></div>';
                 }
                 $randomName = 'ta_' . uniqid();
@@ -251,7 +246,13 @@ class DataObjectUpdateCMSFieldsHelper
                 $desc .= '</div>';
             } else {
                 $link = $owner->getCreateNewLLMInstructionForOneRecordLink();
-                $desc .= '<div><a href="' . $link . '">+ for this ' . $toUpdateName . '</a></div>';
+                $desc .= '<div><a href="' . $link . '">+ for this record: ' . $owner->getTitle() . '</a></div>';
+                $count = $this->getRecordCount($owner);
+                if ($count > 1) {
+                    $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
+                    $toUpdateNameClass = 'on all records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
+                    $desc .= '<div><a href="' . $link . '">++ ' . $toUpdateNameClass . '</a></div>';
+                }
             }
             $desc .= '</div>';
         } else {
