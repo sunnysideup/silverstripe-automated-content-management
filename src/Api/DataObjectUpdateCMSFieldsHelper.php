@@ -83,9 +83,9 @@ class DataObjectUpdateCMSFieldsHelper
         );
         // print_r($acceptableFields);
         foreach (array_keys($acceptableFields) as $acceptableFieldName) {
-            if (isset(self::$fields_completed[$owner->ClassName][$acceptableFieldName])) {
-                continue;
-            }
+            // if (isset(self::$fields_completed[$owner->ClassName][$acceptableFieldName])) {
+            //     continue;
+            // }
             $field = $fields->dataFieldByName($acceptableFieldName);
             if (! $field) {
                 continue;

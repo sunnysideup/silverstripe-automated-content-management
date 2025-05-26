@@ -209,8 +209,8 @@ class QuickEditController extends Controller
                     } else {
                         $v .= $lastItem->getAfterHumanValue();
                         $v .= '<p>
-                        <a href="' . $lastItem->getAcceptAndUpdateLink() . '" target="_blank">update record</a> |
-                        <a href="' . $lastItem->getRejectLink() . '" target="_blank">reject change</a> |
+                            <a href="' . $lastItem->getAcceptAndUpdateLink() . '">update record</a> |
+                            <a href="' . $lastItem->getRejectLink() . '">reject change</a> |
                             <a href="' . $lastItem->getResultPreviewLink() . '" target="_blank">see more details</a>
                         </p>';
                     }

@@ -87,6 +87,20 @@
 
 
   }
+
+  .htmleditor {
+    .llm-field-action {
+      margin-left: 0rem;
+      left: auto;
+      right: 0;
+    }
+
+    .llm-ajax-holder {
+      textarea {
+        visibility: visible;
+      }
+    }
+  }
 }
 
 
