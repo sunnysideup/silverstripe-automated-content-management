@@ -21,6 +21,9 @@ class ProcessOneRecord
         $question = $recordProcess->getHydratedInstructions();
         $record = $recordProcess->getRecord();
         $field = $recordProcess->Instruction->FieldToChange;
+        if (! $field) {
+            return;
+        }
         $recordProcess->Before = $record->$field;
         if ($recordProcess->getCanNotProcessAnymore()) {
             return;
