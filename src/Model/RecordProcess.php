@@ -179,12 +179,13 @@ class RecordProcess extends DataObject
     public function getRecordLink(): string|null
     {
         $record = $this->getRecord();
-        if ($record->hasMethod('CMSEditLink')) {
-            $link = $record->CMSEditLink();
-        } elseif ($record->hasMethod('Link')) {
-            $link = $record->Link();
-        } else {
-            $link = null;
+        $link = null;
+        if ($record) {
+            if ($record->hasMethod('CMSEditLink')) {
+                $link = $record->CMSEditLink();
+            } elseif ($record->hasMethod('Link')) {
+                $link = $record->Link();
+            }
         }
         return $link;
     }
