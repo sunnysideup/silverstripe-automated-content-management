@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sunnysideup\AutomatedContentManagement\Api\Connectors;
 
 use Exception;
+use GuzzleHttp\Client;
 use OpenAI;
 use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
 
@@ -21,6 +22,11 @@ class OpenAIConnector extends ConnectorBaseClass
     {
         try {
             $client = OpenAI::client($this->getApiKey());
+
+            OpenAI::factory()
+                ->withApiKey($this->getApiKey())
+                ->withHttpClient(new Client(['timeout' => $this->getTimeout()]))
+                ->make();
             $response = $client->chat()->create([
                 'model' => $this->getModel($model),
                 'messages' => [
@@ -29,7 +35,7 @@ class OpenAIConnector extends ConnectorBaseClass
                         'content' => $question
                     ]
                 ],
-                'temperature' => 0.7,
+                'temperature' => $this->getTemperature(),
             ]);
 
             return $response->choices[0]->message->content;

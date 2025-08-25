@@ -22,7 +22,7 @@
     "require": {
         "silverstripe/framework": "^5.0",
         "silverstripe/admin": "^2.0",
-        "openai-php/client": "^0.10.0",
+        "openai-php/client": "^0.15",
         "mozex/anthropic-php": "^1.1",
         "sunnysideup/classes-and-fields-info": "dev-main",
         "sunnysideup/selections": "dev-main",

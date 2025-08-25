@@ -24,6 +24,9 @@ abstract class ConnectorBaseClass
     private static string $client_name = '';
     private static string $client_model = '';
 
+    private static int $time_out_in_seconds = 20;
+    private static float $temperature = 0.7;
+
     protected string $defaultModel;
     protected string $shortName;
 
@@ -166,5 +169,20 @@ abstract class ConnectorBaseClass
     public function getTestLink(): string
     {
         return '/dev/tasks/acm-test-llm';
+    }
+
+    public function getTimeout(): int
+    {
+        return $this->config()->get('time_out_in_seconds') ?: 20;
+    }
+
+    /**
+     * Get the temperature setting for the AI model
+     * this relates to the creativity of the responses
+     * @return float
+     */
+    public function getTemperature(): float
+    {
+        return $this->config()->get('temperature') ?: 0.7;
     }
 }
