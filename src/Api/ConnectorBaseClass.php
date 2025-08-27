@@ -45,7 +45,8 @@ abstract class ConnectorBaseClass
 
     public static function is_ready(?string $client = null): bool
     {
-        return true;
+        $obj = static::inst($client);
+        return $obj->IsReady();
     }
 
     /**
@@ -59,6 +60,26 @@ abstract class ConnectorBaseClass
         return Injector::inst()->get($client);
     }
 
+    public function IsReady(): bool
+    {
+        $methodsToReturn = [
+            'getApiKey',
+            'getModel',
+        ];
+        foreach ($methodsToReturn as $method) {
+            if (!$this->$method()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     *
+     * this method is static to help the static method inst
+     * @param mixed $client
+     * @return string
+     */
     protected static function get_client_name(?string $client = null): string
     {
         if (! $client) {
@@ -101,7 +122,8 @@ abstract class ConnectorBaseClass
      */
     abstract public function askQuestion(string $query, ?string $model = ''): string;
 
-    protected function getApiKey(): string
+
+    protected function getApiKey(): ?string
     {
         $v = SiteConfig::current_site_config()->LLMKey;
         if (! $v) {
@@ -116,10 +138,10 @@ abstract class ConnectorBaseClass
                 }
             }
         }
-        return $v;
+        return $v ?: null;
     }
 
-    protected function getModel(?string $model = ''): string
+    protected function getModel(?string $model = ''): ?string
     {
         $v = $model;
         if (! $v) {
@@ -142,7 +164,7 @@ abstract class ConnectorBaseClass
                 }
             }
         }
-        return $v;
+        return $v ?: null;
     }
 
     public function getClientNameNice(): string
@@ -153,6 +175,20 @@ abstract class ConnectorBaseClass
     public function getModelNice(): string
     {
         return $this->getModel();
+    }
+
+    public function getApiKeyNice(): string
+    {
+        $input = $this->getApiKey();
+        $len = strlen($input);
+        if ($len <= 6) {
+            return 'No valid key set';
+        }
+
+        $start = substr($input, 0, 5);
+        $end = substr($input, -5);
+
+        return $start . '********' . $end;
     }
 
     public function getClientNameList(): array

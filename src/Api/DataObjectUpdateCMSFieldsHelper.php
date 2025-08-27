@@ -276,7 +276,13 @@ class DataObjectUpdateCMSFieldsHelper
         $fields->addFieldsToTab(
             $tabName,
             [
-                HTMLEditorField_Readonly::create('LLMInstructionsForClass', 'Edit Record', $this->getDescriptionForOneRecordAndField($owner))
+                HTMLEditorField_Readonly::create(
+                    '
+                LLMInstructionsForClass',
+                    'Edit Record',
+                    'To start using your LLM, please click on the stardust button.' .
+                        $this->getDescriptionForOneRecordAndField($owner)
+                )
             ]
         );
     }
