@@ -16,6 +16,8 @@ class ProcessOneRecord
     use Injectable;
     use Configurable;
 
+    private static $call_back_method_after_update = 'OnAfterProcessedByACM';
+
     public function recordAnswer(RecordProcess $recordProcess)
     {
         $question = $recordProcess->getHydratedInstructions();
@@ -58,7 +60,7 @@ class ProcessOneRecord
                     $isPublished = $record->isModifiedOnDraft() ? false : true;
                 }
             }
-            $field = $recordProcess->Instruction()->FieldToChange;
+            $field = $recordProcess->getFieldToChange();
             $record->$field = $recordProcess->getAfterDatabaseValue();
             $record->write();
             if ($isPublished) {
@@ -66,6 +68,11 @@ class ProcessOneRecord
             }
             $recordProcess->OriginalUpdated = true;
             $recordProcess->write();
+            if ($callback = $this->config()->get('call_back_method_after_update')) {
+                if ($record->hasMethod($callback)) {
+                    $record->$callback($recordProcess);
+                }
+            }
         }
     }
 

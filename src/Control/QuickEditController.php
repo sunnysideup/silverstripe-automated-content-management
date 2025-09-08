@@ -322,7 +322,7 @@ class QuickEditController extends Controller
     {
         $this->deconstructParams(true, false);
         if ($this->recordProcess) {
-            $this->recordProcess->DeclineResult();
+            $this->recordProcess->RejectResult();
             $record = $this->recordProcess->getRecord();
             $link = $this->getBestLinkForRecord($record);
             if ($link) {

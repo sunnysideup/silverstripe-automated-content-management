@@ -244,28 +244,10 @@ class Instruction extends DataObject
                             'Started' => false
                         ]
                     ),
-                'Review' => RecordProcess::get()
-                    ->filter(
-                        [
-                            'IsTest' => false,
-                            'Completed' => true,
-                            'Accepted' => false,
-                            'Rejected' => false,
-
-                        ]
-                    ),
-                'Accepted' => RecordProcess::get()
-                    ->filter(
-                        [
-                            'Accepted' => true
-                        ]
-                    ),
-                'Rejected' => RecordProcess::get()
-                    ->filter(
-                        [
-                            'Rejected' => true
-                        ]
-                    ),
+                'Review' => $this->ReviewableRecords(),
+                'Accepted' => $this->AcceptedRecords(),
+                'Rejected' => $this->RejectedRecords(),
+                'Skipped' => $this->RecordsToProcess()->filter(['Skip' => true]),
             ];
             foreach ($grids as $name => $list) {
                 $list = $list->filter(['InstructionID' => $this->ID]);
@@ -520,10 +502,10 @@ class Instruction extends DataObject
         if ($this->Cancelled) {
             return true;
         }
-        $allReviewsDone = $this->RecordsToProcess()
-            ->filter(['Accepted' => false, 'Rejected' => false])
-            ->count() === 0;
-        return ($this->Completed && $allReviewsDone) ? true : false;
+        if ($this->Completed !== true) {
+            return false;
+        }
+        return $this->ReviewableRecords()->count() === 0;
     }
 
     public function getNumberOfTargetRecords(): int
@@ -743,20 +725,56 @@ class Instruction extends DataObject
             $this->AddRecords(false);
         }
         if ($this->RejectAll) {
-            $this->RecordsToProcess()->filter(['Rejected' => false])->limit(100)->each(function ($item) {
+            $this->ReviewableRecords()->limit(100)->each(function ($item) {
                 $item->Rejected = true;
                 $item->write();
             });
         } elseif ($this->AcceptAll) {
-            $this->RecordsToProcess()->filter(['Accepted' => false, 'Rejected' => false])->limit(100)->each(function ($item) {
+            $this->ReviewableRecords()->limit(100)->each(function ($item) {
                 $item->Accepted = true;
                 $item->write();
             });
         }
     }
 
+    public function ProcessableRecords(): DataList
+    {
+        return $this->RecordsToProcess()
+            ->filter([
+                'Started' => true,
+                'Completed' => false,
+            ]);
+    }
 
+    public function ReviewableRecords(): DataList
+    {
+        return $this->RecordsToProcess()
+            ->filter([
+                'Completed' => true,
+                'Accepted' => false,
+                'Rejected' => false,
+                'Skip' => false,
 
+            ]);
+    }
+
+    public function AcceptedRecords(): DataList
+    {
+        return $this->RecordsToProcess()
+            ->filter([
+                'Accepted' => true,
+                'Skip' => false,
+            ]);
+    }
+
+    public function RejectedRecords(): DataList
+    {
+        return $this->RecordsToProcess()
+            ->filter([
+                'Rejected' => true,
+                'Skip' => false,
+            ]);
+    }
 
 
     protected function AddRecords(?bool $isTest = false, array|string|null $filter = null, ?int $limit = null): ?RecordProcess

@@ -76,11 +76,12 @@ class RecordProcess extends DataObject
     ];
 
     private static $casting = [
+        'FieldToChange' => 'Varchar',
         'FindErrorsOnly' => 'Boolean',
         'CanProcess' => 'Boolean',
         'CanNotProcessAnymore' => 'Boolean',
         'CanBeReviewed' => 'Boolean',
-        'AcceptedOrRejected' => 'Boolean',
+        'IsAcceptedOrRejected' => 'Boolean',
         'CanUpdateOriginalRecord' => 'Boolean',
         'RecordTitle' => 'Varchar',
         'RecordLink' => 'Varchar',
@@ -108,6 +109,11 @@ class RecordProcess extends DataObject
     ];
 
     private static $default_sort = 'ID DESC';
+
+    public function getFieldToChange(): bool
+    {
+        return (bool) $this->Instruction()->FieldToChange;
+    }
 
     public function getFindErrorsOnly(): bool
     {
@@ -156,7 +162,7 @@ class RecordProcess extends DataObject
             ! $this->OriginalUpdated;
     }
 
-    public function getAcceptedOrRejected(): bool
+    public function getIsAcceptedOrRejected(): bool
     {
         $instruction = $this->Instruction();
         return
@@ -391,18 +397,22 @@ class RecordProcess extends DataObject
         if ($this->IsTest) {
             $a[] = 'Is a Test Only';
         }
-        if ($this->OriginalUpdated) {
-            $a[] = 'Updated';
-        } elseif ($this->Accepted) {
-            $a[] = 'Result Accepted';
-        } elseif ($this->Rejected) {
-            $a[] = 'Result Rejected';
-        } elseif ($this->Completed) {
-            $a[] = 'Question Completed';
-        } elseif ($this->Started) {
-            $a[] = 'Started';
+        if ($this->Skip) {
+            $a[] = 'Record Skipped';
         } else {
-            $a[] = 'Processing not started yet';
+            if ($this->OriginalUpdated) {
+                $a[] = 'Original Record Updated';
+            } elseif ($this->Accepted) {
+                $a[] = 'Result Accepted';
+            } elseif ($this->Rejected) {
+                $a[] = 'Result Rejected';
+            } elseif ($this->Completed) {
+                $a[] = 'Question Answered - ready for review';
+            } elseif ($this->Started) {
+                $a[] = 'Processing Started';
+            } else {
+                $a[] = 'Processing not started yet';
+            }
         }
         return implode(', ', $a);
     }
@@ -588,16 +598,17 @@ class RecordProcess extends DataObject
         $this->write();
     }
 
-    public function UpdateRecord()
-    {
-        $obj = Injector::inst()->get(ProcessOneRecord::class);
-        $obj->updateOriginalRecord($this);
-    }
-
-    public function DeclineResult()
+    public function RejectResult()
     {
         $this->Accepted = false;
         $this->Rejected = true;
         $this->write();
+    }
+
+
+    public function UpdateRecord()
+    {
+        $obj = Injector::inst()->get(ProcessOneRecord::class);
+        $obj->updateOriginalRecord($this);
     }
 }

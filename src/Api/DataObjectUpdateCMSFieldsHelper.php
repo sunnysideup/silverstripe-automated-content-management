@@ -172,23 +172,16 @@ class DataObjectUpdateCMSFieldsHelper
             $desc .= '<div class="turn-off-llm-instructions"><a href="' . $action . '" title="Stop LLM Editing for now" onclick="loadContentForLLMFunction(event);">' . $title . '</a></div>';
 
 
-            $recordsProcessed = RecordProcess::get()
-                ->filter([
-                    'InstructionID' => $allInstructions->columnUnique('ID') + [-1 => -1],
-                    'Completed' => 1,
-                    'Rejected' => 0,
-                    'Accepted' => 0,
-
-                ]);
-            if ($recordsProcessed && $recordsProcessed->exists()) {
+            $reviewableRecords = $allInstructions->ReviewableRecords();
+            if ($reviewableRecords && $reviewableRecords->exists()) {
                 $desc .= '
                     <h2>Review processed LLM (AI) instructions to accept / decline</h2>';
-                foreach ($recordsProcessed as $recordProcessed) {
+                foreach ($reviewableRecords as $reviewableRecord) {
                     $desc .= '
                         <div>
-                            <a href="' . $recordProcessed->CMSEditLink() . '" class="icon-on-right" title="Review log"><span class="font-icon-info-circled"></span></a>
-                            ' . $recordProcessed->getResultPreviewLinkHTML() . ' made by
-                            "' . $recordProcessed->Instruction()->Title . '"
+                            <a href="' . $reviewableRecord->CMSEditLink() . '" class="icon-on-right" title="Review log"><span class="font-icon-info-circled"></span></a>
+                            ' . $reviewableRecord->getResultPreviewLinkHTML() . ' made by
+                            "' . $reviewableRecord->Instruction()->Title . '"
                         </div>';
                 }
             }
