@@ -22,6 +22,7 @@ class ProcessOneRecord
         $record = $recordProcess->getRecord();
         $field = $recordProcess->Instruction->FieldToChange;
         if (! $field) {
+            user_error('no field to change');
             return;
         }
         $recordProcess->Before = $record->$field;
@@ -37,8 +38,9 @@ class ProcessOneRecord
             $recordProcess->write();
             $answer = $this->sendToLLM($question);
             $answer = $this->removeQuotesFromAnswer($answer);
+            echo 'ANSWER: ' . $answer . PHP_EOL . " writing to record process ID: " . $recordProcess->ID . PHP_EOL;
             $recordProcess->After = $answer;
-            $recordProcess->Completed = $answer;
+            $recordProcess->Completed = true;
             if ($recordProcess->getFindErrorsOnly()) {
                 $recordProcess->ErrorFound = $recordProcess->getIsErrorAnswer($answer);
             }

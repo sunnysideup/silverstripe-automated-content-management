@@ -95,6 +95,7 @@ class ProcessInstructions extends BuildTask
                 'Skip' => false,
                 'InstructionID' => $instruction->ID,
             ]);
+            // if it is a test, only include the tests.
             $list = $list->filter([
                 'IsTest' => $instruction->RunTest,
             ]);
@@ -105,6 +106,52 @@ class ProcessInstructions extends BuildTask
                 DB::alteration_message('... Processing record process: ' . $recordProcess->getRecordTitle());
                 if ($recordProcess->getCanProcess()) {
                     $this->processor->recordAnswer($recordProcess);
+                    DB::alteration_message('... ... Processed this record process', 'created');
+                } else {
+                    DB::alteration_message('... ... Cannot process this record process', 'error');
+                }
+            }
+        }
+    }
+
+    protected function updateOrRejectAll()
+    {
+        $instructions = Instruction::get()->filter([
+            'Completed' => true,
+            'Cancelled' => false,
+        ]);
+        if ($this->instruction) {
+            $instructions = $instructions->filter([
+                'ID' => $this->instruction->ID,
+            ]);
+        }
+        foreach ($instructions as $instruction) {
+            DB::alteration_message('... Updating or rejecting all for instruction: ' . $instruction->getTitle());
+            if ($instruction->AcceptAll) {
+                $recordProcesses = RecordProcess::get()->filter([
+                    'Completed' => true,
+                    'Accepted' => false,
+                    'Rejected' => false,
+                    'IsTest' => false,
+                    'InstructionID' => $instruction->ID,
+                ]);
+                foreach ($recordProcesses as $recordProcess) {
+                    DB::alteration_message('... ... Accepting record process: ' . $recordProcess->getRecordTitle(), 'created');
+                    $recordProcess->Accepted = true;
+                    $recordProcess->write();
+                }
+            } elseif ($instruction->RejectAll) {
+                $recordProcesses = RecordProcess::get()->filter([
+                    'Completed' => true,
+                    'Accepted' => false,
+                    'Rejected' => false,
+                    'IsTest' => false,
+                    'InstructionID' => $instruction->ID,
+                ]);
+                foreach ($recordProcesses as $recordProcess) {
+                    DB::alteration_message('... ... Rejecting record process: ' . $recordProcess->getRecordTitle(), 'deleted');
+                    $recordProcess->Rejected = true;
+                    $recordProcess->write();
                 }
             }
         }
@@ -138,11 +185,12 @@ class ProcessInstructions extends BuildTask
             ['Rejected' => true],
             ['RecordID' => 0],
         ];
-        if ($this->instruction) {
-            $filters['InstructionID'] = $this->instruction->ID;
-        }
+        print_r($filters);
         foreach ($filters as $filter) {
             DB::alteration_message('... Deleting by filter: ' . json_encode($filter), 'deleted');
+            if ($this->instruction) {
+                $filter['InstructionID'] = $this->instruction->ID;
+            }
             $recordProcesses = RecordProcess::get()->filter($filter);
             foreach ($recordProcesses as $recordProcess) {
                 DB::alteration_message('... ... Deleting record process: ' . $recordProcess->ID, 'deleted');

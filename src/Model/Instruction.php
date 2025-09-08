@@ -291,11 +291,13 @@ class Instruction extends DataObject
                 [
                     $fields->dataFieldByName('AcceptAll')
                         ->setDescription(
-                            'This will allow you to accept all the changes for all the records in the list.'
+                            'This will allow you to accept all the changes for all the records in the list.
+                            It will run automatically in batches of 100 records at a time.'
                         ),
                     $fields->dataFieldByName('RejectAll')
                         ->setDescription(
-                            'This will allow you to accept all the changes for all the records in the list.'
+                            'This will allow you to reject all the changes for all the records in the list.
+                            It will run automatically in batches of 100 records at a time.'
                         ),
                 ],
                 'RecordsToProcess'
@@ -741,14 +743,13 @@ class Instruction extends DataObject
             $this->AddRecords(false);
         }
         if ($this->RejectAll) {
-            $this->RecordsToProcess()->filter(['Rejected' => false])->each(function ($item) {
-                $item->RejectAll = true;
+            $this->RecordsToProcess()->filter(['Rejected' => false])->limit(100)->each(function ($item) {
+                $item->Rejected = true;
                 $item->write();
             });
-        }
-        if ($this->AcceptAll) {
-            $this->RecordsToProcess()->filter(['Accepted' => false])->each(function ($item) {
-                $item->AcceptAll = true;
+        } elseif ($this->AcceptAll) {
+            $this->RecordsToProcess()->filter(['Accepted' => false, 'Rejected' => false])->limit(100)->each(function ($item) {
+                $item->Accepted = true;
                 $item->write();
             });
         }
