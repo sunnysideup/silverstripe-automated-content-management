@@ -78,7 +78,7 @@ class Instruction extends DataObject
     ];
 
     private static $defaults = [
-        'NumberOfRecordsToProcessPerBatch' => 100,
+        'NumberOfRecordsToProcessPerBatch' => 25,
     ];
 
     private static $db = [
