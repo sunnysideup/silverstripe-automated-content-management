@@ -75,6 +75,7 @@ class Instruction extends DataObject
             RecordProcess::class,
         ],
         'grouped' => true,
+        'minimum_class_count' => 5,
     ];
 
     private static $defaults = [
@@ -238,15 +239,12 @@ class Instruction extends DataObject
                         ]
                     ),
 
-                'Queued' => RecordProcess::get()
-                    ->filter(
-                        [
-                            'Started' => false
-                        ]
-                    ),
+                'Queued' => $this->ReadyForProcessingRecords(),
+                'InProcessRecords' => $this->InProcessRecords(),
                 'Review' => $this->ReviewableRecords(),
                 'Accepted' => $this->AcceptedRecords(),
                 'Rejected' => $this->RejectedRecords(),
+                'Originals Updated' => $this->UpdatedOriginalsRecords(),
                 'Skipped' => $this->RecordsToProcess()->filter(['Skip' => true]),
             ];
             foreach ($grids as $name => $list) {
@@ -315,10 +313,15 @@ class Instruction extends DataObject
                         ->setTitle(
                             'User who created this instruction',
                         ),
+                ]
+            );
+            $fields->addFieldsToTab(
+                'Root.RunNow',
+                [
                     HTMLReadonlyField::create(
                         'RunLinkNice',
                         'Run Now',
-                        '<a href="' . $this->getRunLink() . '" target="_blank">Run any LLM Processing now - please use with care - we could recommend you ask your developer to set this up</a>'
+                        '<a href="' . $this->getRunLink() . '" target="_blank">Run any LLM Processing now - please use with care </a>'
                     ),
                 ]
             );
@@ -483,7 +486,7 @@ class Instruction extends DataObject
         if (! $this->Description) {
             return false;
         }
-        // cam still process...
+        // can still process...
         // if ($this->StartedProcess) {
         //     return false;
         // }
@@ -737,12 +740,23 @@ class Instruction extends DataObject
         }
     }
 
-    public function ProcessableRecords(): DataList
+    public function ReadyForProcessingRecords(): DataList
+    {
+        return $this->RecordsToProcess()
+            ->filter([
+                'Started' => false,
+                'Completed' => false,
+                'Skip' => false,
+            ]);
+    }
+
+    public function InProcessRecords(): DataList
     {
         return $this->RecordsToProcess()
             ->filter([
                 'Started' => true,
                 'Completed' => false,
+                'Skip' => false,
             ]);
     }
 
@@ -772,6 +786,15 @@ class Instruction extends DataObject
         return $this->RecordsToProcess()
             ->filter([
                 'Rejected' => true,
+                'Skip' => false,
+            ]);
+    }
+
+    public function UpdatedOriginalsRecords(): DataList
+    {
+        return $this->RecordsToProcess()
+            ->filter([
+                'OriginalUpdated' => true,
                 'Skip' => false,
             ]);
     }
@@ -834,8 +857,12 @@ class Instruction extends DataObject
                 'ClassNameToChange',
                 $this->fieldLabel('ClassNameToChange'),
                 Injector::inst()->get(ClassAndFieldInfo::class)->getListOfClasses(
-                    array_replace($this->Config()->get('class_and_field_inclusion_exclusion_schema'), ['grouped' => true]),
-
+                    array_replace(
+                        $this->Config()->get('class_and_field_inclusion_exclusion_schema'),
+                        [
+                            'grouped' => true
+                        ]
+                    ),
                 )
             )->setDescription(
                 '
