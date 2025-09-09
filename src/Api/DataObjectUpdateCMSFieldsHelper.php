@@ -27,7 +27,6 @@ class DataObjectUpdateCMSFieldsHelper
 
     private static string $tab_name = 'Root.LLM';
 
-
     public static function my_link_builder(mixed ...$args): string
     {
         foreach ($args as $key => $arg) {
@@ -54,7 +53,9 @@ class DataObjectUpdateCMSFieldsHelper
         $acceptableClasses = Injector::inst()->get(ClassAndFieldInfo::class)->getListOfClasses(
             array_replace(
                 Config::inst()->get(Instruction::class, 'class_and_field_inclusion_exclusion_schema'),
-                ['grouped' => false]
+                [
+                    'grouped' => false
+                ]
             )
         );
         if (! isset($acceptableClasses[$owner->ClassName])) {
