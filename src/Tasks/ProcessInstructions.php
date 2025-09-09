@@ -53,7 +53,7 @@ class ProcessInstructions extends BuildTask
             }
         }
         $this->processor = Injector::inst()->get(ProcessOneRecord::class);
-        $this->processor->setDebug(true);
+        $this->processor->setVerbose(true);
         $this->cleanupInstructions();
         $this->getAnswers();
         $this->updateOriginals();
@@ -90,7 +90,7 @@ class ProcessInstructions extends BuildTask
         $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
 
         foreach ($instructions as $instruction) {
-            DB::alteration_message('Processing instruction: ' . $instruction->getTitle());
+            DB::alteration_message('... Processing instruction: ' . $instruction->getTitle());
             if (! $instruction->RunTest) {
                 $instruction->StartedProcess = true;
                 $instruction->write();
@@ -110,12 +110,12 @@ class ProcessInstructions extends BuildTask
                 if ($this->SkipRecordProcess($recordProcess)) {
                     continue;
                 }
-                DB::alteration_message('... Processing record process: ' . $recordProcess->getRecordTitle());
+                DB::alteration_message('... ... Processing record process: ' . $recordProcess->getRecordTitle());
                 if ($recordProcess->getCanProcess()) {
                     $this->processor->recordAnswer($recordProcess);
-                    DB::alteration_message('... ... Processed this record process', 'created');
+                    DB::alteration_message('... ... ... Processed this record process', 'created');
                 } else {
-                    DB::alteration_message('... ... Cannot process this record process', 'error');
+                    DB::alteration_message('... ... ... Cannot process this record process', 'error');
                 }
             }
         }
@@ -187,7 +187,7 @@ class ProcessInstructions extends BuildTask
 
         foreach ($instructions as $instruction) {
             $recordProcesses = $instruction->AcceptedRecords();
-            DB::alteration_message('Found ' . $recordProcesses->count() . ' record processes to update');
+            DB::alteration_message('... Found ' . $recordProcesses->count() . ' record processes to update');
             if ($instruction->NumberOfRecordsToProcessPerBatch) {
                 $recordProcesses = $recordProcesses->limit($instruction->NumberOfRecordsToProcessPerBatch);
             }
@@ -196,10 +196,10 @@ class ProcessInstructions extends BuildTask
              */
             foreach ($recordProcesses as $recordProcess) {
                 if ($this->SkipRecordProcess($recordProcess)) {
-                    DB::alteration_message('... Skipping record process ID: ' . $this->recordProcess->ID . ' - we are processing ID: ' . $recordProcess->ID, 'error');
+                    DB::alteration_message('... ... Skipping record process ID: ' . $this->recordProcess->ID . ' - we are processing ID: ' . $recordProcess->ID, 'error');
                     continue;
                 }
-                DB::alteration_message('... Updating original record: ' . $recordProcess->getRecordTitle(), 'created');
+                DB::alteration_message('... ... Updating original record: ' . $recordProcess->getRecordTitle(), 'created');
                 $this->processor->updateOriginalRecord($recordProcess);
             }
             $instruction->write();
@@ -224,10 +224,12 @@ class ProcessInstructions extends BuildTask
 
         foreach ($instructions as $instruction) {
             $recordProcessesFullList = $instruction->RecordsToProcess();
+            DB::alteration_message('... Found ' . $recordProcessesFullList->count() . ' record processes for instruction: ' . $instruction->getTitle());
             foreach ($filters as $filter) {
                 // IMPORTANT!!!
                 $filter += $oldFilter;
                 $recordProcesses = $recordProcessesFullList->filter($filter);
+                DB::alteration_message('... ... Found ' . $recordProcesses->count() . ' record processes to delete with filter: ' . print_r($filter, true));
                 /**
                  * @var RecordProcess $recordProcess
                  */
@@ -235,7 +237,7 @@ class ProcessInstructions extends BuildTask
                     if ($this->SkipRecordProcess($recordProcess)) {
                         continue;
                     }
-                    DB::alteration_message('... ... Deleting record process: ' . $recordProcess->ID, 'deleted');
+                    DB::alteration_message('... ... ... Deleting record process: ' . $recordProcess->ID, 'deleted');
                     $recordProcess->delete();
                 }
             }
@@ -248,7 +250,7 @@ class ProcessInstructions extends BuildTask
                     continue;
                 }
                 if (! $recordProcess->getRecord()) {
-                    DB::alteration_message('... Deleting record process without record: ' . $recordProcess->ID, 'deleted');
+                    DB::alteration_message('... ... Deleting record process without record: ' . $recordProcess->ID, 'deleted');
                     $recordProcess->delete();
                 }
             }

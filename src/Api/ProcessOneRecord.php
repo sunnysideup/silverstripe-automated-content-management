@@ -118,7 +118,7 @@ class ProcessOneRecord
         if (! $this->verbose) {
             return;
         }
-        $message = '... ... ' . trim($message);
+        $message = '... ... ... ' . trim($message);
         DB::alteration_message($message, $type);
     }
 }
