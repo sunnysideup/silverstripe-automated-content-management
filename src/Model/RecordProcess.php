@@ -324,7 +324,23 @@ class RecordProcess extends DataObject
                 $beforeFieldName
             );
         }
+        $fields->addFieldsToTab(
+            'Root.ⓘ',
+            [
+
+                HTMLReadonlyField::create(
+                    'RunLinkNice',
+                    'Run Now',
+                    '<a href="' . $this->getRunLink() . '" target="_blank">Run any LLM Processing now - please use with care - we could recommend you ask your developer to set this up</a>'
+                ),
+            ]
+        );
         return $fields;
+    }
+
+    public function getRunLink(): string
+    {
+        return '/dev/tasks/acm-process-instructions/?recordprocess=' . $this->ID;
     }
 
 

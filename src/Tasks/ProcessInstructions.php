@@ -23,8 +23,9 @@ class ProcessInstructions extends BuildTask
     protected $processor;
 
     protected $instruction = null;
+    protected $recordProcess = null;
 
-    private static $delete_delay = '-90 days';
+    private static int $delete_delay = '-90 days';
 
     public function setInstruction(Instruction $instruction)
     {
@@ -40,6 +41,13 @@ class ProcessInstructions extends BuildTask
             $this->instruction = Instruction::get()->byID($request->getVar('instruction'));
             if (! $this->instruction) {
                 DB::alteration_message('... Instruction not found', 'error');
+                return;
+            }
+        }
+        if ($request && $request->getVar('recordprocess')) {
+            $this->recordProcess = RecordProcess::get()->byID($request->getVar('recordprocess'));
+            if (! $this->recordProcess) {
+                DB::alteration_message('... Record Process not found', 'error');
                 return;
             }
         }
@@ -105,6 +113,9 @@ class ProcessInstructions extends BuildTask
                 $list = $list->limit($instruction->NumberOfRecordsToProcessPerBatch);
             }
             foreach ($list as $recordProcess) {
+                if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
+                    continue;
+                }
                 DB::alteration_message('... Processing record process: ' . $recordProcess->getRecordTitle());
                 if ($recordProcess->getCanProcess()) {
                     $this->processor->recordAnswer($recordProcess);
@@ -132,12 +143,18 @@ class ProcessInstructions extends BuildTask
             if ($instruction->AcceptAll) {
                 $recordProcesses = $instruction->ReviewableRecords();
                 foreach ($recordProcesses as $recordProcess) {
+                    if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
+                        continue;
+                    }
                     DB::alteration_message('... ... Accepting record process: ' . $recordProcess->getRecordTitle(), 'created');
                     $recordProcess->AcceptResult();
                 }
             } elseif ($instruction->RejectAll) {
                 $recordProcesses = $instruction->ReviewableRecords();
                 foreach ($recordProcesses as $recordProcess) {
+                    if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
+                        continue;
+                    }
                     DB::alteration_message('... ... Rejecting record process: ' . $recordProcess->getRecordTitle(), 'deleted');
                     $recordProcess->RejectResult();
                 }
@@ -159,6 +176,9 @@ class ProcessInstructions extends BuildTask
             ]);
         }
         foreach ($recordProcesses as $recordProcess) {
+            if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
+                continue;
+            }
             DB::alteration_message('... Updating original record: ' . $recordProcess->getRecordTitle(), 'created');
             $this->processor->updateOriginalRecord($recordProcess);
         }
@@ -181,6 +201,9 @@ class ProcessInstructions extends BuildTask
             $filter['LastEdited:LessThan'] = date('Y-m-d H:i:s', strtotime($this->Config()->get('delete_delay')));
             $recordProcesses = RecordProcess::get()->filter($filter);
             foreach ($recordProcesses as $recordProcess) {
+                if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
+                    continue;
+                }
                 DB::alteration_message('... ... Deleting record process: ' . $recordProcess->ID, 'deleted');
                 $recordProcess->delete();
             }
@@ -192,6 +215,9 @@ class ProcessInstructions extends BuildTask
             ]);
         }
         foreach ($recordProcesses as $recordProcess) {
+            if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
+                continue;
+            }
             DB::alteration_message('... Deleting record process without record: ' . $recordProcess->ID, 'deleted');
             if (! $recordProcess->getRecord()) {
                 $recordProcess->delete();

@@ -725,12 +725,12 @@ class Instruction extends DataObject
             $this->AddRecords(false);
         }
         if ($this->RejectAll) {
-            $this->ReviewableRecords()->limit(100)->each(function ($item) {
+            $this->ReviewableRecords()->limit(10)->each(function ($item) {
                 $item->Rejected = true;
                 $item->write();
             });
         } elseif ($this->AcceptAll) {
-            $this->ReviewableRecords()->limit(100)->each(function ($item) {
+            $this->ReviewableRecords()->limit(10)->each(function ($item) {
                 $item->Accepted = true;
                 $item->write();
             });
