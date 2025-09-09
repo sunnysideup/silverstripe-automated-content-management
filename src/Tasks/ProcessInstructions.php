@@ -24,6 +24,8 @@ class ProcessInstructions extends BuildTask
 
     protected $instruction = null;
 
+    private static $delete_delay = '-90 days';
+
     public function setInstruction(Instruction $instruction)
     {
         $this->instruction = $instruction;
@@ -171,12 +173,12 @@ class ProcessInstructions extends BuildTask
             ['Rejected' => true],
             ['RecordID' => 0],
         ];
-        print_r($filters);
         foreach ($filters as $filter) {
             DB::alteration_message('... Deleting by filter: ' . json_encode($filter), 'deleted');
             if ($this->instruction) {
                 $filter['InstructionID'] = $this->instruction->ID;
             }
+            $filter['LastEdited:LessThan'] = date('Y-m-d H:i:s', strtotime($this->Config()->get('delete_delay')));
             $recordProcesses = RecordProcess::get()->filter($filter);
             foreach ($recordProcesses as $recordProcess) {
                 DB::alteration_message('... ... Deleting record process: ' . $recordProcess->ID, 'deleted');
