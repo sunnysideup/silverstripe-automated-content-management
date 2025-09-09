@@ -110,9 +110,9 @@ class RecordProcess extends DataObject
 
     private static $default_sort = 'ID DESC';
 
-    public function getFieldToChange(): bool
+    public function getFieldToChange(): string
     {
-        return (bool) $this->Instruction()->FieldToChange;
+        return $this->Instruction()->FieldToChange;
     }
 
     public function getFindErrorsOnly(): bool
@@ -325,13 +325,13 @@ class RecordProcess extends DataObject
             );
         }
         $fields->addFieldsToTab(
-            'Root.ⓘ',
+            'Root.RunNow',
             [
 
                 HTMLReadonlyField::create(
                     'RunLinkNice',
                     'Run Now',
-                    '<a href="' . $this->getRunLink() . '" target="_blank">Run any LLM Processing now - please use with care - we could recommend you ask your developer to set this up</a>'
+                    '<a href="' . $this->getRunLink() . '" target="_blank">Run any LLM Processing now - please use with care</a>'
                 ),
             ]
         );
@@ -622,7 +622,7 @@ class RecordProcess extends DataObject
     }
 
 
-    public function UpdateRecord()
+    public function UpdateOriginalRecord()
     {
         $obj = Injector::inst()->get(ProcessOneRecord::class);
         $obj->updateOriginalRecord($this);
