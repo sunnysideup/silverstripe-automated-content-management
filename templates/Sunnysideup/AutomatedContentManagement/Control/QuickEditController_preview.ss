@@ -102,7 +102,7 @@
     </div>
 
     <% if $IsHTML %>
-    <h2>HTML View</h2>
+    <h2>Formatted View</h2>
     <div class="columns">
         <div class="column">
             <div class="value">$BeforeHTMLValue</div>
