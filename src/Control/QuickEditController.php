@@ -306,7 +306,7 @@ class QuickEditController extends Controller
         $this->deconstructParams(true, false);
         if ($this->recordProcess) {
             $this->recordProcess->AcceptResult();
-            $this->recordProcess->UpdateRecord();
+            $this->recordProcess->UpdateOriginalRecord();
             $record = $this->recordProcess->getRecord();
             $link = $this->getBestLinkForRecord($record);
             if ($link) {
