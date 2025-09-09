@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
 use Page;
+use phpDocumentor\Reflection\PseudoTypes\False_;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
@@ -778,6 +779,7 @@ class Instruction extends DataObject
             ->filter([
                 'Accepted' => true,
                 'Skip' => false,
+                'OriginalUpdated' => false,
             ]);
     }
 
@@ -787,6 +789,7 @@ class Instruction extends DataObject
             ->filter([
                 'Rejected' => true,
                 'Skip' => false,
+                'OriginalUpdated' => false,
             ]);
     }
 

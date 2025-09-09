@@ -186,7 +186,7 @@ class ProcessInstructions extends BuildTask
         $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
 
         foreach ($instructions as $instruction) {
-            $recordProcesses = $instruction->AcceptedRecords();
+            $recordProcesses = $instruction->AcceptedRecords()
             DB::alteration_message('... Found ' . $recordProcesses->count() . ' record processes to update');
             if ($instruction->NumberOfRecordsToProcessPerBatch) {
                 $recordProcesses = $recordProcesses->limit($instruction->NumberOfRecordsToProcessPerBatch);
