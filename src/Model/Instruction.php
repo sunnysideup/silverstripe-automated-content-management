@@ -15,6 +15,7 @@ use SilverStripe\Forms\GridField\GridFieldAddNewButton;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordViewer;
 use SilverStripe\Forms\GridField\GridFieldDeleteAction;
+use SilverStripe\Forms\GridField\GridFieldEditButton;
 use SilverStripe\Forms\HTMLEditor\HTMLEditorField_Readonly;
 use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\Forms\LiteralField;
@@ -259,6 +260,7 @@ class Instruction extends DataObject
                         GridFieldConfig_RecordEditor::create()
                             ->removeComponentsByType(GridFieldAddNewButton::class)
                             ->removeComponentsByType(GridFieldDeleteAction::class)
+                            ->removeComponentsByType(GridFieldEditButton::class)
                     )
                 );
             }

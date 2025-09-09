@@ -88,7 +88,9 @@ class RecordProcess extends DataObject
         'HydratedInstructions' => 'Text',
         'ResultPreviewLinkHTML' => 'HTMLText',
         'BeforeHumanValue' => 'Text',
+        'BeforeHTMLValue' => 'HTMLText',
         'AfterHumanValue' => 'Text',
+        'AfterHTMLValue' => 'HTMLText',
         'BeforeDatabaseValueForInspection' => 'Text',
         'AfterDatabaseValueForInspection' => 'Text',
         'Status' => 'Varchar',
@@ -392,9 +394,19 @@ class RecordProcess extends DataObject
         return $this->getHumanValue($this->Before);
     }
 
+    public function getBeforeHTMLValue(): DBHTMLText
+    {
+        return DBHTMLText::create_field('HTMLText', $this->Before);
+    }
+
     public function getAfterHumanValue(): string
     {
         return $this->getHumanValue($this->After);
+    }
+
+    public function getAfterHTMLValue(): DBHTMLText
+    {
+        return DBHTMLText::create_field('HTMLText', $this->After);
     }
 
     public function getBeforeDatabaseValueForInspection(): string
@@ -619,6 +631,12 @@ class RecordProcess extends DataObject
         $this->Accepted = false;
         $this->Rejected = true;
         $this->write();
+    }
+
+    public function IsHTML()
+    {
+        $type = $this->getRecordType();
+        return in_array($type, ['HTMLText', 'HTMLVarchar', 'HTML'], true);
     }
 
 
