@@ -5,6 +5,7 @@ namespace Sunnysideup\AutomatedContentManagement\Tasks;
 
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
+use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DB;
 use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
@@ -25,7 +26,7 @@ class ProcessInstructions extends BuildTask
     protected $instruction = null;
     protected $recordProcess = null;
 
-    private static int $delete_delay = '-90 days';
+    private static string $delete_delay = '-90 days';
 
     public function setInstruction(Instruction $instruction)
     {
@@ -40,18 +41,19 @@ class ProcessInstructions extends BuildTask
         if ($request && $request->getVar('instruction')) {
             $this->instruction = Instruction::get()->byID($request->getVar('instruction'));
             if (! $this->instruction) {
-                DB::alteration_message('... Instruction not found', 'error');
+                DB::alteration_message('ERROR: Instruction not found', 'error');
                 return;
             }
         }
         if ($request && $request->getVar('recordprocess')) {
             $this->recordProcess = RecordProcess::get()->byID($request->getVar('recordprocess'));
             if (! $this->recordProcess) {
-                DB::alteration_message('... Record Process not found', 'error');
+                DB::alteration_message('ERROR: Record Process not found', 'error');
                 return;
             }
         }
         $this->processor = Injector::inst()->get(ProcessOneRecord::class);
+        $this->processor->setDebug(true);
         $this->cleanupInstructions();
         $this->getAnswers();
         $this->updateOriginals();
@@ -61,19 +63,15 @@ class ProcessInstructions extends BuildTask
 
     protected function cleanupInstructions()
     {
-        DB::alteration_message('Writing all instructions ready for processing');
+        DB::alteration_message('=== Writing all instructions ready for processing');
         $instructions = Instruction::get()->filter([
             'Completed' => false,
             'Cancelled' => false,
         ]);
-        if ($this->instruction) {
-            $instructions = $instructions->filter([
-                'ID' => $this->instruction->ID,
-            ]);
-        }
+        $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
         foreach ($instructions as $instruction) {
             if ($instruction->getIsReadyForProcessing()) {
-                DB::alteration_message('... Writing instruction: ' . $instruction->getTitle());
+                DB::alteration_message('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process');
                 $instruction->write();
             }
         }
@@ -81,6 +79,7 @@ class ProcessInstructions extends BuildTask
 
     protected function getAnswers()
     {
+        DB::alteration_message('=== Get Answers for all instructions ready for processing');
         $instructions = Instruction::get()->filterAny([
             'ReadyToProcess' => true,
             'RunTest' => true,
@@ -88,32 +87,27 @@ class ProcessInstructions extends BuildTask
             'Cancelled' => true,
             'Completed' => true,
         ]);
-        if ($this->instruction) {
-            $instructions = $instructions->filter([
-                'ID' => $this->instruction->ID,
-            ]);
-        }
+        $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
+
         foreach ($instructions as $instruction) {
             DB::alteration_message('Processing instruction: ' . $instruction->getTitle());
             if (! $instruction->RunTest) {
                 $instruction->StartedProcess = true;
                 $instruction->write();
             }
-            $list = RecordProcess::get()->filter([
-                'Started' => false,
-                'Completed' => false,
-                'Skip' => false,
-                'InstructionID' => $instruction->ID,
-            ]);
+            $recordProcesses = $instruction->ReadyForProcessingRecords();
             // if it is a test, only include the tests.
-            $list = $list->filter([
+            $recordProcesses = $recordProcesses->filter([
                 'IsTest' => $instruction->RunTest,
             ]);
             if ($instruction->NumberOfRecordsToProcessPerBatch) {
-                $list = $list->limit($instruction->NumberOfRecordsToProcessPerBatch);
+                $recordProcesses = $recordProcesses->limit($instruction->NumberOfRecordsToProcessPerBatch);
             }
-            foreach ($list as $recordProcess) {
-                if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
+            /**
+             * @var RecordProcess $recordProcess
+             */
+            foreach ($recordProcesses as $recordProcess) {
+                if ($this->SkipRecordProcess($recordProcess)) {
                     continue;
                 }
                 DB::alteration_message('... Processing record process: ' . $recordProcess->getRecordTitle());
@@ -129,99 +123,156 @@ class ProcessInstructions extends BuildTask
 
     protected function updateOrRejectAll()
     {
+        DB::alteration_message('=== Process Update or Reject All selections');
         $instructions = Instruction::get()->filter([
             'Completed' => true,
             'Cancelled' => false,
         ]);
-        if ($this->instruction) {
-            $instructions = $instructions->filter([
-                'ID' => $this->instruction->ID,
-            ]);
-        }
-        foreach ($instructions as $instruction) {
+        $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
+
+        $listAcceptAll = $instructions->filter('AcceptAll', true);
+        foreach ($listAcceptAll as $instruction) {
+
             DB::alteration_message('... Updating or rejecting all for instruction: ' . $instruction->getTitle());
-            if ($instruction->AcceptAll) {
-                $recordProcesses = $instruction->ReviewableRecords();
-                foreach ($recordProcesses as $recordProcess) {
-                    if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
-                        continue;
-                    }
-                    DB::alteration_message('... ... Accepting record process: ' . $recordProcess->getRecordTitle(), 'created');
-                    $recordProcess->AcceptResult();
+            $recordProcesses = $instruction->ReviewableRecords();
+            if ($instruction->NumberOfRecordsToProcessPerBatch) {
+                $recordProcesses = $recordProcesses->limit($instruction->NumberOfRecordsToProcessPerBatch);
+            }
+            /**
+             * @var RecordProcess $recordProcess
+             */
+            foreach ($recordProcesses as $recordProcess) {
+                if ($this->SkipRecordProcess($recordProcess)) {
+                    continue;
                 }
-            } elseif ($instruction->RejectAll) {
-                $recordProcesses = $instruction->ReviewableRecords();
-                foreach ($recordProcesses as $recordProcess) {
-                    if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
-                        continue;
-                    }
-                    DB::alteration_message('... ... Rejecting record process: ' . $recordProcess->getRecordTitle(), 'deleted');
-                    $recordProcess->RejectResult();
+                DB::alteration_message('... ... Accepting record process: ' . $recordProcess->getRecordTitle(), 'created');
+                $recordProcess->AcceptResult();
+            }
+            if (!$instruction->ReviewableRecords()->exists()) {
+                $instruction->AcceptAll = false;
+                $instruction->write();
+            }
+        }
+        $listRejectAll = $instructions->filter('RejectAll', true);
+        foreach ($listRejectAll as $instruction) {
+            $recordProcesses = $instruction->ReviewableRecords();
+            if ($instruction->NumberOfRecordsToProcessPerBatch) {
+                $recordProcesses = $recordProcesses->limit($instruction->NumberOfRecordsToProcessPerBatch);
+            }
+            /**
+             * @var RecordProcess $recordProcess
+             */
+            foreach ($recordProcesses as $recordProcess) {
+                if ($this->SkipRecordProcess($recordProcess)) {
+                    continue;
                 }
+                DB::alteration_message('... ... Rejecting record process: ' . $recordProcess->getRecordTitle(), 'deleted');
+                $recordProcess->RejectResult();
+            }
+            if (!$instruction->ReviewableRecords()->exists()) {
+                $instruction->RejectAll = false;
+                $instruction->write();
             }
         }
     }
 
     protected function updateOriginals()
     {
-        DB::alteration_message('Updating original records');
-        $recordProcesses = RecordProcess::get()->filter([
+        DB::alteration_message('=== Updating original records');
+        $instructions = Instruction::get()->filter([
             'Completed' => true,
-            'Accepted' => true,
-            'IsTest' => false,
+            'Cancelled' => false,
         ]);
-        if ($this->instruction) {
-            $recordProcesses = $recordProcesses->filter([
-                'InstructionID' => $this->instruction->ID,
-            ]);
-        }
-        foreach ($recordProcesses as $recordProcess) {
-            if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
-                continue;
+        $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
+
+        foreach ($instructions as $instruction) {
+            $recordProcesses = $instruction->AcceptedRecords();
+            DB::alteration_message('Found ' . $recordProcesses->count() . ' record processes to update');
+            if ($instruction->NumberOfRecordsToProcessPerBatch) {
+                $recordProcesses = $recordProcesses->limit($instruction->NumberOfRecordsToProcessPerBatch);
             }
-            DB::alteration_message('... Updating original record: ' . $recordProcess->getRecordTitle(), 'created');
-            $this->processor->updateOriginalRecord($recordProcess);
+            /**
+             * @var RecordProcess $recordProcess
+             */
+            foreach ($recordProcesses as $recordProcess) {
+                if ($this->SkipRecordProcess($recordProcess)) {
+                    DB::alteration_message('... Skipping record process ID: ' . $this->recordProcess->ID . ' - we are processing ID: ' . $recordProcess->ID, 'error');
+                    continue;
+                }
+                DB::alteration_message('... Updating original record: ' . $recordProcess->getRecordTitle(), 'created');
+                $this->processor->updateOriginalRecord($recordProcess);
+            }
+            $instruction->write();
         }
     }
 
     protected function cleanupRecordProcesses()
     {
-        DB::alteration_message('Cleaning up record processes');
+        DB::alteration_message('=== Cleaning up record processes (deleting old ones)');
+        $oldFilter = ['LastEdited:LessThan' => date('Y-m-d H:i:s', strtotime($this->Config()->get('delete_delay')))];
         $filters = [
             ['Instruction.Cancelled' => true],
-            ['OriginalUpdated' => true],
             ['Rejected' => true],
             ['RecordID' => 0],
+            ['Skip' => 1],
         ];
-        foreach ($filters as $filter) {
-            DB::alteration_message('... Deleting by filter: ' . json_encode($filter), 'deleted');
-            if ($this->instruction) {
-                $filter['InstructionID'] = $this->instruction->ID;
+        $instructions = Instruction::get()->filter([
+            'Completed' => true,
+            'Cancelled' => false,
+        ]);
+        $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
+
+        foreach ($instructions as $instruction) {
+            $recordProcessesFullList = $instruction->RecordsToProcess();
+            foreach ($filters as $filter) {
+                // IMPORTANT!!!
+                $filter += $oldFilter;
+                $recordProcesses = $recordProcessesFullList->filter($filter);
+                /**
+                 * @var RecordProcess $recordProcess
+                 */
+                foreach ($recordProcesses as $recordProcess) {
+                    if ($this->SkipRecordProcess($recordProcess)) {
+                        continue;
+                    }
+                    DB::alteration_message('... ... Deleting record process: ' . $recordProcess->ID, 'deleted');
+                    $recordProcess->delete();
+                }
             }
-            $filter['LastEdited:LessThan'] = date('Y-m-d H:i:s', strtotime($this->Config()->get('delete_delay')));
-            $recordProcesses = RecordProcess::get()->filter($filter);
-            foreach ($recordProcesses as $recordProcess) {
-                if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
+
+            /**
+             * @var RecordProcess $recordProcess
+             */
+            foreach ($recordProcessesFullList as $recordProcess) {
+                if ($this->SkipRecordProcess($recordProcess)) {
                     continue;
                 }
-                DB::alteration_message('... ... Deleting record process: ' . $recordProcess->ID, 'deleted');
-                $recordProcess->delete();
+                if (! $recordProcess->getRecord()) {
+                    DB::alteration_message('... Deleting record process without record: ' . $recordProcess->ID, 'deleted');
+                    $recordProcess->delete();
+                }
             }
         }
-        $recordProcesses = RecordProcess::get();
+    }
+
+    protected function filterInstructionsByCurrentInstruction(DataList $instructions): DataList
+    {
         if ($this->instruction) {
-            $recordProcesses = $recordProcesses->filter([
-                'InstructionID' => $this->instruction->ID,
+            $instructions = $instructions->filter([
+                'ID' => $this->instruction->ID,
             ]);
         }
-        foreach ($recordProcesses as $recordProcess) {
-            if ($this->recordProcess && $this->recordProcess->ID !== $recordProcess->ID) {
-                continue;
+        return $instructions;
+    }
+
+    protected function SkipRecordProcess(RecordProcess $recordProcess): bool
+    {
+        if ($this->recordProcess) {
+            if ($recordProcess->Skip) {
+                return true;
             }
-            DB::alteration_message('... Deleting record process without record: ' . $recordProcess->ID, 'deleted');
-            if (! $recordProcess->getRecord()) {
-                $recordProcess->delete();
-            }
+            return $this->recordProcess->ID !== $recordProcess->ID;
         }
+        return false;
     }
 }
