@@ -71,8 +71,10 @@ class ProcessInstructions extends BuildTask
         $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
         foreach ($instructions as $instruction) {
             if ($instruction->getIsReadyForProcessing()) {
-                DB::alteration_message('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process');
+                // DB::alteration_message('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process');
                 $instruction->write();
+            } else {
+                // DB::alteration_message('... NOT writing instruction: ' . $instruction->getTitle() . ' as it is NOT ready to process');
             }
         }
     }
@@ -186,7 +188,10 @@ class ProcessInstructions extends BuildTask
         $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
 
         foreach ($instructions as $instruction) {
-            $recordProcesses = $instruction->AcceptedRecords()
+            $recordProcesses = $instruction->AcceptedRecords();
+            if (! $recordProcesses->exists()) {
+                continue;
+            }
             DB::alteration_message('... Found ' . $recordProcesses->count() . ' record processes to update');
             if ($instruction->NumberOfRecordsToProcessPerBatch) {
                 $recordProcesses = $recordProcesses->limit($instruction->NumberOfRecordsToProcessPerBatch);
@@ -224,11 +229,17 @@ class ProcessInstructions extends BuildTask
 
         foreach ($instructions as $instruction) {
             $recordProcessesFullList = $instruction->RecordsToProcess();
-            DB::alteration_message('... Found ' . $recordProcessesFullList->count() . ' record processes for instruction: ' . $instruction->getTitle());
+            if (!$recordProcessesFullList->exists()) {
+                continue;
+            }
+            // DB::alteration_message('... Found ' . $recordProcessesFullList->count() . ' record processes for instruction: ' . $instruction->getTitle());
             foreach ($filters as $filter) {
                 // IMPORTANT!!!
                 $filter += $oldFilter;
                 $recordProcesses = $recordProcessesFullList->filter($filter);
+                if (!$recordProcesses->exists()) {
+                    continue;
+                }
                 DB::alteration_message('... ... Found ' . $recordProcesses->count() . ' record processes to delete with filter: ' . print_r($filter, true));
                 /**
                  * @var RecordProcess $recordProcess
