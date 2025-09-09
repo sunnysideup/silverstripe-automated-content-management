@@ -105,11 +105,9 @@
     <h2>HTML View</h2>
     <div class="columns">
         <div class="column">
-            <h3>Before</h3>
             <div class="value">$BeforeHTMLValue</div>
         </div>
         <div class="column">
-            <h3>After</h3>
             <div class="value">$AfterHTMLValue</div>
         </div>
     </div>
