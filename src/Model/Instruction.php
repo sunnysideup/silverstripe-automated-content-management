@@ -778,6 +778,10 @@ class Instruction extends DataObject
                 'Skip' => false,
                 'LastEdited:LessThan' => date('Y-m-d H:i:s', strtotime($this->config()->get('record_process_stuck_time'))),
             ])->columnUnique('ID');
+        $ids = array_merge($ids1, $ids2);
+        if (empty($ids)) {
+            return RecordProcess::get()->filter(['ID' => -1]);
+        }
         return RecordProcess::get()->filter(['ID' => array_merge($ids1, $ids2)]);
     }
 
