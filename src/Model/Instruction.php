@@ -48,6 +48,8 @@ class Instruction extends DataObject
 
     use MakeFieldsRoadOnly;
 
+    private static string $record_process_stuck_time = '-15 minutes';
+
     private static $table_name = 'AutomatedContentManagementInstruction';
 
     private static $singular_name = 'Automated Update Instruction for an LLM (AI)';
@@ -743,24 +745,36 @@ class Instruction extends DataObject
         }
     }
 
+
     public function ReadyForProcessingRecords(): DataList
     {
-        return $this->RecordsToProcess()
+        $ids1 = $this->RecordsToProcess()
             ->filter([
                 'Started' => false,
                 'Completed' => false,
                 'Skip' => false,
-            ]);
-    }
-
-    public function InProcessRecords(): DataList
-    {
-        return $this->RecordsToProcess()
+            ])->columnUnique('ID');
+        $ids2 = $this->RecordsToProcess()
             ->filter([
                 'Started' => true,
                 'Completed' => false,
                 'Skip' => false,
-            ]);
+                'LastEdited:LessThan' => date('Y-m-d H:i:s', strtotime($this->config()->get('record_process_stuck_time'))),
+            ])->columnUnique('ID');
+        return RecordProcess::get()->filter(['ID' => array_merge($ids1, $ids2)]);
+    }
+
+    public function InProcessRecords(): DataList
+    {
+        $ids1 = $this->RecordsToProcess()
+            ->filter([
+                'Started' => true,
+                'Completed' => false,
+                'Skip' => false,
+            ])->columnUnique('ID');
+        $ids2 = $this->ReadyForProcessingRecords()->columnUnique('ID');
+        $ids = array_diff($ids1, $ids2);
+        return RecordProcess::get()->filter(['ID' => $ids]);
     }
 
     public function ReviewableRecords(): DataList

@@ -228,14 +228,13 @@ class ProcessInstructions extends BuildTask
         $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
 
         foreach ($instructions as $instruction) {
-            $recordProcessesFullList = $instruction->RecordsToProcess();
+            $recordProcessesFullList = $instruction->RecordsToProcess()
+                ->filter($oldFilter);
             if (!$recordProcessesFullList->exists()) {
                 continue;
             }
             // DB::alteration_message('... Found ' . $recordProcessesFullList->count() . ' record processes for instruction: ' . $instruction->getTitle());
             foreach ($filters as $filter) {
-                // IMPORTANT!!!
-                $filter += $oldFilter;
                 $recordProcesses = $recordProcessesFullList->filter($filter);
                 if (!$recordProcesses->exists()) {
                     continue;
@@ -249,19 +248,6 @@ class ProcessInstructions extends BuildTask
                         continue;
                     }
                     DB::alteration_message('... ... ... Deleting record process: ' . $recordProcess->ID, 'deleted');
-                    $recordProcess->delete();
-                }
-            }
-
-            /**
-             * @var RecordProcess $recordProcess
-             */
-            foreach ($recordProcessesFullList as $recordProcess) {
-                if ($this->SkipRecordProcess($recordProcess)) {
-                    continue;
-                }
-                if (! $recordProcess->getRecord()) {
-                    DB::alteration_message('... ... Deleting record process without record: ' . $recordProcess->ID, 'deleted');
                     $recordProcess->delete();
                 }
             }
