@@ -791,6 +791,9 @@ class Instruction extends DataObject
             ])->columnUnique('ID');
         $ids2 = $this->ReadyForProcessingRecords()->columnUnique('ID');
         $ids = array_diff($ids1, $ids2);
+        if (empty($ids)) {
+            return RecordProcess::get()->filter(['ID' => -1]);
+        }
         return RecordProcess::get()->filter(['ID' => $ids]);
     }
 
