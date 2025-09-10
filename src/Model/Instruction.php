@@ -236,20 +236,14 @@ class Instruction extends DataObject
                     '
                 );
             $grids = [
-                'Test Only' => RecordProcess::get()
-                    ->filter(
-                        [
-                            'IsTest' => true
-                        ]
-                    ),
-
+                'Test Only' => $this->TestRecords(),
                 'Queued' => $this->ReadyForProcessingRecords(),
                 'InProcessRecords' => $this->InProcessRecords(),
                 'Review' => $this->ReviewableRecords(),
                 'Accepted' => $this->AcceptedRecords(),
                 'Rejected' => $this->RejectedRecords(),
                 'Originals Updated' => $this->UpdatedOriginalsRecords(),
-                'Skipped' => $this->RecordsToProcess()->filter(['Skip' => true]),
+                'Skipped' => $this->SkippedRecords(),
             ];
             foreach ($grids as $name => $list) {
                 $list = $list->filter(['InstructionID' => $this->ID]);
@@ -477,6 +471,11 @@ class Instruction extends DataObject
     public function getIsReadyForProcessing(): bool
     {
         if ($this->Completed) {
+            if ($this->RecordsMatchProcessedRecords()) {
+                return false;
+            }
+        }
+        if ($this->Cancelled) {
             return false;
         }
         if (! $this->HasValidClassName()) {
@@ -611,6 +610,11 @@ class Instruction extends DataObject
         }
     }
 
+    public function RecordsMatchProcessedRecords(): bool
+    {
+        return $this->getNumberOfRecords() === $this->getProcessedRecords();
+    }
+
 
 
     public function onBeforeWrite()
@@ -620,8 +624,12 @@ class Instruction extends DataObject
             $this->ByID = Security::getCurrentUser()?->ID;
         }
         if (! $this->Completed && $this->StartedProcess) {
-            if ($this->getNumberOfRecords() === $this->getProcessedRecords()) {
+            if ($this->RecordsMatchProcessedRecords() === true) {
                 $this->Completed = true;
+            }
+        } else if ($this->Completed) {
+            if ($this->RecordsMatchProcessedRecords() !== true) {
+                $this->Completed = false;
             }
         }
 
@@ -644,7 +652,7 @@ class Instruction extends DataObject
             }
         }
         if ($this->NumberOfRecordsToProcessPerBatch > 1000 || $this->NumberOfRecordsToProcessPerBatch < 1) {
-            $this->NumberOfRecordsToProcessPerBatch = $this->Config()->get('defaults')['NumberOfRecordsToProcessPerBatch'] ?? 100;
+            $this->NumberOfRecordsToProcessPerBatch = $this->Config()->get('defaults')['NumberOfRecordsToProcessPerBatch'] ?? 25;
         }
         if ($this->Title && !$this->isInDB() || $this->isChanged('Title')) {
             $this->Title = $this->ensureUniqueTitle((string) $this->Title);
@@ -746,6 +754,15 @@ class Instruction extends DataObject
     }
 
 
+    public function  TestRecords(): DataList
+    {
+        return $this->RecordsToProcess()
+            ->filter([
+                'IsTest' => true,
+                'Skip' => false,
+            ]);
+    }
+
     public function ReadyForProcessingRecords(): DataList
     {
         $ids1 = $this->RecordsToProcess()
@@ -815,6 +832,14 @@ class Instruction extends DataObject
             ->filter([
                 'OriginalUpdated' => true,
                 'Skip' => false,
+            ]);
+    }
+
+    public function SkippedRecords(): DataList
+    {
+        return $this->RecordsToProcess()
+            ->filter([
+                'Skip' => true,
             ]);
     }
 
