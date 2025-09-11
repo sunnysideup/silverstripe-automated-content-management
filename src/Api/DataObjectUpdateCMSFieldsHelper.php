@@ -172,8 +172,13 @@ class DataObjectUpdateCMSFieldsHelper
             $action = $this->getBestDisableLink($owner, $fieldName);
             $desc .= '<div class="turn-off-llm-instructions"><a href="' . $action . '" title="Stop LLM Editing for now" onclick="loadContentForLLMFunction(event);">' . $title . '</a></div>';
 
-
-            $reviewableRecords = $allInstructions->ReviewableRecords();
+            $id = [-1 => -1];
+            foreach ($allInstructions as $i) {
+                $id = array_merge($id, $i->ReviewableRecords()->columnUnique('ID'));
+            }
+            $reviewableRecords = RecordProcess::get()->filter([
+                'ID' => $id,
+            ]);
             if ($reviewableRecords && $reviewableRecords->exists()) {
                 $desc .= '
                     <h2>Review processed LLM (AI) instructions to accept / decline</h2>';
