@@ -36,15 +36,13 @@ class ProcessInstructions extends BuildTask
 
     public function run($request)
     {
-        DB::alteration_message($this->title);
-        DB::alteration_message('... ' . $this->description);
         if ($request && $request->getVar('instruction')) {
             $this->instruction = Instruction::get()->byID($request->getVar('instruction'));
             if (! $this->instruction) {
                 DB::alteration_message('ERROR: Instruction not found', 'error');
                 return;
             }
-        }
+        } 
         if ($request && $request->getVar('recordprocess')) {
             $this->recordProcess = RecordProcess::get()->byID($request->getVar('recordprocess'));
             if (! $this->recordProcess) {
@@ -56,6 +54,8 @@ class ProcessInstructions extends BuildTask
         $this->processor->setVerbose(true);
         $this->updateAllInstructions();
         $this->getAnswers();
+        $this->readyToAcceptAnswersImmediately();
+        $this->updateOrRejectAll();
         $this->updateOriginals();
         $this->cleanupRecordProcesses();
         $this->updateAllInstructions();
@@ -63,28 +63,50 @@ class ProcessInstructions extends BuildTask
 
     protected function allInstructions()
     {
-        $instructions = Instruction::get();
-        return $instructions;
+        $list = Instruction::get()->exclude(['Cancelled' => true]);
+        return $this->filterInstructionsByCurrentInstruction($list);
     }
 
-    protected function readyToProcessOrTestInstructions()
+    protected function getAnswersInstructions()
     {
         return $this->allInstructions()->filterAny([
             'ReadyToProcess' => true,
             'RunTest' => true,
         ])->excludeAny([
-            'Cancelled' => true,
             'Completed' => true,
         ]);
     }
 
-    protected function readyToReviewInstructions()
+    protected function readyToAcceptAnswersImmediatelyInstructions()
     {
         return $this->allInstructions()->filter([
-            'Completed' => true,
-            'Cancelled' => false,
+            'ReadyToProcess' => true,
+            'AcceptAnswersImmediately' => true,
         ]);
     }
+
+    protected function readyToReviewAllInstructions()
+    {
+        return $this->allInstructions()->filter([
+            'ReadyToProcess' => true,
+            'Completed' => true,
+        ]);
+    }
+
+    protected function updateOriginalsInstructions()
+    {
+        return $this->allInstructions()->filter([
+            'ReadyToProcess' => true
+        ]);
+    }
+
+    protected function cleanupRecordProcessesInstructions()
+    {
+        return $this->allInstructions()->filter([
+            'Completed' => true
+        ]);
+    }
+
 
     protected function updateAllInstructions()
     {
@@ -104,10 +126,9 @@ class ProcessInstructions extends BuildTask
     {
         DB::alteration_message('=== Get Answers for all instructions ready for processing');
 
-        $instructions = $this->readyToProcessOrTestInstructions();
+        $instructions = $this->getAnswersInstructions();
 
         foreach ($instructions as $instruction) {
-            DB::alteration_message('... Processing instruction: ' . $instruction->getTitle());
             if (! $instruction->RunTest) {
                 $instruction->StartedProcess = true;
                 $instruction->write();
@@ -116,6 +137,10 @@ class ProcessInstructions extends BuildTask
             // if it is a test, only include the tests.
 
             $recordProcesses = $this->filterAndLimitRecordProcesses($recordProcesses, $instruction);
+            if (! $recordProcesses->exists()) {
+                continue;
+            }
+            DB::alteration_message('... Processing instruction: ' . $instruction->getTitle() . '... Found ' . $recordProcesses->count() . ' record processes to process');
             /**
              * @var RecordProcess $recordProcess
              */
@@ -131,10 +156,33 @@ class ProcessInstructions extends BuildTask
         }
     }
 
+    protected function readyToAcceptAnswersImmediately()
+    {
+        $instructions = $this->readyToAcceptAnswersImmediatelyInstructions();
+        foreach ($instructions as $instruction) {
+            $recordProcesses = $instruction->ReviewableRecords();
+            $recordProcesses = $this->filterAndLimitRecordProcesses($recordProcesses, $instruction);
+            if (! $recordProcesses->exists()) {
+                continue;
+            }
+            DB::alteration_message('... Processing instruction: ' . $instruction->getTitle() . '... Found ' . $recordProcesses->count() . ' record processes to accept');
+
+            /**
+             * @var RecordProcess $recordProcess
+             */
+            foreach ($recordProcesses as $recordProcess) {
+                DB::alteration_message('... ... Accepting record process: ' . $recordProcess->getRecordTitle(), 'created');
+                $recordProcess->AcceptResult();
+            }
+        }
+    }
+
+
     protected function updateOrRejectAll()
     {
         DB::alteration_message('=== Process Update or Reject All selections');
-        $instructions = $this->readyToReviewInstructions();
+
+        $instructions = $this->readyToReviewAllInstructions();
         $listAcceptAll = $instructions->filter(['AcceptAll' => true]);
         foreach ($listAcceptAll as $instruction) {
 
@@ -144,7 +192,7 @@ class ProcessInstructions extends BuildTask
             if (! $recordProcesses->exists()) {
                 continue;
             }
-            DB::alteration_message('... Found ' . $recordProcesses->count() . ' record processes to accept');
+            DB::alteration_message('... Processing instruction: ' . $instruction->getTitle() . '... Found ' . $recordProcesses->count() . ' record processes to accept');
 
             /**
              * @var RecordProcess $recordProcess
@@ -166,7 +214,7 @@ class ProcessInstructions extends BuildTask
             if (! $recordProcesses->exists()) {
                 continue;
             }
-            DB::alteration_message('... Found ' . $recordProcesses->count() . ' record processes to reject');
+            DB::alteration_message('... Processing instruction: ' . $instruction->getTitle() . '... Found ' . $recordProcesses->count() . ' record processes to reject');
             /**
              * @var RecordProcess $recordProcess
              */
@@ -184,7 +232,7 @@ class ProcessInstructions extends BuildTask
     protected function updateOriginals()
     {
         DB::alteration_message('=== Updating original records');
-        $instructions = $this->readyToReviewInstructions();
+        $instructions = $this->updateOriginalsInstructions();
 
         foreach ($instructions as $instruction) {
             $recordProcesses = $instruction->AcceptedRecords();
@@ -192,7 +240,7 @@ class ProcessInstructions extends BuildTask
             if (! $recordProcesses->exists()) {
                 continue;
             }
-            DB::alteration_message('... Found ' . $recordProcesses->count() . ' record processes to update');
+            DB::alteration_message('... Processing instruction: ' . $instruction->getTitle() . '... Found ' . $recordProcesses->count() . ' original records to update');
             /**
              * @var RecordProcess $recordProcess
              */
@@ -214,21 +262,19 @@ class ProcessInstructions extends BuildTask
             ['RecordID' => 0],
             ['Skip' => 1],
         ];
-        $instructions = Instruction::get()->filter([
-            'Completed' => true
-        ]);
-        $instructions = $this->filterInstructionsByCurrentInstruction($instructions);
+        $instructions = $this->cleanupRecordProcessesInstructions();
 
         foreach ($instructions as $instruction) {
             $recordProcessesFullList = $instruction->RecordsToProcess()
                 ->filter($oldFilter);
+            $recordProcessesFullList = $this->filterAndLimitRecordProcesses($recordProcessesFullList, $instruction);
             if (!$recordProcessesFullList->exists()) {
                 continue;
             }
+            DB::alteration_message('... Processing instruction: ' . $instruction->getTitle() . ' for cleanup of old record processes');
             // DB::alteration_message('... Found ' . $recordProcessesFullList->count() . ' record processes for instruction: ' . $instruction->getTitle());
             foreach ($filters as $filter) {
                 $recordProcesses = $recordProcessesFullList->filter($filter);
-                $recordProcesses = $this->filterAndLimitRecordProcesses($recordProcesses, $instruction);
                 if (!$recordProcesses->exists()) {
                     continue;
                 }
@@ -243,6 +289,18 @@ class ProcessInstructions extends BuildTask
             }
         }
     }
+
+
+    protected function filterInstructionsByCurrentInstruction(DataList $instructions): DataList
+    {
+        if ($this->instruction) {
+            $instructions = $instructions->filter([
+                'ID' => $this->instruction->ID,
+            ]);
+        }
+        return $instructions;
+    }
+
 
     protected function filterAndLimitRecordProcesses(DataList $recordProcesses, Instruction $instruction): DataList
     {
@@ -260,26 +318,5 @@ class ProcessInstructions extends BuildTask
             'IsTest' => $instruction->RunTest,
         ]);
         return $recordProcesses;
-    }
-
-    protected function filterInstructionsByCurrentInstruction(DataList $instructions): DataList
-    {
-        if ($this->instruction) {
-            $instructions = $instructions->filter([
-                'ID' => $this->instruction->ID,
-            ]);
-        }
-        return $instructions;
-    }
-
-    protected function SkipRecordProcess(RecordProcess $recordProcess): bool
-    {
-        if ($this->recordProcess) {
-            if ($recordProcess->Skip) {
-                return true;
-            }
-            return $this->recordProcess->ID !== $recordProcess->ID;
-        }
-        return false;
     }
 }
