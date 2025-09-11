@@ -102,11 +102,13 @@ class Instruction extends DataObject
         'Cancelled' => 'Boolean',
         'AcceptAll' => 'Boolean',
         'RejectAll' => 'Boolean',
+        'AcceptAnswersImmediately' => 'Boolean',
     ];
 
     private static $has_one = [
         'By' => Member::class,
         'Selection' => Selection::class,
+        'BasedOn' => Instruction::class,
     ];
 
     private static $has_many = [
@@ -238,18 +240,22 @@ class Instruction extends DataObject
             $grids = [
                 'Test Only' => $this->TestRecords(),
                 'Queued' => $this->ReadyForProcessingRecords(),
-                'InProcessRecords' => $this->InProcessRecords(),
-                'Review' => $this->ReviewableRecords(),
+                'Processing' => $this->InProcessRecords(),
+                'To be reviewed' => $this->ReviewableRecords(),
                 'Accepted' => $this->AcceptedRecords(),
                 'Rejected' => $this->RejectedRecords(),
-                'Originals Updated' => $this->UpdatedOriginalsRecords(),
+                'Target Records Updated' => $this->UpdatedOriginalsRecords(),
                 'Skipped' => $this->SkippedRecords(),
             ];
             foreach ($grids as $name => $list) {
-                $list = $list->filter(['InstructionID' => $this->ID]);
-                $fields->addFieldToTab(
-                    'Root.ProcessLogByStatus.' . $name,
-                    new GridField(
+                $count = $list->count();
+                if ($count === 0) {
+                    $field = LiteralField::create(
+                        'No' . str_replace(' ', '', $name) . 'Records',
+                        '<p class="message info">There are currently no records in this category.</p>'
+                    );
+                } else {
+                    $field = new GridField(
                         'RecordsToProcess' . $name,
                         $name,
                         $list,
@@ -257,8 +263,15 @@ class Instruction extends DataObject
                             ->removeComponentsByType(GridFieldAddNewButton::class)
                             ->removeComponentsByType(GridFieldDeleteAction::class)
                             ->removeComponentsByType(GridFieldEditButton::class)
-                    )
+                    );
+                }
+                $fields->addFieldToTab(
+                    'Root.ProcessLogByStatus.' . $name,
+                    $field
+
                 );
+                $count = ' (' . $count . ')';
+                $fields->fieldByName('Root.ProcessLogByStatus.' . $name)->setTitle($name . $count);
             }
             $recordsToProcessTab = $fields->fieldByName('Root.RecordsToProcess');
             if ($recordsToProcessTab) {
@@ -268,6 +281,10 @@ class Instruction extends DataObject
             $fields->addFieldsToTab(
                 'Root.RecordsToProcess',
                 [
+                    $fields->dataFieldByName('AcceptAnswersImmediately')
+                        ->setDescription(
+                            'Immediately accept answers from the LLM (AI) without review. Use with care!'
+                        ),
                     $fields->dataFieldByName('AcceptAll')
                         ->setDescription(
                             'This will allow you to accept all the changes for all the records in the list.
@@ -304,7 +321,29 @@ class Instruction extends DataObject
                 'FieldToChange',
                 $this->getSelectFieldNameField()
             );
+            $baseOnField = $fields->dataFieldByName('BasedOnID')?->setSource(
+                Instruction::get()
+                    ->filter([
+                        'FieldToChange' => $this->FieldToChange,
+                        'ClassNameToChange' => $this->ClassNameToChange,
+                        'FindErrorsOnly' => $this->FindErrorsOnly,
+                    ])
+                    ->exclude(['ID' => $this->ID])
+            )
+                ->setTitle('Base instruction on (optional)')
+                ->setEmptyString('-- Please Select (OPTIONAL) --')
+                ->setDescription(
+                    'You can base your instruction on another instruction that you have already created. <br />' .
+                        'This will overwrite the instructions (including the "always added" instruction) as shown below. <br />' .
+                        'If you need to make further modifications then remove the value selected here again.'
+                );
+            if ($baseOnField) {
+                $fields->insertBefore(
+                    'Description',
+                    $baseOnField,
 
+                );
+            }
             $fields->addFieldsToTab(
                 'Root.ⓘ',
                 [
@@ -356,7 +395,6 @@ class Instruction extends DataObject
                 }
             }
 
-            $obj = Injector::inst()->get(Selection::class);
             $addLink = DataObjectUpdateCMSFieldsHelper::my_link_builder(
                 'createselection',
                 $this->ClassNameToChange,
@@ -400,7 +438,21 @@ class Instruction extends DataObject
         }
         // everyting readonly
         if ($this->Cancelled) {
-            return true;
+            switch ($fieldName) {
+                case 'Cancelled':
+                    break;
+                default:
+                    return true;
+            }
+        }
+        if ($this->BasedOnID) {
+            switch ($fieldName) {
+                case 'Description':
+                case 'AlwaysAddedInstruction':
+                    return true;
+                default:
+                    break;
+            }
         }
         // always readonly
         switch ($fieldName) {
@@ -426,8 +478,8 @@ class Instruction extends DataObject
         }
         if ($this->StartedProcess) {
             switch ($fieldName) {
-                case 'Title':
                 case 'Description':
+                case 'BasedOnID':
                 case 'AlwaysAddedInstruction':
                 case 'NumberOfRecordsToProcessPerBatch':
                 case 'FindErrorsOnly':
@@ -632,7 +684,12 @@ class Instruction extends DataObject
                 $this->Completed = false;
             }
         }
-
+        if ($this->StartedProcess === false) {
+            if ($this->BasedOnID) {
+                $this->Description = $this->BasedOn()->Description;
+                $this->AlwaysAddedInstruction = $this->BasedOn()->AlwaysAddedInstruction;
+            }
+        }
         if ($this->ReadyToProcess) {
             $this->RunTest = false;
         }
@@ -739,17 +796,6 @@ class Instruction extends DataObject
             $this->write();
         } elseif ($this->ReadyToProcess && ! $this->Completed) {
             $this->AddRecords(false);
-        }
-        if ($this->RejectAll) {
-            $this->ReviewableRecords()->limit(10)->each(function ($item) {
-                $item->Rejected = true;
-                $item->write();
-            });
-        } elseif ($this->AcceptAll) {
-            $this->ReviewableRecords()->limit(10)->each(function ($item) {
-                $item->Accepted = true;
-                $item->write();
-            });
         }
     }
 
