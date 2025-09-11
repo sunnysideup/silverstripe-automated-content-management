@@ -621,16 +621,20 @@ class RecordProcess extends DataObject
 
     public function AcceptResult()
     {
-        $this->Accepted = true;
-        $this->Rejected = false;
-        $this->write();
+        if ($this->getCanBeReviewed()) {
+            $this->Accepted = true;
+            $this->Rejected = false;
+            $this->write();
+        }
     }
 
     public function RejectResult()
     {
-        $this->Accepted = false;
-        $this->Rejected = true;
-        $this->write();
+        if ($this->getCanBeReviewed()) {
+            $this->Accepted = false;
+            $this->Rejected = true;
+            $this->write();
+        }
     }
 
     public function IsHTML()
