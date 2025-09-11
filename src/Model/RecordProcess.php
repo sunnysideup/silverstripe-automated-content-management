@@ -114,7 +114,7 @@ class RecordProcess extends DataObject
 
     public function getFieldToChange(): string
     {
-        return $this->Instruction()->FieldToChange;
+        return (string) $this->Instruction()->FieldToChange;
     }
 
     public function getFindErrorsOnly(): bool
