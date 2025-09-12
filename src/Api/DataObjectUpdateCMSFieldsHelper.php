@@ -42,7 +42,7 @@ class DataObjectUpdateCMSFieldsHelper
             Config::inst()->get(QuickEditController::class, 'url_segment'),
             $action
         );
-        return $link;
+        return '/' . ltrim($link, '/');
     }
 
     protected static $record_count_cache = [];
