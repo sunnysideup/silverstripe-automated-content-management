@@ -27,7 +27,7 @@ use SilverStripe\Forms\ToggleCompositeField;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
-
+use SilverStripe\ORM\UnsavedRelationList;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
@@ -120,8 +120,13 @@ class Instruction extends DataObject
         'Title' => 'Title',
         'ClassNameToChangeNice' => 'Record Type',
         'FieldToChangeNice' => 'Field to change',
-        'NumberOfTargetRecords' => 'Number of Target Records',
-        'PercentageCompleted' => 'Percentage Completed',
+        'Cancelled.Nice' => 'Cancelled',
+        'NumberOfTargetRecords' => 'Target Records',
+        'ReadyForProcessingRecordsCount' => 'Queued',
+        'InProcessRecordsCount' => 'Processing',
+        'ReviewableRecordsCount' => 'To be reviewed',
+        'AcceptedRecordsCount' => 'Accepted',
+        'UpdatedOriginalsRecordsCount' => 'Updated',
     ];
 
     private static $searchable_fields = [
@@ -168,7 +173,7 @@ class Instruction extends DataObject
     ];
 
 
-    private static $default_sort = 'ID DESC';
+    private static $default_sort = 'Cancelled ASC, ID DESC';
 
     // public function getCMSCompositeValidator(): CompositeValidator
     // {
@@ -476,10 +481,10 @@ class Instruction extends DataObject
                     break;
             }
         }
-        if ($this->StartedProcess) {
+        if ($this->StartedProcess && $this->ReadyToProcess) {
             switch ($fieldName) {
-                case 'Description':
                 case 'BasedOnID':
+                case 'Description':
                 case 'AlwaysAddedInstruction':
                 case 'NumberOfRecordsToProcessPerBatch':
                 case 'FindErrorsOnly':
@@ -799,8 +804,11 @@ class Instruction extends DataObject
         }
     }
 
-
-    public function  TestRecords(): DataList
+    public function TestRecordsCount(): Int
+    {
+        return $this->TestRecords()->count();
+    }
+    public function  TestRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
             ->filter([
@@ -809,7 +817,12 @@ class Instruction extends DataObject
             ]);
     }
 
-    public function ReadyForProcessingRecords(): DataList
+    public function ReadyForProcessingRecordsCount(): Int
+    {
+        return $this->ReadyForProcessingRecords()->count();
+    }
+
+    public function ReadyForProcessingRecords(): DataList|UnsavedRelationList
     {
         $ids1 = $this->RecordsToProcess()
             ->filter([
@@ -830,8 +843,12 @@ class Instruction extends DataObject
         }
         return RecordProcess::get()->filter(['ID' => array_merge($ids1, $ids2)]);
     }
+    public function InProcessRecordsCount(): Int
+    {
+        return $this->InProcessRecords()->count();
+    }
 
-    public function InProcessRecords(): DataList
+    public function InProcessRecords(): DataList|UnsavedRelationList
     {
         $ids1 = $this->RecordsToProcess()
             ->filter([
@@ -847,7 +864,12 @@ class Instruction extends DataObject
         return RecordProcess::get()->filter(['ID' => $ids]);
     }
 
-    public function ReviewableRecords(): DataList
+    public function ReviewableRecordsCount(): Int
+    {
+        return $this->ReviewableRecords()->count();
+    }
+
+    public function ReviewableRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
             ->filter([
@@ -859,7 +881,12 @@ class Instruction extends DataObject
             ]);
     }
 
-    public function AcceptedRecords(): DataList
+    public function AcceptedRecordsCount(): Int
+    {
+        return $this->AcceptedRecords()->count();
+    }
+
+    public function AcceptedRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
             ->filter([
@@ -868,8 +895,11 @@ class Instruction extends DataObject
                 'OriginalUpdated' => false,
             ]);
     }
-
-    public function RejectedRecords(): DataList
+    public function RejectedRecordsCount(): Int
+    {
+        return $this->RejectedRecords()->count();
+    }
+    public function RejectedRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
             ->filter([
@@ -878,8 +908,11 @@ class Instruction extends DataObject
                 'OriginalUpdated' => false,
             ]);
     }
-
-    public function UpdatedOriginalsRecords(): DataList
+    public function UpdatedOriginalsRecordsCount(): Int
+    {
+        return $this->UpdatedOriginalsRecords()->count();
+    }
+    public function UpdatedOriginalsRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
             ->filter([
@@ -887,8 +920,11 @@ class Instruction extends DataObject
                 'Skip' => false,
             ]);
     }
-
-    public function SkippedRecords(): DataList
+    public function SkippedRecordsCount(): Int
+    {
+        return $this->SkippedRecords()->count();
+    }
+    public function SkippedRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
             ->filter([
@@ -1102,7 +1138,7 @@ class Instruction extends DataObject
 
     public function canEdit($member = null)
     {
-        if ($this->Cancelled || $this->getReviewCompleted()) {
+        if ($this->getReviewCompleted()) {
             return false;
         }
         return Permission::check('CMS_ACCESS_LLMEDITOR', 'any', $member);
@@ -1110,6 +1146,9 @@ class Instruction extends DataObject
 
     public function canDelete($member = null)
     {
+        if ($this->Cancelled) {
+            return true;
+        }
         if ($this->StartedProcess) {
             return false;
         }
