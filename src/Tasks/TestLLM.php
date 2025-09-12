@@ -26,7 +26,7 @@ class TestLLM extends BuildTask
     public function run($request)
     {
         $obj = ConnectorBaseClass::inst();
-        $question = 'What is the capital of New Zealand?';
+        $question = 'Please list all countries in the world with their capitals.';
         if ($request->getVar('question')) {
             $question = $request->getVar('question');
         }

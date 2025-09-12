@@ -34,6 +34,12 @@ class ProcessInstructions extends BuildTask
         return $this;
     }
 
+    public function setRecordProcess(RecordProcess $recordProcess)
+    {
+        $this->recordProcess = $recordProcess;
+        return $this;
+    }
+
     public function run($request)
     {
         if ($request && $request->getVar('instruction')) {
@@ -42,7 +48,7 @@ class ProcessInstructions extends BuildTask
                 DB::alteration_message('ERROR: Instruction not found', 'error');
                 return;
             }
-        } 
+        }
         if ($request && $request->getVar('recordprocess')) {
             $this->recordProcess = RecordProcess::get()->byID($request->getVar('recordprocess'));
             if (! $this->recordProcess) {
@@ -59,6 +65,7 @@ class ProcessInstructions extends BuildTask
         $this->updateOriginals();
         $this->cleanupRecordProcesses();
         $this->updateAllInstructions();
+        $this->showLink();
     }
 
     protected function allInstructions()
@@ -117,7 +124,7 @@ class ProcessInstructions extends BuildTask
                 DB::alteration_message('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process ... ');
                 $instruction->write();
             } else {
-                DB::alteration_message('... NOT writing instruction: ' . $instruction->getTitle() . ' as it is NOT ready to process (or has been cancelled/completed).');
+                DB::alteration_message('... NOT writing instruction: ' . $instruction->getTitle() . ' as it is NOT ready to process, or has been cancelled/completed).');
             }
         }
     }
@@ -297,6 +304,10 @@ class ProcessInstructions extends BuildTask
             $instructions = $instructions->filter([
                 'ID' => $this->instruction->ID,
             ]);
+        } elseif ($this->recordProcess) {
+            $instructions = $instructions->filter([
+                'ID' => $this->recordProcess->InstructionID,
+            ]);
         }
         return $instructions;
     }
@@ -318,5 +329,15 @@ class ProcessInstructions extends BuildTask
             'IsTest' => $instruction->RunTest,
         ]);
         return $recordProcesses;
+    }
+
+    protected function showLink()
+    {
+        $obj = $this->instruction ?: $this->recordProcess;
+        if ($obj) {
+            echo '<h2>Back to <a href="/' . $obj->CMSEditLink() . '">' . $obj->getTitle() . '</a></h2>';
+        } else {
+            echo '<h2><a href="/admin/llm-edits/">Go to LLM Edits</a></h2>';
+        }
     }
 }

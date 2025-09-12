@@ -533,6 +533,7 @@ class RecordProcess extends DataObject
             case 'HTMLText':
             case 'HTMLVarchar':
             case 'HTML':
+                $value = trim((string) $value);
                 break;
             case 'Varchar':
             case 'Text':
@@ -569,7 +570,6 @@ class RecordProcess extends DataObject
                 break;
             default:
                 $value = strip_tags((string) $value);
-                $value =  (string) $value;
         }
         return $value;
     }
@@ -678,5 +678,13 @@ class RecordProcess extends DataObject
     {
         $obj = Injector::inst()->get(ProcessOneRecord::class);
         $obj->updateOriginalRecord($this);
+    }
+
+    protected function onBeforeWrite()
+    {
+        parent::onBeforeWrite();
+        if ($this->isChanged('After')) {
+            $this->After = trim((string) $this->After);
+        }
     }
 }
