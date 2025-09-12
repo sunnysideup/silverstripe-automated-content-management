@@ -12,14 +12,9 @@ class ReviewRecentLLMEdits extends BuildTask
 {
     protected $title = 'Review Recent LLM Edits';
 
-    protected $description = '';
+    protected $description = 'Review recent changes made via LLM.';
 
     private static $segment = 'acm-review-recent-llm-edits';
-    protected $productsWithoutLLMSPCTurnedOn = null;
-    protected $productsWithoutLLMFeaturesTurnedOn = null;
-    protected $productsWithShowLLMSPC = null;
-    protected $productsWithShowLLMFeatures = null;
-
     public function run($request)
     {
         $this->editsMadeInLastFewDays();
@@ -37,7 +32,6 @@ class ReviewRecentLLMEdits extends BuildTask
         echo '<ul>';
         foreach ($edits as $edit) {
             echo '<li>
-                <a href="' . $edit->CMSEditLink() . '">✎</a>
                 <a href="' . $edit->Link() . '">' . $edit->getTitle() . '</a>
             </li>';
         }
