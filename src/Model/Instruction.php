@@ -6,6 +6,7 @@ namespace Sunnysideup\AutomatedContentManagement\Model;
 
 use Page;
 use phpDocumentor\Reflection\PseudoTypes\False_;
+use SilverStripe\Control\Director;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
@@ -326,27 +327,29 @@ class Instruction extends DataObject
                 'FieldToChange',
                 $this->getSelectFieldNameField()
             );
-            $baseOnField = $fields->dataFieldByName('BasedOnID')?->setSource(
-                Instruction::get()
+
+            $baseOnField = $fields->dataFieldByName('BasedOnID');
+            if ($baseOnField) {
+                $options =   Instruction::get()
                     ->filter([
                         'FieldToChange' => $this->FieldToChange,
                         'ClassNameToChange' => $this->ClassNameToChange,
                         'FindErrorsOnly' => $this->FindErrorsOnly,
                     ])
                     ->exclude(['ID' => $this->ID])
-            )
-                ->setTitle('Base instruction on (optional)')
-                ->setEmptyString('-- Please Select (OPTIONAL) --')
-                ->setDescription(
-                    'You can base your instruction on another instruction that you have already created. <br />' .
-                        'This will overwrite the instructions (including the "always added" instruction) as shown below. <br />' .
-                        'If you need to make further modifications then remove the value selected here again.'
-                );
-            if ($baseOnField) {
+                    ->map('ID', 'Title')
+                    ->toArray();
+                $options = [0 => '-- Please Select (OPTIONAL) --'] + $options;
                 $fields->insertBefore(
                     'Description',
-                    $baseOnField,
-
+                    DropdownField::create('BasedOnID', 'Base on another instruction (optional)')
+                        ->setSource($options)
+                        ->setEmptyString('-- Please Select (OPTIONAL) --')
+                        ->setDescription(
+                            'You can base your instruction on another instruction that you have already created. <br />' .
+                                'This will overwrite the instructions (including the "always added" instruction) as shown below. <br />' .
+                                'If you need to make further modifications then remove the value selected here again.'
+                        )
                 );
             }
             $fields->addFieldsToTab(
@@ -486,7 +489,6 @@ class Instruction extends DataObject
                 case 'BasedOnID':
                 case 'Description':
                 case 'AlwaysAddedInstruction':
-                case 'NumberOfRecordsToProcessPerBatch':
                 case 'FindErrorsOnly':
                     return true;
                 default:
@@ -824,6 +826,12 @@ class Instruction extends DataObject
 
     public function ReadyForProcessingRecords(): DataList|UnsavedRelationList
     {
+        if ($this->isReadyForProcessing() !== true) {
+            return $this->RecordsToProcess()->filter(['ID' => -1]);
+        }
+        if (Director::isLive() !== true) {
+            return $this->RecordsToProcess()->filter(['Completed' => false]);
+        }
         $ids1 = $this->RecordsToProcess()
             ->filter([
                 'Started' => false,
