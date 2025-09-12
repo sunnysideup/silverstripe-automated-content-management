@@ -85,6 +85,8 @@ class RecordProcess extends DataObject
         'CanUpdateOriginalRecord' => 'Boolean',
         'RecordTitle' => 'Varchar',
         'RecordLink' => 'Varchar',
+        'RecordClassName' => 'Varchar',
+        'RecordIDNice' => 'Varchar',
         'HydratedInstructions' => 'Text',
         'ResultPreviewLinkHTML' => 'HTMLText',
         'BeforeHumanValue' => 'Text',
@@ -189,6 +191,19 @@ class RecordProcess extends DataObject
         $link = $this->getRecordLinkEdit() ?? $this->getRecordLinkView();
         return $link;
     }
+    public function getRecordClassName(): string|null
+    {
+        $record = $this->getRecord();
+        if ($record) {
+            return $record->getClassName();
+        }
+        return $this->Instruction()?->ClassNameToChange ?: null;
+    }
+
+    public function getRecordIDNice(): string|null
+    {
+        return $this->RecordID ? '#' . $this->RecordID : null;
+    }
 
     public function getRecordLinkEdit(): string|null
     {
@@ -261,8 +276,8 @@ class RecordProcess extends DataObject
         if ($list && $this->RecordID) {
             return $list->byID($this->RecordID);
         }
-        $className = $this->Instruction()->ClassNameToChange;
-        if ($className && is_subclass_of($className, DataObject::class)) {
+        $className = $this->getRecordClassName();
+        if ($className && $className instanceof DataObject) {
             return $className::get()->byID($this->RecordID);
         }
         return null;
