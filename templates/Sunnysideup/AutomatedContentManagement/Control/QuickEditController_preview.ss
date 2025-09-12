@@ -94,6 +94,20 @@
     </h3>
     <h3>Field to be updated: <i>$Instruction.FieldToChangeNice</i></h3>
 
+    <% if $IsHTML %>
+    <h2>
+    Formatted View
+    <br />Before ➔ After
+    </h2>
+    <div class="columns">
+        <div class="column">
+            <div class="value">$BeforeHTMLValue</div>
+        </div>
+        <div class="column">
+            <div class="value">$AfterHTMLValue</div>
+        </div>
+    </div>
+    <% end_if %>
     <h2>Before ➔ After</h2>
     <div class="columns">
         <div class="column">
@@ -104,17 +118,6 @@
         </div>
     </div>
 
-    <% if $IsHTML %>
-    <h2>Formatted View</h2>
-    <div class="columns">
-        <div class="column">
-            <div class="value">$BeforeHTMLValue</div>
-        </div>
-        <div class="column">
-            <div class="value">$AfterHTMLValue</div>
-        </div>
-    </div>
-    <% end_if %>
 
 
     <h2>Other information</h2>
