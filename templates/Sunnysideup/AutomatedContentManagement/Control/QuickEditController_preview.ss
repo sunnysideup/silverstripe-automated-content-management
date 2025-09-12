@@ -88,7 +88,10 @@
     <h1>LLM (AI) Suggestion</h1>
     <h3>Processing Record: <a href="$CMSEditLink">$Instruction.Title</a></h3>
     <h3>Based on: <a href="$Instruction.CMSEditLink">$Instruction.Title</a></h3>
-    <h3>Record to be updated: <a href="$RecordLink">$RecordTitle (ID: $RecordID)</a></h3>
+    <h3>Record to be updated:
+        <% if $RecordLinkEdit %><a href="$RecordLinkEdit" title="edit">✎</a><% end_if %>
+        <% if $RecordLinkView %><a href="$RecordLinkView" title="view">👁 $RecordTitle</a><% else %>$RecordTitle<% end_if %>
+    </h3>
     <h3>Field to be updated: <i>$Instruction.FieldToChangeNice</i></h3>
 
     <h2>Before ➔ After</h2>
@@ -129,10 +132,10 @@
     </div>
 
     <div class="footer-buttons">
-    <% if CanBeReviewed %>
-        <button class="button good-button"><a href="/$AcceptLink">Accept</a></button>
-        <button class="button warning-button"><a href="/$AcceptAndUpdateLink">Accept and Update Record</a></button>
-        <button class="button bad-button"><a href="/$RejectLink">Reject Suggestion</a></button>
+    <% if $CanBeReviewed %>
+        <button class="button good-button"><a href="$AcceptLink">Accept</a></button>
+        <button class="button warning-button"><a href="$AcceptAndUpdateLink">Accept and Update Record</a></button>
+        <button class="button bad-button"><a href="$RejectLink">Reject Suggestion</a></button>
     <% else %>
     <p>You can not change the status of this suggestion.</p>
     <% end_if %>

@@ -186,16 +186,26 @@ class RecordProcess extends DataObject
 
     public function getRecordLink(): string|null
     {
-        $record = $this->getRecord();
-        $link = null;
-        if ($record) {
-            if ($record->hasMethod('CMSEditLink')) {
-                $link = $record->CMSEditLink();
-            } elseif ($record->hasMethod('Link')) {
-                $link = $record->Link();
-            }
-        }
+        $link = $this->getRecordLinkEdit() ?? $this->getRecordLinkView();
         return $link;
+    }
+
+    public function getRecordLinkEdit(): string|null
+    {
+        $record = $this->getRecord();
+        if ($record) {
+            return $record->hasMethod('CMSEditLink') ? $record->CMSEditLink() : null;
+        }
+        return null;
+    }
+
+    public function getRecordLinkView(): string|null
+    {
+        $record = $this->getRecord();
+        if ($record) {
+            return $record->hasMethod('Link') ? $record->Link() : null;
+        }
+        return null;
     }
 
     public function getHydratedInstructions(): string
@@ -223,6 +233,11 @@ class RecordProcess extends DataObject
         return $value;
     }
 
+    public function Link()
+    {
+        return $this->getResultPreviewLink();
+    }
+
 
     public function getResultPreviewLinkHTML(): DBHTMLText
     {
@@ -246,16 +261,16 @@ class RecordProcess extends DataObject
         if ($list && $this->RecordID) {
             return $list->byID($this->RecordID);
         }
+        $className = $this->Instruction()->ClassNameToChange;
+        if ($className && is_subclass_of($className, DataObject::class)) {
+            return $className::get()->byID($this->RecordID);
+        }
         return null;
     }
 
     public function getAlwaysAddedInstruction(): string
     {
-        $instruction = $this->Instruction();
-        if ($instruction->AlwaysAddedInstruction) {
-            return $instruction->AlwaysAddedInstruction;
-        }
-        return '';
+        return (string) $this->Instruction()?->AlwaysAddedInstruction ?: '';
     }
 
 
