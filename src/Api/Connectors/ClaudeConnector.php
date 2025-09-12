@@ -18,6 +18,10 @@ class ClaudeConnector extends ConnectorBaseClass
 {
     protected string $shortName = 'Claude';
     protected string $defaultModel = 'claude-3-opus-20240229';
+    protected function makeClient(): void
+    {
+        $this->client = Anthropic::client($this->getApiKey());
+    }
 
     /**
      * Send a question to Claude and get a response
@@ -25,8 +29,8 @@ class ClaudeConnector extends ConnectorBaseClass
     public function askQuestion(string $question, ?string $model = 'claude-3-opus-20240229'): string
     {
         try {
-            $client = Anthropic::client($this->getApiKey());
-            $response = $client->messages()->create([
+
+            $response = $this->client->messages()->create([
                 'model' => $this->getModel($model),
                 'max_tokens' => 1000,
                 'messages' => [['role' => 'user', 'content' => $question]],

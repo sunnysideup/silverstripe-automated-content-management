@@ -49,8 +49,9 @@ class ProcessOneRecord
             $recordProcess->LLMModel = $connector->getModelNice();
             $recordProcess->write();
             $answer = $this->sendToLLM($question);
+            $this->outputMessage('QUESTION: ' . PHP_EOL . $question . PHP_EOL);
             $answer = $this->removeQuotesFromAnswer($answer);
-            $this->outputMessage('ANSWER: ' . $answer . PHP_EOL . " writing to record process ID: " . $recordProcess->ID);
+            $this->outputMessage('ANSWER: ' . $answer . PHP_EOL . " writing to record process ID: " . $recordProcess->ID . PHP_EOL);
             $recordProcess->After = $answer;
             $recordProcess->Completed = true;
             if ($recordProcess->getFindErrorsOnly()) {
@@ -107,9 +108,16 @@ class ProcessOneRecord
 
     protected function removeQuotesFromAnswer(string $answer): string
     {
-        // This is where you would clean the answer from the LLM
-        // For now, we will just return the answer as is
-        return preg_replace('/```[a-zA-Z0-9]+\n(.*?)```/s', '$1', $answer);
+
+        $value = trim($answer);
+
+        // remove opening backticks + optional language word
+        $value = preg_replace('/^```(?:\w+)?\n?/', '', $value);
+
+        // remove closing backticks at the very end
+        $value = preg_replace('/```$/', '', $value);
+
+        return trim($value);
     }
 
 

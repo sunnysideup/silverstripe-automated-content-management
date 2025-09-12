@@ -26,9 +26,20 @@ abstract class ConnectorBaseClass
 
     private static int $time_out_in_seconds = 90;
     private static float $temperature = 0.7;
+    private static int $max_tokens = 0;
 
     protected string $defaultModel;
     protected string $shortName;
+
+    protected $client;
+
+
+    public function __construct()
+    {
+        $this->makeClient();
+    }
+
+    abstract protected function makeClient(): void;
 
     public function getShortName(): string
     {
@@ -209,7 +220,7 @@ abstract class ConnectorBaseClass
 
     public function getTimeout(): int
     {
-        return $this->config()->get('time_out_in_seconds') ?: 20;
+        return $this->config()->get('time_out_in_seconds') ?: 90;
     }
 
     /**
@@ -220,5 +231,15 @@ abstract class ConnectorBaseClass
     public function getTemperature(): float
     {
         return $this->config()->get('temperature') ?: 0.7;
+    }
+
+    /**
+     * Get the temperature setting for the AI model
+     * this relates to the creativity of the responses
+     * @return float
+     */
+    public function getMaxTokens(): float
+    {
+        return $this->config()->get('max_tokens') ?: 0;
     }
 }
