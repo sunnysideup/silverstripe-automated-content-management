@@ -24,7 +24,7 @@ abstract class ConnectorBaseClass
     private static string $client_name = '';
     private static string $client_model = '';
 
-    private static int $time_out_in_seconds = 20;
+    private static int $time_out_in_seconds = 90;
     private static float $temperature = 0.7;
 
     protected string $defaultModel;
