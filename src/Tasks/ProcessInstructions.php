@@ -30,7 +30,7 @@ class ProcessInstructions extends BuildTask
 
     private static string $delete_delay_for_instructions = '-21 days';
 
-    private static $max_number_of_ai_interactions = 50;
+    private static $max_number_of_ai_interactions = 25;
 
     protected int $countOfAiInteractions = 0;
 
@@ -48,6 +48,7 @@ class ProcessInstructions extends BuildTask
 
     public function run($request)
     {
+        DB::query('SET SESSION wait_timeout=600;');
         if ($request && $request->getVar('instruction')) {
             $this->instruction = Instruction::get()->byID($request->getVar('instruction'));
             if (! $this->instruction) {
@@ -152,7 +153,7 @@ class ProcessInstructions extends BuildTask
         DB::alteration_message('=== Get Answers for all instructions ready for processing');
 
         $instructions = $this->getAnswersInstructions();
-        $maxInteractions = (int) $this->Config()->get('max_number_of_ai_interactions') ?: self::$max_number_of_ai_interactions ?: 100;
+        $maxInteractions = (int) $this->Config()->get('max_number_of_ai_interactions') ?: self::$max_number_of_ai_interactions ?: 25;
         foreach ($instructions as $instruction) {
             if (! $instruction->RunTest) {
                 $instruction->StartedProcess = true;
@@ -287,6 +288,10 @@ class ProcessInstructions extends BuildTask
         DB::alteration_message('=== Cleaning up obsolete instructions (deleting old ones)');
         $instructions = $this->cleanupObsoleteInstructionsInstructions();
         foreach ($instructions as $instruction) {
+            if ($instruction->AcceptedRecords()->exists() || $instruction->UpdatedOriginalsRecords()->exists()) {
+                DB::alteration_message('... NOT deleting instruction: ' . $instruction->getTitle() . ' as it has accepted or updated records ... ', 'error');
+                continue;
+            }
             DB::alteration_message('... Deleting instruction: ' . $instruction->getTitle() . ' ... ', 'deleted');
             $instruction->delete();
         }

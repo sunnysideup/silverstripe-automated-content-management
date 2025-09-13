@@ -218,7 +218,7 @@ class RecordProcess extends DataObject
     {
         $record = $this->getRecord();
         if ($record) {
-            return $record->hasMethod('Link') ? $record->Link() : null;
+            return $record->hasMethod('Link') ? $record->Link() . '?previewllm=1' : null;
         }
         return null;
     }
@@ -415,7 +415,16 @@ class RecordProcess extends DataObject
 
     public function getTitle(): string
     {
-        return 'WHAT: ' . $this->getRecordTitle() . ' | HOW: ' . $this->Instruction()->Title . '';
+        return $this->getRecordTitle() . ' (process: ' . $this->Instruction()->Title . ')';
+    }
+
+    public function ShortenedAnswer(int $length = 300): string
+    {
+        $answer = strip_tags((string) $this->getAfterHumanValue());
+        if (strlen((string) $answer) > $length) {
+            $answer = substr((string) $answer, 0, $length) . '...';
+        }
+        return $answer;
     }
 
 

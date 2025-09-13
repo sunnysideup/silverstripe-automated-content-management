@@ -432,9 +432,39 @@ class Instruction extends DataObject
                     ),
                 ],
             );
+            $basedOnForOthers = $this->getBasedOnForOthers();
+            if ($basedOnForOthers->exists()) {
+                $fields->addFieldsToTab(
+                    'Root.ⓘ',
+                    [
+                        GridField::create(
+                            'BasedOnForOthers',
+                            'Other instructions based on this instruction',
+                            $basedOnForOthers,
+                            GridFieldConfig_RecordViewer::create()
+                        ),
+                    ]
+                );
+                $basedOnField = $fields->dataFieldByName('BasedOnID');
+                if ($basedOnField) {
+                    $basedOnField->setDescription(
+                        $basedOnField->getDescription() . '<br />' .
+                            'This instruction is used for ' . $basedOnForOthers->count() . ' other instructions.
+                        See the tab "ⓘ" for details.'
+                    );
+                }
+            }
             $this->makeFieldsReadonly($fields);
             return $fields;
         }
+    }
+
+    public function getBasedOnForOthers()
+    {
+        return Instruction::get()
+            ->filter([
+                'BasedOnID' => $this->ID
+            ]);
     }
 
 
@@ -691,7 +721,7 @@ class Instruction extends DataObject
                 $this->Completed = false;
             }
         }
-        if ($this->StartedProcess === false) {
+        if ($this->Completed === false) {
             if ($this->BasedOnID) {
                 $this->Description = $this->BasedOn()->Description;
                 $this->AlwaysAddedInstruction = $this->BasedOn()->AlwaysAddedInstruction;

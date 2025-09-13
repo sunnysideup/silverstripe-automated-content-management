@@ -6,3 +6,4 @@ After:
 SilverStripe\Control\Director:
   rules:
     "llm-quick-edit//$Action/$ID/$OtherID/$FieldName": Sunnysideup\AutomatedContentManagement\Control\QuickEditController
+    "llm-quick-review//$Action/$ID/$OtherID/$FieldName": Sunnysideup\AutomatedContentManagement\Control\QuickReviewController
