@@ -33,11 +33,14 @@ class QuickReviewController extends Controller
     protected string $fieldName = '';
     protected int $days = 7;
 
+    protected int $limitPerList = 9999;
+
 
     public function index()
     {
         return $this->show($this->getRequest());
     }
+
 
 
     public function show($request)
@@ -72,28 +75,37 @@ class QuickReviewController extends Controller
         $t .= ' -  for the last ' . $this->days . ' days';
         if ($this->classNameUnescaped) {
             $obj = Injector::inst()->get($this->classNameUnescaped);
-            $t .= ' - for ' . $obj->i18n_plural_name();
+            $t .= ' - for "' . $obj->i18n_plural_name() . '"';
             if ($this->fieldName) {
                 $fieldLabels = $obj->fieldLabels();
-                $t .= ' - field: ' . ($fieldLabels[$this->fieldName] ?? $this->fieldName);
+                $t .= ' (' . ($fieldLabels[$this->fieldName] ?? $this->fieldName) . ')';
             }
         }
         return $t;
     }
 
-    protected function getListOriginalUpdated(?string $classNameUnescaped = null, ?string $fieldName = null): DataList
+    public function ShowDetails(): bool
+    {
+        if ($this->classNameUnescaped && $this->fieldName) {
+            return true;
+        }
+        return false;
+    }
+
+    protected function getListOriginalUpdated(?string $classNameUnescaped = null, ?string $fieldName = null, ?int $limit = null): DataList
     {
         $filter = $this->BasicFilter($classNameUnescaped, $fieldName);
         $filter['OriginalUpdated'] = true;
-        return RecordProcess::get()->filter($filter)->sort('LastEdited', 'DESC');
+        return RecordProcess::get()->filter($filter)->sort('LastEdited', 'DESC')
+            ->limit($limit ?: $this->limitPerList);
     }
 
-    protected function getListAnswerCompleted(?string $classNameUnescaped = null, ?string $fieldName = null): DataList
+    protected function getListAnswerCompleted(?string $classNameUnescaped = null, ?string $fieldName = null, ?int $limit = null): DataList
     {
         $filter = $this->BasicFilter($classNameUnescaped, $fieldName);
         $filter['Completed'] = true;
-        $filter['OriginalUpdated'] = false;
-        return RecordProcess::get()->filter($filter)->sort('LastEdited', 'DESC');
+        return RecordProcess::get()->filter($filter)->sort('LastEdited', 'DESC')
+            ->limit($limit ?: $this->limitPerList);
     }
 
     protected function BasicFilter(?string $classNameUnescaped = null, ?string $fieldName = null): array
@@ -103,14 +115,20 @@ class QuickReviewController extends Controller
         $filter = [
             'LastEdited:GreaterThan' => $date,
         ];
+        $filter['Skip'] = false;
+        $filter['Rejected'] = false;
+        $instructions = Instruction::get();
         if ($classNameUnescaped || $this->classNameUnescaped) {
-            $filter['Instruction.ClassNameToChange'] = $classNameUnescaped ?: $this->classNameUnescaped;
+            $test = $classNameUnescaped ?: $this->classNameUnescaped;
+            $instructions = $instructions->filter('ClassNameToChange', $test);
         }
         if ($fieldName || $this->fieldName) {
             if ($fieldName !== 'All') {
-                $filter['Instruction.FieldToChange'] = $fieldName ?: $this->fieldName;
+                $test = $fieldName ?: $this->fieldName;
+                $instructions = $instructions->filter('FieldToChange', $test);
             }
         }
+        $filter['InstructionID'] = $instructions->columnUnique('ID');
         return $filter;
     }
 
@@ -131,6 +149,7 @@ class QuickReviewController extends Controller
             }
             $name = Injector::inst()->get($classNameUnescaped)->i18n_plural_name();
             $classNameEscaped = str_replace('\\', '-', $classNameUnescaped);
+
             $arrayData  = ArrayData::create([
                 'ClassName' => $classNameEscaped,
                 'Name' => $name,

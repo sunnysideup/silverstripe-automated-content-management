@@ -8,6 +8,10 @@
     <% include Sunnysideup/AutomatedContentManagement/Control/Includes/Styles %>
 </head>
 <body class="quick-review">
+    <% if $ShowDetails %>
+        <p><a href="$Link(show)">&laquo; back to list of records and fields.</a></p>
+        <h1>$Title</h1>
+    <% else %>
     <h1>$Title</h1>
     <h2>Select updates made by the LLM Editor</h2>
     <ul class="list-of-classes">
@@ -29,8 +33,9 @@
         </li>
     <% end_loop %>
     </ul>
+    <% end_if %>
 
-
+    <% if $ShowDetails %>
     <h2>Review updates</h2>
     <div>
 
@@ -40,7 +45,10 @@
             <ul>
                 <% loop $ListOriginalUpdated %>
                     <li>
-                        <a href="$Link">✎</a> <a href="<% if $RecordLinkView %>$RecordLinkView<% else %>$Link<% end_if %>">$Title</a>
+                        <a href="$Link">✎</a>
+                        <% if $RecordLinkView %><a href="$RecordLinkView"><% end_if %>
+                        $Title
+                        <% if $RecordLinkView %></a><% end_if %>
                         <blockquote>
                             $ShortenedAnswer
                         </blockquote>
@@ -51,6 +59,7 @@
                 <p class="message warning">No recently updated records found. </p>
             <% end_if %>
         </div>
+
 
         <div class="list" id="answers-completed">
             <h3>Recently completed answers from LLM ready to be reviewed ($ListAnswerCompleted.count)</h3>
@@ -71,6 +80,7 @@
             <% end_if %>
         </div>
     </div>
+    <% end_if %>
 
 </body>
 </html>

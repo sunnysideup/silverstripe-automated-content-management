@@ -177,7 +177,7 @@ class RecordProcess extends DataObject
             $this->Skip;
     }
 
-    public function getRecordTitle()
+    public function getRecordTitle(): string
     {
         $record = $this->getRecord();
         if ($record) {
@@ -188,9 +188,9 @@ class RecordProcess extends DataObject
 
     public function getRecordLink(): string|null
     {
-        $link = $this->getRecordLinkEdit() ?? $this->getRecordLinkView();
-        return $link;
+        return $this->getRecordLinkEdit() ?: $this->getRecordLinkView();
     }
+
     public function getRecordClassName(): string|null
     {
         $record = $this->getRecord();
@@ -273,14 +273,21 @@ class RecordProcess extends DataObject
     public function getRecord()
     {
         $list = $this->Instruction()->getRecordList();
+        $obj = null;
         if ($list && $this->RecordID) {
-            return $list->byID($this->RecordID);
+            $obj = $list->byID($this->RecordID);
+            return $obj;
         }
-        $className = $this->getRecordClassName();
-        if ($className && $className instanceof DataObject) {
-            return $className::get()->byID($this->RecordID);
+        if (! $obj) {
+            $className = $this->getRecordClassName();
+            if ($className && $className instanceof DataObject) {
+                return $className::get()->byID($this->RecordID);
+            }
         }
-        return null;
+        if ($obj && $obj instanceof RecordProcess) {
+            return null;
+        }
+        return $obj;
     }
 
     public function getAlwaysAddedInstruction(): string
