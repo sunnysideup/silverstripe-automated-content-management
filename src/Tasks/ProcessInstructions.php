@@ -65,6 +65,7 @@ class ProcessInstructions extends BuildTask
         $this->readyToAcceptAnswersImmediately();
         $this->updateOrRejectAll();
         $this->updateOriginals();
+        $this->cleanupObsoleteInstructions();
         $this->cleanupRecordProcesses();
         $this->updateAllInstructions();
         $this->showLink();
