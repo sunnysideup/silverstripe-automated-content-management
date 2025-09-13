@@ -826,7 +826,7 @@ class Instruction extends DataObject
 
     public function ReadyForProcessingRecords(): DataList|UnsavedRelationList
     {
-        if ($this->isReadyForProcessing() !== true) {
+        if ($this->getIsReadyForProcessing() !== true) {
             return $this->RecordsToProcess()->filter(['ID' => -1]);
         }
         if (Director::isLive() !== true) {
