@@ -274,13 +274,16 @@ class RecordProcess extends DataObject
     {
         $list = $this->Instruction()->getRecordList();
         $obj = null;
-        if ($list && $this->RecordID) {
+        if (! $this->RecordID) {
+            return null;
+        }
+        if ($list) {
             $obj = $list->byID($this->RecordID);
         }
         if (! $obj) {
             $className = $this->getRecordClassName();
             if ($className && $className instanceof DataObject) {
-                return $className::get()->byID($this->RecordID);
+                $obj = $className::get()->byID($this->RecordID);
             }
         }
         if ($obj && $obj instanceof RecordProcess) {
