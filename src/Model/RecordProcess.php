@@ -194,8 +194,8 @@ class RecordProcess extends DataObject
     public function getRecordClassName(): string|null
     {
         $record = $this->getRecord();
-        if ($record) {
-            return $record->getClassName();
+        if ($record && $record->ClassName) {
+            return $record->ClassName;
         }
         return $this->Instruction()?->ClassNameToChange ?: null;
     }
@@ -276,7 +276,6 @@ class RecordProcess extends DataObject
         $obj = null;
         if ($list && $this->RecordID) {
             $obj = $list->byID($this->RecordID);
-            return $obj;
         }
         if (! $obj) {
             $className = $this->getRecordClassName();
