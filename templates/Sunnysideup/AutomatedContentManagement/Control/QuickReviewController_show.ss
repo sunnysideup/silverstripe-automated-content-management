@@ -7,9 +7,9 @@
     <title>$Title</title>
     <% include Sunnysideup/AutomatedContentManagement/Control/Includes/Styles %>
 </head>
-<body>
+<body class="quick-review">
     <h1>$Title</h1>
-    <h3>Select updates made by the LLM Editor</h3>
+    <h2>Select updates made by the LLM Editor</h2>
     <ul class="list-of-classes">
     <% loop $ListOfClasses %>
         <li>
@@ -19,7 +19,9 @@
                 <% loop $Fields %>
                     <li>
                        $Name
-                        <br /><a href="$Link#original-updated">original already updated</a> | <a href="$Link#answers-completed">answers completed only</a>
+                        <br />
+                        <a href="$Link#original-updated">original already updated ($CountOriginalsUpdated)</a> |
+                        <a href="$Link#answers-completed">answers completed only ($CountAnswersCompleted)</a>
                     </li>
                 <% end_loop %>
                 </ul>
@@ -29,12 +31,12 @@
     </ul>
 
 
-    <h3>Review updates</h3>
+    <h2>Review updates</h2>
     <div>
 
-        <% if $ListOriginalUpdated %>
         <div class="list" id="original-updated">
             <h3>Recently updated records ($ListOriginalUpdated.count)</h3>
+            <% if $ListOriginalUpdated %>
             <ul>
                 <% loop $ListOriginalUpdated %>
                     <li>
@@ -48,12 +50,14 @@
                     </li>
                 <% end_loop %>
             </ul>
+            <% else %>
+                <p class="message warning">No recently updated records found. </p>
+            <% end_if %>
         </div>
-        <% end_if %>
 
-        <% if $ListAnswerCompleted %>
         <div class="list" id="answers-completed">
             <h3>Recently completed answers from LLM ready to be reviewed ($ListAnswerCompleted.count)</h3>
+            <% if $ListAnswerCompleted %>
             <ul>
                 <% loop $ListAnswerCompleted %>
                     <li>
@@ -64,8 +68,10 @@
                     </li>
                 <% end_loop %>
             </ul>
+            <% else %>
+                <p class="message warning">No recently updated records found. </p>
+            <% end_if %>
         </div>
-        <% end_if %>
     </div>
 
 </body>

@@ -45,10 +45,11 @@ class QuickReviewController extends Controller
         parent::init();
         if ($request) {
             if ($request->param('ID')) {
-                $className = $request->param('ID');
-                if (class_exists($className)) {
-                    $this->classNameUnescaped = $className;
-                    $this->classNameEscaped = str_replace('-', '\\', $this->classNameUnescaped);
+                $classNameEscaped = $request->param('ID');
+                $classNameUnescaped = str_replace('-', '\\', $classNameEscaped);
+                if (class_exists($classNameUnescaped)) {
+                    $this->classNameUnescaped = $classNameUnescaped;
+                    $this->classNameEscaped = $classNameEscaped;
                     if ($request->param('OtherID')) {
                         $fieldName = $request->param('OtherID');
                         if (in_array($fieldName, $this->getListOfFieldsInner($this->classNameUnescaped), true)) {
@@ -72,40 +73,43 @@ class QuickReviewController extends Controller
         if ($this->classNameUnescaped) {
             $obj = Injector::inst()->get($this->classNameUnescaped);
             $t .= ' - for ' . $obj->i18n_plural_name();
-        }
-        if ($this->fieldName) {
-            $t .= ' - field: ' . $this->fieldName;
+            if ($this->fieldName) {
+                $fieldLabels = $obj->fieldLabels();
+                $t .= ' - field: ' . ($fieldLabels[$this->fieldName] ?? $this->fieldName);
+            }
         }
         return $t;
     }
 
-    protected function getListOriginalUpdated(): DataList
+    protected function getListOriginalUpdated(?string $classNameUnescaped = null, ?string $fieldName = null): DataList
     {
-        $filter = $this->BasicFilter();
+        $filter = $this->BasicFilter($classNameUnescaped, $fieldName);
         $filter['OriginalUpdated'] = true;
         return RecordProcess::get()->filter($filter)->sort('LastEdited', 'DESC');
     }
 
-    protected function getListAnswerCompleted(): DataList
+    protected function getListAnswerCompleted(?string $classNameUnescaped = null, ?string $fieldName = null): DataList
     {
-        $filter = $this->BasicFilter();
+        $filter = $this->BasicFilter($classNameUnescaped, $fieldName);
         $filter['Completed'] = true;
         $filter['OriginalUpdated'] = false;
         return RecordProcess::get()->filter($filter)->sort('LastEdited', 'DESC');
     }
 
-    protected function BasicFilter(): array
+    protected function BasicFilter(?string $classNameUnescaped = null, ?string $fieldName = null): array
     {
         $days = $this->days ?: 7;
         $date = date('Y-m-d H:i:s', strtotime('-' . $days . ' days'));
         $filter = [
             'LastEdited:GreaterThan' => $date,
         ];
-        if ($this->instruction) {
-            $filter['Instruction.ClassNameToChange'] = $this->classNameUnescaped;
+        if ($classNameUnescaped || $this->classNameUnescaped) {
+            $filter['Instruction.ClassNameToChange'] = $classNameUnescaped ?: $this->classNameUnescaped;
         }
-        if ($this->fieldName) {
-            $filter['Instruction.FieldToChange'] = $this->fieldName;
+        if ($fieldName || $this->fieldName) {
+            if ($fieldName !== 'All') {
+                $filter['Instruction.FieldToChange'] = $fieldName ?: $this->fieldName;
+            }
         }
         return $filter;
     }
@@ -132,6 +136,8 @@ class QuickReviewController extends Controller
                 'Name' => $name,
                 'Link' => $this->Link('show/' . $classNameEscaped) . '?days=' . $this->days,
                 'Fields' => $this->getListOfFields(str_replace('-', '\\', $classNameUnescaped)), // pass original class name
+                'CountOriginalsUpdated' => $this->getListOriginalUpdated($classNameUnescaped, 'All')->count(),
+                'CountAnswersCompleted' => $this->getListAnswerCompleted($classNameUnescaped, 'All')->count(),
             ]);
             $al->push($arrayData);
         }
@@ -166,6 +172,9 @@ class QuickReviewController extends Controller
                 'FieldName' => $fieldName,
                 'Name' => $name,
                 'Link' => $this->Link('show/' . $classNameEscaped . '/' . $fieldName) . '?days=' . $this->days,
+                'CountOriginalsUpdated' => $this->getListOriginalUpdated($classNameUnescaped, $fieldName)->count(),
+                'CountAnswersCompleted' => $this->getListAnswerCompleted($classNameUnescaped, $fieldName)->count(),
+
             ]);
             $al->push($arrayData);
         }
