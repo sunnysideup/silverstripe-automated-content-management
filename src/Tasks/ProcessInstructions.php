@@ -30,6 +30,10 @@ class ProcessInstructions extends BuildTask
 
     private static string $delete_delay_for_instructions = '-21 days';
 
+    private static $max_number_of_ai_interactions = 50;
+
+    protected int $countOfAiInteractions = 0;
+
     public function setInstruction(Instruction $instruction)
     {
         $this->instruction = $instruction;
@@ -148,7 +152,7 @@ class ProcessInstructions extends BuildTask
         DB::alteration_message('=== Get Answers for all instructions ready for processing');
 
         $instructions = $this->getAnswersInstructions();
-
+        $maxInteractions = (int) $this->Config()->get('max_number_of_ai_interactions') ?: self::$max_number_of_ai_interactions ?: 100;
         foreach ($instructions as $instruction) {
             if (! $instruction->RunTest) {
                 $instruction->StartedProcess = true;
@@ -168,6 +172,11 @@ class ProcessInstructions extends BuildTask
             foreach ($recordProcesses as $recordProcess) {
                 DB::alteration_message('... ... Processing record process: ' . $recordProcess->getRecordTitle());
                 if ($recordProcess->getCanProcess()) {
+                    $this->countOfAiInteractions++;
+                    if ($this->countOfAiInteractions > $maxInteractions) {
+                        DB::alteration_message('... ... ... Stopping as max number of AI interactions reached', 'error');
+                        break 2;
+                    }
                     $this->processor->recordAnswer($recordProcess);
                     DB::alteration_message('... ... ... Processed this record process', 'created');
                 } else {
@@ -334,7 +343,7 @@ class ProcessInstructions extends BuildTask
                 'ID' => $this->recordProcess->InstructionID,
             ]);
         }
-        return $instructions;
+        return $instructions->orderBy(DB::get_conn()->random());
     }
 
 
