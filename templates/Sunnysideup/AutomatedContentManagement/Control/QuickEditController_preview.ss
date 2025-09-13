@@ -32,7 +32,10 @@
         </div>
     </div>
     <% end_if %>
-    <h2>Before ➔ After</h2>
+    <h2>
+    Plain Text View
+    <br />Before ➔ After
+    </h2>
     <div class="columns">
         <div class="column">
             <div class="value">$BeforeHumanValue</div>

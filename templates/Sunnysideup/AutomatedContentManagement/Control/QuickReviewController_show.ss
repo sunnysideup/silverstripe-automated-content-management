@@ -40,10 +40,7 @@
             <ul>
                 <% loop $ListOriginalUpdated %>
                     <li>
-                        <% if $RecordLinkView %>
-                            <a href="$RecordLinkView" target="_blank">[View]</a>
-                        <% end_if %>
-                        <a href="$Link">$Title</a>
+                        <a href="$Link">✎</a> <a href="<% if $RecordLinkView %>$RecordLinkView<% else %>$Link<% end_if %>">$Title</a>
                         <blockquote>
                             $ShortenedAnswer
                         </blockquote>
@@ -61,7 +58,8 @@
             <ul>
                 <% loop $ListAnswerCompleted %>
                     <li>
-                        <a href="$Link">$Title</a>
+                        <a href="$CMSEditLink">✎</a> <a href="$Link">$Title</a>
+
                         <blockquote>
                             $ShortenedAnswer
                         </blockquote>
