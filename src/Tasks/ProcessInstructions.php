@@ -26,7 +26,9 @@ class ProcessInstructions extends BuildTask
     protected $instruction = null;
     protected $recordProcess = null;
 
-    private static string $delete_delay = '-90 days';
+    private static string $delete_delay_for_record_processes = '-90 days';
+
+    private static string $delete_delay_for_instructions = '-21 days';
 
     public function setInstruction(Instruction $instruction)
     {
@@ -111,6 +113,17 @@ class ProcessInstructions extends BuildTask
     {
         return $this->allInstructions()->filter([
             'Completed' => true
+        ]);
+    }
+
+    protected function cleanupObsoleteInstructionsInstructions()
+    {
+        $delay = $this->Config()->get('delete_delay_for_instructions') ?: self::$delete_delay_for_instructions ?: '-21 days';
+        return $this->allInstructions()->filter([
+            'ReadyToProcess' => false,
+            'Completed' => false,
+            'StartedProcess' => false,
+            'Created:LessThan' => date('Y-m-d H:i:s', strtotime($delay)),
         ]);
     }
 
@@ -259,10 +272,21 @@ class ProcessInstructions extends BuildTask
         }
     }
 
+    protected function cleanupObsoleteInstructions()
+    {
+        DB::alteration_message('=== Cleaning up obsolete instructions (deleting old ones)');
+        $instructions = $this->cleanupObsoleteInstructionsInstructions();
+        foreach ($instructions as $instruction) {
+            DB::alteration_message('... Deleting instruction: ' . $instruction->getTitle() . ' ... ', 'deleted');
+            $instruction->delete();
+        }
+    }
+
     protected function cleanupRecordProcesses()
     {
         DB::alteration_message('=== Cleaning up record processes (deleting old ones)');
-        $oldFilter = ['LastEdited:LessThan' => date('Y-m-d H:i:s', strtotime($this->Config()->get('delete_delay')))];
+        $delay = $this->Config()->get('delete_delay_for_record_processes') ?: self::$delete_delay_for_record_processes ?: '-90 days';
+        $oldFilter = ['LastEdited:LessThan' => date('Y-m-d H:i:s', strtotime($delay))];
         $filters = [
             ['Instruction.Cancelled' => true],
             ['Rejected' => true],
