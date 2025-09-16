@@ -27,7 +27,8 @@
         "sunnysideup/classes-and-fields-info": "dev-main",
         "sunnysideup/selections": "dev-main",
         "sunnysideup/add-casted-variables": "dev-main",
-        "sunnysideup/optionsetfield-grouped": "dev-main"
+        "sunnysideup/optionsetfield-grouped": "dev-main",
+        "sunnysideup/yes-no-any-filter": "dev-master"
     },
     "suggest": {
         "khalsa-jio/silverstripe-ai-nexus": "The Silverstripe way to connect to LLMs"

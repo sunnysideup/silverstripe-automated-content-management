@@ -54,11 +54,11 @@ class RecordProcess extends DataObject
         'LastEdited.Ago' => 'Last Updated',
         'Instruction.Title' => 'Action',
         'RecordTitle' => 'Record',
-        'IsTest.Nice' => 'Test Only',
-        'Completed.Nice' => 'Completed Processing',
+        'IsTest.NiceAndColourfullInvertedColours' => 'Test Only',
+        'Completed.NiceAndColourfull' => 'Completed Processing',
         'ResultPreviewLinkHTML' => 'Preview',
-        'Accepted.Nice' => 'Change Accepted',
-        'OriginalUpdated.Nice' => 'Originating Record Updated',
+        'Accepted.NiceAndColourfull' => 'Change Accepted',
+        'OriginalUpdated.NiceAndColourfull' => 'Originating Record Updated',
     ];
 
     private static $searchable_fields = [

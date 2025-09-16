@@ -121,9 +121,9 @@ class Instruction extends DataObject
         'Title' => 'Title',
         'ClassNameToChangeNice' => 'Record Type',
         'FieldToChangeNice' => 'Field to change',
-        'Cancelled.Nice' => 'Cancelled',
+        'Completed.NiceAndColourfull' => 'Completed',
+        'Cancelled.NiceAndColourfullInvertedColours' => 'Cancelled',
         'NumberOfTargetRecords' => 'Target Records',
-        'ReadyForProcessingRecordsCount' => 'Queued',
         'InProcessRecordsCount' => 'Processing',
         'ReviewableRecordsCount' => 'To be reviewed',
         'AcceptedRecordsCount' => 'Accepted',
@@ -174,7 +174,7 @@ class Instruction extends DataObject
     ];
 
 
-    private static $default_sort = 'Cancelled ASC, ID DESC';
+    private static $default_sort = 'Cancelled ASC, Completed ASC, ID DESC';
 
     // public function getCMSCompositeValidator(): CompositeValidator
     // {
