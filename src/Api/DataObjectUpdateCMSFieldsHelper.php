@@ -254,12 +254,6 @@ class DataObjectUpdateCMSFieldsHelper
                 }
             }
             $desc .= '</div>';
-        } else {
-            // 🤖
-            $link = $this->getBestEnableLink($owner, $fieldName);
-            $desc .= '<div class="llm-field-action llm-ajax-holder">
-                <a href="' . $link . '" onclick="loadContentForLLMFunction(event)" title="edit with LLM (large language model / ai)">✨</a>
-            </div>';
         }
         // update field
         return $desc;

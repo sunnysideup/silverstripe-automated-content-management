@@ -1,11 +1,9 @@
 <?php
 
-namespace PhotoWarehouse\App\Tasks;
 
-use PhotoWarehouse\App\Ecommerce\PhotographicProduct;
-use PhotoWarehouse\App\Model\ProductLink;
+namespace Sunnysideup\AutomatedContentManagement\Tasks;
+
 use SilverStripe\Dev\BuildTask;
-use SilverStripe\ORM\DB;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class ReviewRecentLLMEdits extends BuildTask
