@@ -29,10 +29,8 @@ class QuickReviewController extends Controller
 
     protected string $classNameUnescaped = '';
     protected string $classNameEscaped = '';
-
     protected string $fieldName = '';
     protected int $days = 7;
-
     protected int $limitPerList = 9999;
 
 
@@ -63,6 +61,9 @@ class QuickReviewController extends Controller
             }
             if ($request->getVar('days')) {
                 $this->days = (int) $request->getVar('days');
+            }
+            if ($request->getVar('limit')) {
+                $this->limitPerList = (int) $request->getVar('limit');
             }
         }
         return [];

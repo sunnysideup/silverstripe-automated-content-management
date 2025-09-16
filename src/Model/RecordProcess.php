@@ -193,10 +193,7 @@ class RecordProcess extends DataObject
 
     public function getRecordClassName(): string|null
     {
-        $record = $this->getRecord();
-        if ($record && $record->ClassName) {
-            return $record->ClassName;
-        }
+        // CAREFULL!!!! Can not call getRecord here otherwise you end up in a an endless loop!
         return $this->Instruction()?->ClassNameToChange ?: null;
     }
 
@@ -266,12 +263,17 @@ class RecordProcess extends DataObject
         return DBHTMLText::create_field('HTMLText', $value);
     }
 
+    protected static $recordCache = [];
+
     /**
      *
      * @return DataObject|null
      */
     public function getRecord()
     {
+        if (isset(self::$recordCache[$this->ID])) {
+            return self::$recordCache[$this->ID];
+        }
         $list = $this->Instruction()->getRecordList();
         $obj = null;
         if (! $this->RecordID) {
@@ -289,6 +291,7 @@ class RecordProcess extends DataObject
         if ($obj && $obj instanceof RecordProcess) {
             return null;
         }
+        self::$recordCache[$this->ID] = $obj;
         return $obj;
     }
 
