@@ -112,6 +112,19 @@ class RecordProcess extends DataObject
         'HydratedInstructions' => 'Question',
     ];
 
+    private static $indexes = [
+        'RecordID' => true,
+        'InstructionID' => true,
+        'IsTest' => true,
+        'ErrorFound' => true,
+        'Skip' => true,
+        'Started' => true,
+        'Completed' => true,
+        'Accepted' => true,
+        'Rejected' => true,
+        'OriginalUpdated' => true,
+    ];
+
     private static $default_sort = 'ID DESC';
 
     public function getFieldToChange(): string

@@ -831,7 +831,8 @@ class Instruction extends DataObject
             }
             $this->RunTest = false;
             $this->write();
-        } elseif ($this->ReadyToProcess && ! $this->Completed) {
+        } elseif ($this->ReadyToProcess) {
+            // note that records can be added over time, even if previously completed.
             $this->AddRecords(false);
         }
     }
@@ -1105,9 +1106,6 @@ class Instruction extends DataObject
 
     protected function RecordIdsToAddToSelectionCount(): int
     {
-        if (! $this->HasRecordIdsToAddToSelection()) {
-            return 0;
-        }
         return count($this->getRecordIdsToAddToSelectionArray());
     }
 
@@ -1123,15 +1121,22 @@ class Instruction extends DataObject
     }
 
 
-    public function AddRecordsToInstruction(int|array $recordId)
+    public function AddRecordsToInstruction(int|array $recordIds)
     {
-        if (! is_array($recordId)) {
-            $recordId = array_filter(array_unique([(int) $recordId]));
+        if (is_array($recordIds)) {
+            $recordIds = array_filter(array_unique(array_map('intval', $recordIds)));
+        } else {
+            $recordIds = [(int) $recordIds];
         }
-        $existingList = $this->getRecordList();
+        if (empty($recordIds)) {
+            return;
+        }
+        $existingList = $this->getRecordList()->columnUnique('RecordID');
         $allPresent = false;
-        foreach ($recordId as $id) {
-            if (!$existingList->byID($id)) {
+        foreach ($recordIds as $id) {
+            if (in_array($id, $existingList, true)) {
+                $allPresent = true;
+            } else {
                 $allPresent = false;
                 break;
             }
@@ -1139,7 +1144,7 @@ class Instruction extends DataObject
         if ($allPresent) {
             return;
         }
-        $ids = array_merge($recordId, $this->getRecordIdsToAddToSelectionArray());
+        $ids = array_merge($recordIds, $this->getRecordIdsToAddToSelectionArray());
         $ids = array_unique($ids);
         $ids = array_filter($ids);
         $this->RecordIdsToAddToSelection = trim(trim(implode(',', $ids)), ',');

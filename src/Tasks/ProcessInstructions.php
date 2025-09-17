@@ -103,7 +103,6 @@ class ProcessInstructions extends BuildTask
     protected function readyToReviewAllInstructions()
     {
         return $this->allInstructions()->filter([
-            'ReadyToProcess' => true,
             'Completed' => true,
         ]);
     }
@@ -114,6 +113,7 @@ class ProcessInstructions extends BuildTask
             'ReadyToProcess' => true
         ]);
     }
+
 
     protected function cleanupRecordProcessesInstructions()
     {
@@ -141,6 +141,7 @@ class ProcessInstructions extends BuildTask
         foreach ($instructions as $instruction) {
             if ($instruction->getIsReadyForProcessing()) {
                 DB::alteration_message('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process ... ');
+                $instruction->AddRecords(false);
                 $instruction->write();
             } else {
                 DB::alteration_message('... NOT writing instruction: ' . $instruction->getTitle() . ' as it is NOT ready to process, or has been cancelled/completed).');
