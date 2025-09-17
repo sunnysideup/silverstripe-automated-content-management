@@ -263,6 +263,11 @@ class RecordProcess extends DataObject
     }
 
 
+    public function getRunExistingRecordProcessNowForOneFieldLink($record): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('runexistingrecordprocessnowforonefield', $this->ID, $record->ID);
+    }
+
     public function getHydratedInstructions(): string
     {
         if ($this->Question) {

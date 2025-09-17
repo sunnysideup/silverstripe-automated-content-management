@@ -971,7 +971,14 @@ class Instruction extends DataObject
             ]);
     }
 
-
+    /**
+     *
+     * only returns a record if it is a test!
+     * @param mixed $isTest
+     * @param array|string|null $filter
+     * @param mixed $limit
+     * @return RecordProcess|null
+     */
     protected function AddRecords(?bool $isTest = false, array|string|null $filter = null, ?int $limit = null): ?RecordProcess
     {
         if ($this->HasValidClassName()) {

@@ -226,7 +226,7 @@ class DataObjectUpdateCMSFieldsHelper
                                 $instructionLink = $recordProcess->CMSEditLink();
                             } elseif ($recordProcess->getCanProcess()) {
                                 $instructionLink = 'runnow';
-                                $action = '<a href="' . $instruction->CMSEditLink() . '">run now</a>';
+                                $action = '<a href="' . $instruction->CMSEditLink() . '">run process now</a>';
                             } else {
                                 $action = '<a href="' . $instruction->CMSEditLink() . '">start processing now';
                                 $instructionLink = 'runnow';

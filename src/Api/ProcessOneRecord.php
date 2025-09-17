@@ -27,21 +27,17 @@ class ProcessOneRecord
 
     private static $call_back_method_after_update = 'OnAfterProcessedByACM';
 
-    public function recordAnswer(RecordProcess $recordProcess)
+    public function recordAnswer(RecordProcess $recordProcess): bool
     {
         $question = $recordProcess->getHydratedInstructions();
         $record = $recordProcess->getRecord();
         $field = $recordProcess->Instruction->FieldToChange;
         if (! $field) {
             $this->outputMessage('NO field to change for record ID: ' . $recordProcess->RecordID . ' - ' . $recordProcess->RecordClassName, 'error');
-            return;
-        }
-        $recordProcess->Before = $record->$field;
-        if ($recordProcess->getCanNotProcessAnymore()) {
+        } elseif ($recordProcess->getCanNotProcessAnymore()) {
             $this->outputMessage('NOT processing record ID: ' . $recordProcess->RecordID . ' - ' . $recordProcess->RecordClassName . ' for field ' . $recordProcess->Instruction->FieldToChange . ' as it has already been processed or marked as skipped.', 'error');
-            return;
-        }
-        if ($recordProcess->getCanProcess()) {
+        } elseif ($recordProcess->getCanProcess()) {
+            $recordProcess->Before = $record->$field;
             $connector = ConnectorBaseClass::inst();
             $recordProcess->Started = true;
             $recordProcess->Question = $question;
@@ -58,9 +54,11 @@ class ProcessOneRecord
                 $recordProcess->ErrorFound = $recordProcess->getIsErrorAnswer($answer);
             }
             $recordProcess->write();
+            return true;
         } else {
             $this->outputMessage('... NOT processing record ID: ' . $recordProcess->RecordID . ' - ' . $recordProcess->RecordClassName . ' for field ' . $recordProcess->Instruction->FieldToChange, 'error');
         }
+        return false;
     }
 
     public function updateOriginalRecord(RecordProcess $recordProcess)

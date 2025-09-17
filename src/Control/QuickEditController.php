@@ -7,8 +7,6 @@ use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPResponse;
 use SilverStripe\Control\RequestHandler;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\FieldType\DBHTMLText;
-use SilverStripe\Security\PermissionProvider;
 use SilverStripe\SiteConfig\SiteConfig;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
 use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
@@ -176,9 +174,9 @@ class QuickEditController extends Controller
     public function runexistingrecordprocessnowforonefield($request)
     {
         $this->deconstructParams(true, false);
-        if ($this->recordProcess && $this->recordProcess->canView()) {
+        if ($this->recordProcess && $this->recordProcess->getCanProcess()) {
             $processor = Injector::inst()->get(ProcessOneRecord::class);
-            $processor->processOneRecordProcess($this->recordProcess);
+            $processor->recordAnswer($this->recordProcess);
             sleep(1);
             $this->recordProcess = $this->recordProcess->flushCache();
             $this->recordProcess = RecordProcess::get()->byID($this->recordProcess->ID);
