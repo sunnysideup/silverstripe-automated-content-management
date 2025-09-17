@@ -1131,7 +1131,7 @@ class Instruction extends DataObject
         if (empty($recordIds)) {
             return;
         }
-        $existingList = $this->getRecordList()->columnUnique('RecordID');
+        $existingList = $this->getRecordList()->columnUnique('ID');
         $allPresent = false;
         foreach ($recordIds as $id) {
             if (in_array($id, $existingList, true)) {

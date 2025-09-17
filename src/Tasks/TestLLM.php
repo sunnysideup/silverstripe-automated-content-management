@@ -26,14 +26,15 @@ class TestLLM extends BuildTask
     public function run($request)
     {
         $obj = ConnectorBaseClass::inst();
-        $question = 'Please list all countries in the world with their capitals.';
+        $question = 'Give me a random amazing fact about nature.';
         if ($request->getVar('question')) {
             $question = $request->getVar('question');
         }
-        echo 'Question: ' . $question;
+        echo '<hr>';
+        echo 'Question: <br /><em>' . $question . '</em>';
         echo '<hr>';
         echo '<hr>';
         echo '<hr>';
-        echo 'Answer: ' . $obj->askQuestion($question);
+        echo 'Answer: <br /><em>' . $obj->askQuestion($question) . '</em>';
     }
 }

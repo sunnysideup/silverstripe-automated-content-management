@@ -137,9 +137,17 @@ class RecordProcess extends DataObject
         return (bool) $this->Instruction()->FindErrorsOnly;
     }
 
+
+
+    public function IsObsolete(): bool
+    {
+        $instruction = $this->Instruction();
+        return $instruction->Cancelled || $this->Skip;
+    }
+
     public function getCanProcess(): bool
     {
-        if ($this->Skip) {
+        if ($this->IsObsolete()) {
             return false;
         }
         $instruction = $this->Instruction();
@@ -153,41 +161,57 @@ class RecordProcess extends DataObject
 
     public function getCanNotProcessAnymore(): bool
     {
-        $instruction = $this->Instruction();
-        return $instruction->Cancelled || $this->Completed || $this->Skip;
+        return $this->Completed || $this->IsObsolete();
     }
+
 
     public function getCanBeReviewed(): bool
     {
-        $instruction = $this->Instruction();
+        if ($this->IsObsolete()) {
+            return false;
+        }
         return
-            ! $instruction->Cancelled &&
             $this->Completed &&
             ! $this->Accepted &&
             ! $this->Rejected &&
-            ! $this->Skip;
+            ! $this->OriginalUpdated;
     }
+
+    public function IsReadyForReview(): bool
+    {
+        return $this->getCanBeReviewed();
+    }
+
+
 
     public function getCanUpdateOriginalRecord(): bool
     {
-        $instruction = $this->Instruction();
+        if ($this->IsObsolete()) {
+            return false;
+        }
         return
-            ! $instruction->Cancelled &&
-            ! $instruction->FindErrorsOnly &&
             $this->Accepted &&
-            ! $this->Skip &&
+            ! $this->getFindErrorsOnly() &&
             ! $this->OriginalUpdated;
     }
 
     public function getIsAcceptedOrRejected(): bool
     {
-        $instruction = $this->Instruction();
+        if ($this->IsObsolete()) {
+            return false;
+        }
         return
-            $instruction->Cancelled ||
             $this->Accepted ||
             $this->Rejected ||
-            $this->OriginalUpdated ||
-            $this->Skip;
+            $this->OriginalUpdated;
+    }
+
+    public function HasOriginalUpdated(): bool
+    {
+        if ($this->IsObsolete()) {
+            return false;
+        }
+        return  $this->OriginalUpdated;
     }
 
     public function getRecordTitle(): string
@@ -199,20 +223,14 @@ class RecordProcess extends DataObject
         return 'Error: record not found'; // (ID: #' . $this->RecordID . ')';
     }
 
+    public function Link()
+    {
+        return $this->getResultPreviewLink();
+    }
+
     public function getRecordLink(): string|null
     {
         return $this->getRecordLinkEdit() ?: $this->getRecordLinkView();
-    }
-
-    public function getRecordClassName(): string|null
-    {
-        // CAREFULL!!!! Can not call getRecord here otherwise you end up in a an endless loop!
-        return $this->Instruction()?->ClassNameToChange ?: null;
-    }
-
-    public function getRecordIDNice(): string|null
-    {
-        return $this->RecordID ? '#' . $this->RecordID : null;
     }
 
     public function getRecordLinkEdit(): string|null
@@ -232,6 +250,18 @@ class RecordProcess extends DataObject
         }
         return null;
     }
+
+    public function getRecordClassName(): string|null
+    {
+        // CAREFULL!!!! Can not call getRecord here otherwise you end up in a an endless loop!
+        return $this->Instruction()?->ClassNameToChange ?: null;
+    }
+
+    public function getRecordIDNice(): string|null
+    {
+        return $this->RecordID ? '#' . $this->RecordID : null;
+    }
+
 
     public function getHydratedInstructions(): string
     {
@@ -256,11 +286,6 @@ class RecordProcess extends DataObject
             $value .= PHP_EOL . PHP_EOL . $add;
         }
         return $value;
-    }
-
-    public function Link()
-    {
-        return $this->getResultPreviewLink();
     }
 
 
@@ -706,6 +731,7 @@ class RecordProcess extends DataObject
         $type = $this->getRecordType();
         return in_array($type, ['HTMLText', 'HTMLVarchar', 'HTML'], true);
     }
+
 
 
     public function UpdateOriginalRecord()

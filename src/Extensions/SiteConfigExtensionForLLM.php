@@ -25,7 +25,7 @@ class SiteConfigExtensionForLLM extends Extension
     public function IsLLMEnabled(): bool
     {
         // to do - check credentials
-        return ConnectorBaseClass::is_ready();
+        return ConnectorBaseClass::is_ready() && $this->owner->LLMEnabled;
     }
 
     public function updateCMSFields(FieldList $fields)

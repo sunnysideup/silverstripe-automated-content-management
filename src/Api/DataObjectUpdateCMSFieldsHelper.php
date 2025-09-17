@@ -199,12 +199,42 @@ class DataObjectUpdateCMSFieldsHelper
                 ]);
             if ($existingLLMInstructionsForRunning && $existingLLMInstructionsForRunning->exists()) {
                 $desc .= '
-                    <h2>Use existing instruction to update this ' . $toUpdateName . '</h2>';
+                    <h2>☑ Use existing instruction to update this ' . $toUpdateName . '</h2>';
+                /**
+                 * @var Instruction $instruction
+                 */
                 foreach ($existingLLMInstructionsForRunning as $instruction) {
-                    $existsAlready = $instruction->getRecordList()->filter(['ID' => $owner->ID]);
-                    if ($existsAlready) {
-                        $action = 'this record is already included in the instruction';
-                        $link = $instruction->CMSEditLink();
+                    $infoLink = $instruction->CMSEditLink();
+                    $instructionLink = $instruction->CMSEditLink();
+                    $recordIncludedInSelection = $instruction->getRecordList()->filter(['ID' => $owner->ID])->exists();
+                    if ($recordIncludedInSelection) {
+                        /**
+                         * @var RecordProcess $recordProcess
+                         */
+                        $recordProcess = RecordProcess::get()
+                            ->filter([
+                                'InstructionID' => $instruction->ID,
+                                'RecordID' => $owner->ID,
+                            ])
+                            ->first();
+                        if ($recordProcess) {
+                            if ($recordProcess->getOriginalRecordUpdated()) {
+                                $action = '<a href="' . $recordProcess->getRecordLinkView() . '">view result</a>';
+                                $instructionLink = $recordProcess->CMSEditLink();
+                            } elseif ($recordProcess->getCanBeReviewed()) {
+                                $action = '<a href="' . $recordProcess->Link() . '">review result</a>';
+                                $instructionLink = $recordProcess->CMSEditLink();
+                            } elseif ($recordProcess->getCanProcess()) {
+                                $instructionLink = 'runnow';
+                                $action = '<a href="' . $instruction->CMSEditLink() . '">run now</a>';
+                            } else {
+                                $action = '<a href="' . $instruction->CMSEditLink() . '">start processing now';
+                                $instructionLink = 'runnow';
+                            }
+                        } else {
+                            $action = '<a href="' . $instruction->CMSEditLink() . '">run now</a>';
+                            $instructionLink = $instruction->CMSEditLink();
+                        }
                     } else {
                         $action = 'add this Record';
                         if ($fieldName) {
@@ -215,8 +245,8 @@ class DataObjectUpdateCMSFieldsHelper
                     }
                     $desc .= '
                         <div>
-                            <a href="' . $instruction->CMSEditLink() . '" class="icon-on-right"><span class="font-icon-info-circled"></span></a>
-                            <a href="' . $link . '">' . $instruction->getTitle() . '</a>: ' . $action . '
+                            <a href="' . $infoLink . '" class="icon-on-right"><span class="font-icon-info-circled"></span></a>
+                            <a href="' . $instructionLink . '">' . $instruction->getTitle() . '</a>: ' . $action . '
                         </div>';
                 }
             }
@@ -254,6 +284,12 @@ class DataObjectUpdateCMSFieldsHelper
                 }
             }
             $desc .= '</div>';
+        } else {
+            // 🤖
+            $link = $this->getBestEnableLink($owner, $fieldName);
+            $desc .= '<div class="llm-field-action llm-ajax-holder">
+                <a href="' . $link . '" onclick="loadContentForLLMFunction(event)" title="edit with LLM (large language model / ai)">✨</a>
+            </div>';
         }
         // update field
         return $desc;

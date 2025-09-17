@@ -11,7 +11,9 @@ use SilverStripe\ORM\FieldType\DBHTMLText;
 use SilverStripe\Security\PermissionProvider;
 use SilverStripe\SiteConfig\SiteConfig;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
+use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
+use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 use Sunnysideup\Selections\Model\Selection;
 
 class QuickEditController extends Controller
@@ -23,12 +25,18 @@ class QuickEditController extends Controller
         'turnllmfunctionsonoroff' => 'CMS_ACCESS_LLMEDITOR',
         'enable' => 'CMS_ACCESS_LLMEDITOR',
         'disable' => 'CMS_ACCESS_LLMEDITOR',
-        // create instruction for record
+
+        // create instruction for record / field
         'createinstructionforonerecord' => 'CMS_ACCESS_LLMEDITOR',
         'createinstructionforonerecordonefield' => 'CMS_ACCESS_LLMEDITOR',
-        // quick edit
-        'createinstructionforonerecordonefieldtestnow' => 'CMS_ACCESS_LLMEDITOR',
+
+        // run for real now ...
+        'runexistingrecordprocessnowforonefield' => 'CMS_ACCESS_LLMEDITOR',
+
+        // run test NOW!
+        'createinstructionforonerecordonefieldtestnow' => 'CMS_ACCESS_LLMEDITOR', //
         'createinstructionforonerecordonefieldtestnowerror' => 'CMS_ACCESS_LLMEDITOR',
+
         // for instruction for class
         'createinstructionforclass' => 'CMS_ACCESS_LLMEDITOR',
         'createinstructionforclassonefield' => 'CMS_ACCESS_LLMEDITOR',
@@ -165,6 +173,23 @@ class QuickEditController extends Controller
         return $this->httpError(500, 'Could not create new instruction for this record type field.');
     }
 
+    public function runexistingrecordprocessnowforonefield($request)
+    {
+        $this->deconstructParams(true, false);
+        if ($this->recordProcess && $this->recordProcess->canView()) {
+            $processor = Injector::inst()->get(ProcessOneRecord::class);
+            $processor->processOneRecordProcess($this->recordProcess);
+            sleep(1);
+            $this->recordProcess = $this->recordProcess->flushCache();
+            $this->recordProcess = RecordProcess::get()->byID($this->recordProcess->ID);
+            if ($this->recordProcess->Completed) {
+                return $this->redirect($this->recordProcess->Link());
+            }
+            return $this->httpError(500, 'Could not complete processing of record - please try again later.');
+        }
+        return $this->httpError(500, 'Could not find record process or you do not have permission to view it.');
+    }
+
     public function createinstructionforonerecordonefieldtestnow($request)
     {
         return $this->runTestForInstruction($request, false);
@@ -267,7 +292,7 @@ class QuickEditController extends Controller
         if ($this->instruction) {
             return $this->redirect($this->instruction->CMSEditLink());
         }
-        return $this->httpError(500, 'Could not add record field to instruction.');
+        return $this->httpError(500, 'Could not add record / field combo to instruction.');
     }
 
 
@@ -367,7 +392,7 @@ class QuickEditController extends Controller
         if ($this->providedClassName && $createInstruction) {
             $this->providedClassName = $instructionIDOrClassName;
             $this->instruction = new Instruction();
-            $this->instruction->ClassNameToChange = $instructionIDOrClassName;
+            $this->instruction->ClassNameToChange = $this->providedClassName;
             //to do -check if the field name is valid
             if ($this->fieldName) {
                 $this->instruction->FieldToChange = $this->fieldName;
