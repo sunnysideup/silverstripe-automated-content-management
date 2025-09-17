@@ -52,14 +52,14 @@ class ProcessInstructions extends BuildTask
         if ($request && $request->getVar('instruction')) {
             $this->instruction = Instruction::get()->byID($request->getVar('instruction'));
             if (! $this->instruction) {
-                DB::alteration_message('ERROR: Instruction not found', 'error');
+                DB::alteration_message('ERROR: Instruction not found', 'deleted');
                 return;
             }
         }
         if ($request && $request->getVar('recordprocess')) {
             $this->recordProcess = RecordProcess::get()->byID($request->getVar('recordprocess'));
             if (! $this->recordProcess) {
-                DB::alteration_message('ERROR: Record Process not found', 'error');
+                DB::alteration_message('ERROR: Record Process not found', 'deleted');
                 return;
             }
         }
@@ -176,13 +176,16 @@ class ProcessInstructions extends BuildTask
                 if ($recordProcess->getCanProcess()) {
                     $this->countOfAiInteractions++;
                     if ($this->countOfAiInteractions > $maxInteractions) {
-                        DB::alteration_message('... ... ... Stopping as max number of AI interactions reached', 'error');
+                        DB::alteration_message('... ... ... Stopping as max number of AI interactions reached', 'deleted');
                         break 2;
                     }
-                    $this->processor->recordAnswer($recordProcess);
-                    DB::alteration_message('... ... ... Processed this record process', 'created');
+                    if ($this->processor->recordAnswer($recordProcess)) {
+                        DB::alteration_message('... ... ... Processed this record process', 'created');
+                    } else {
+                        DB::alteration_message('... ... ... Could not process this record process', 'deleted');
+                    }
                 } else {
-                    DB::alteration_message('... ... ... Cannot process this record process', 'error');
+                    DB::alteration_message('... ... ... Cannot process this record process', 'deleted');
                 }
             }
         }
@@ -290,7 +293,7 @@ class ProcessInstructions extends BuildTask
         $instructions = $this->cleanupObsoleteInstructionsInstructions();
         foreach ($instructions as $instruction) {
             if ($instruction->AcceptedRecords()->exists() || $instruction->UpdatedOriginalsRecords()->exists()) {
-                DB::alteration_message('... NOT deleting instruction: ' . $instruction->getTitle() . ' as it has accepted or updated records ... ', 'error');
+                DB::alteration_message('... NOT deleting instruction: ' . $instruction->getTitle() . ' as it has accepted or updated records ... ', 'deleted');
                 continue;
             }
             DB::alteration_message('... Deleting instruction: ' . $instruction->getTitle() . ' ... ', 'deleted');
