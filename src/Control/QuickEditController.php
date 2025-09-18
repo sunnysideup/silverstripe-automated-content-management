@@ -57,7 +57,7 @@ class QuickEditController extends Controller
     protected $instruction = null;
     protected ?string $providedClassName = null;
     protected $record = null;
-    protected int $recordID = 0;
+    protected int $recordOrRecordProcessID = 0;
     protected $recordProcess = null;
     protected ?string $fieldName = null;
 
@@ -207,14 +207,14 @@ class QuickEditController extends Controller
                 $this->instruction->Description = $description;
                 $this->instruction->RunTest = true;
                 $this->instruction->FindErrorsOnly = $findErrorsOnly;
-                $this->instruction->RecordIdsToAddToSelection = $this->recordID;
+                $this->instruction->RecordIdsToAddToSelection = $this->recordOrRecordProcessID;
                 $this->instruction->write();
                 sleep(1);
                 $lastItem = $this->instruction->RecordsToProcess()
                     ->filter(
                         [
                             'IsTest' => true,
-                            'RecordID' => $this->recordID,
+                            'RecordID' => $this->recordOrRecordProcessID,
                             'Completed' => true,
                             'Instruction.FindErrorsOnly' => $findErrorsOnly
                         ]
@@ -364,7 +364,8 @@ class QuickEditController extends Controller
      * OtherID = record ID
      * FieldName = field name
      *
-     * @param mixed $getRecordProcess
+     * @param bool|null $getRecordProcess - if true, we get the record process rather than the record
+     * @param bool|null $createInstruction - if true, we create a new instruction
      * @return void
      */
     protected function deconstructParams(?bool $getRecordProcess = false, ?bool $createInstruction = false)
@@ -373,7 +374,7 @@ class QuickEditController extends Controller
         //get request params
         $instructionIDOrClassName = rawurldecode((string) $request->param('ID'));
         $instructionIDOrClassName = str_replace('-', '\\', $instructionIDOrClassName);
-        $this->recordID = (int) $request->param('OtherID');
+        $this->recordOrRecordProcessID = (int) $request->param('OtherID');
         $this->fieldName = rawurldecode((string) $request->param('FieldName'));
         //process params
         if (! intval($instructionIDOrClassName)) {
@@ -387,7 +388,7 @@ class QuickEditController extends Controller
 
         $instructionID = 0;
         // create new instruction
-        if ($this->providedClassName && $createInstruction) {
+        if ($createInstruction && $this->providedClassName) {
             $this->providedClassName = $instructionIDOrClassName;
             $this->instruction = new Instruction();
             $this->instruction->ClassNameToChange = $this->providedClassName;
@@ -413,14 +414,14 @@ class QuickEditController extends Controller
                         $this->instruction = null;
                     }
                 }
-                if ($this->recordID) {
+                if ($this->recordOrRecordProcessID || $this->recordProcessID) {
                     if ($getRecordProcess) {
                         if ($this->instruction) {
-                            $this->recordProcess = $this->instruction->RecordsToProcess()->byID($this->recordID);
+                            $this->recordProcess = $this->instruction->RecordsToProcess()->byID($this->recordProcessID);
                         }
                     } else {
                         $className = $this->instruction->ClassNameToChange;
-                        $this->record = $className::get()->byID($this->recordID);
+                        $this->record = $className::get()->byID($this->recordOrRecordProcessID);
                         if ($this->record && $this->instruction) {
                             $this->instruction->AddRecordsToInstruction($this->record->ID);
                         }
@@ -430,7 +431,7 @@ class QuickEditController extends Controller
         } else {
             if ($this->providedClassName) {
                 $className = $this->providedClassName;
-                $this->record = $className::get()->byID($this->recordID);
+                $this->record = $className::get()->byID($this->recordOrRecordProcessID);
             }
         }
     }
@@ -451,7 +452,7 @@ class QuickEditController extends Controller
             <script>
                 window.location.href = "' . $url . '";
             </script>');
-        return RequestHandler::redirect($url, $code);
+        // return RequestHandler::redirect($url, $code);
     }
 
     protected function removeSiteConfigArrayField(string $fieldName, $value)

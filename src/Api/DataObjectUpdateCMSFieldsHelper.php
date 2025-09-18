@@ -218,22 +218,18 @@ class DataObjectUpdateCMSFieldsHelper
                             ])
                             ->first();
                         if ($recordProcess) {
+                            $instructionLink = $recordProcess->CMSEditLink();
                             if ($recordProcess->getOriginalRecordUpdated()) {
                                 $action = '<a href="' . $recordProcess->getRecordLinkView() . '">view result</a>';
-                                $instructionLink = $recordProcess->CMSEditLink();
                             } elseif ($recordProcess->getCanBeReviewed()) {
                                 $action = '<a href="' . $recordProcess->Link() . '">review result</a>';
-                                $instructionLink = $recordProcess->CMSEditLink();
                             } elseif ($recordProcess->getCanProcess()) {
-                                $instructionLink = 'runnow';
-                                $action = '<a href="' . $instruction->CMSEditLink() . '">run process now</a>';
+                                $action = '<a href="' . $recordProcess->getRunExistingRecordProcessNowForOneFieldLink() . '">run process now</a>';
                             } else {
-                                $action = '<a href="' . $instruction->CMSEditLink() . '">start processing now';
-                                $instructionLink = 'runnow';
+                                $action = '<a href="' . $recordProcess->CMSEditLink() . '">review set up</a>';
                             }
                         } else {
-                            $action = '<a href="' . $instruction->CMSEditLink() . '">run now</a>';
-                            $instructionLink = $instruction->CMSEditLink();
+                            $action = '<a href="' . $instruction->CMSEditLink() . '">review set up</a>';
                         }
                     } else {
                         $action = 'add this Record';
