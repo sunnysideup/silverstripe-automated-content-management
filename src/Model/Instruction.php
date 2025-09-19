@@ -979,7 +979,7 @@ class Instruction extends DataObject
      * @param mixed $limit
      * @return RecordProcess|null
      */
-    protected function AddRecords(?bool $isTest = false, array|string|null $filter = null, ?int $limit = null): ?RecordProcess
+    public function AddRecords(?bool $isTest = false, array|string|null $filter = null, ?int $limit = null): ?RecordProcess
     {
         if ($this->HasValidClassName()) {
             $list = $this->getRecordList();

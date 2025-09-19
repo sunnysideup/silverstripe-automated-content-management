@@ -141,7 +141,7 @@ class ProcessInstructions extends BuildTask
         foreach ($instructions as $instruction) {
             if ($instruction->getIsReadyForProcessing()) {
                 DB::alteration_message('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process ... ');
-                $instruction->AddRecords(false);
+                $instruction->AddRecords(false, null, $instruction->NumberOfRecordsToProcessPerBatch);
                 $instruction->write();
             } else {
                 DB::alteration_message('... NOT writing instruction: ' . $instruction->getTitle() . ' as it is NOT ready to process, or has been cancelled/completed).');
