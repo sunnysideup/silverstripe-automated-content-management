@@ -121,13 +121,13 @@ class Instruction extends DataObject
         'Title' => 'Title',
         'ClassNameToChangeNice' => 'Record Type',
         'FieldToChangeNice' => 'Field to change',
+        'ReadyToProcess.NiceAndColourfull' => 'Started',
         'Completed.NiceAndColourfull' => 'Completed',
-        'Cancelled.NiceAndColourfullInvertedColours' => 'Cancelled',
         'NumberOfTargetRecords' => 'Target Records',
         'InProcessRecordsCount' => 'Processing',
-        'ReviewableRecordsCount' => 'To be reviewed',
-        'AcceptedRecordsCount' => 'Accepted',
-        'UpdatedOriginalsRecordsCount' => 'Updated',
+        'ReviewableRecordsCount' => 'To Review',
+        'UpdatedOriginalsRecordsCount' => 'Targets Updated',
+        'Cancelled.NiceAndColourfullInvertedColours' => 'Cancelled',
     ];
 
     private static $searchable_fields = [
@@ -339,17 +339,21 @@ class Instruction extends DataObject
                     ->exclude(['ID' => $this->ID])
                     ->map('ID', 'Title')
                     ->toArray();
-                $fields->insertBefore(
-                    'Description',
-                    DropdownField::create('BasedOnID', 'Base on another instruction (optional)')
-                        ->setSource($options)
-                        ->setEmptyString('-- Please Select (OPTIONAL) --')
-                        ->setDescription(
-                            'You can base your instruction on another instruction that you have already created. <br />' .
-                                'This will overwrite the instructions (including the "always added" instruction) as shown below. <br />' .
-                                'If you need to make further modifications then remove the value selected here again.'
-                        )
-                );
+                if (count($options) > 0) {
+                    $fields->insertBefore(
+                        'Description',
+                        DropdownField::create('BasedOnID', 'Base on another instruction (optional)')
+                            ->setSource($options)
+                            ->setEmptyString('-- Please Select (OPTIONAL) --')
+                            ->setDescription(
+                                'You can base your instruction on another instruction that you have already created. <br />' .
+                                    'This will overwrite the instructions (including the "always added" instruction) as shown below. <br />' .
+                                    'If you need to make further modifications then remove the value selected here again.'
+                            )
+                    );
+                } else {
+                    $fields->removeByName('BasedOnID');
+                }
             }
             $fields->addFieldsToTab(
                 'Root.ⓘ',
