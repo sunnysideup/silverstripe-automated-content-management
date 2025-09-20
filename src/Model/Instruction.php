@@ -721,7 +721,7 @@ class Instruction extends DataObject
                 $this->Completed = false;
             }
         }
-        if ($this->Completed === false) {
+        if ((bool) $this->Completed === false) {
             if ($this->BasedOnID) {
                 $this->Description = $this->BasedOn()->Description;
                 $this->AlwaysAddedInstruction = $this->BasedOn()->AlwaysAddedInstruction;
