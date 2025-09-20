@@ -339,7 +339,6 @@ class Instruction extends DataObject
                     ->exclude(['ID' => $this->ID])
                     ->map('ID', 'Title')
                     ->toArray();
-                $options = [0 => '-- Please Select (OPTIONAL) --'] + $options;
                 $fields->insertBefore(
                     'Description',
                     DropdownField::create('BasedOnID', 'Base on another instruction (optional)')
