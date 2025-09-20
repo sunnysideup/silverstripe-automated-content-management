@@ -33,6 +33,26 @@ abstract class ConnectorBaseClass
 
     protected $client;
 
+    protected float $currentTemperature = 0.7;
+
+    public function setTemperature(float $temperature): static
+    {
+        $this->currentTemperature = $this->standardiseTemperature($temperature);
+        return $this;
+    }
+
+    public function getTemperature(): float
+    {
+        return $this->standardiseTemperature($this->currentTemperature);
+    }
+
+    protected function standardiseTemperature(float $temperature): float
+    {
+        if (!$temperature || $temperature === 0 || $temperature < 0 || $temperature > 1) {
+            $temperature = $this->config()->get('temperature') ?: 0.7;
+        }
+        return $temperature;
+    }
 
     public function __construct()
     {
@@ -223,15 +243,6 @@ abstract class ConnectorBaseClass
         return $this->config()->get('time_out_in_seconds') ?: 90;
     }
 
-    /**
-     * Get the temperature setting for the AI model
-     * this relates to the creativity of the responses
-     * @return float
-     */
-    public function getTemperature(): float
-    {
-        return $this->config()->get('temperature') ?: 0.7;
-    }
 
     /**
      * Get the temperature setting for the AI model

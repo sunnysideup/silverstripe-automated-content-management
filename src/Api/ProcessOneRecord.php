@@ -39,6 +39,10 @@ class ProcessOneRecord
         } elseif ($recordProcess->getCanProcess()) {
             $recordProcess->Before = $record->$field;
             $connector = ConnectorBaseClass::inst();
+            $temperature = $recordProcess->Instruction()->Temperature;
+            if ($temperature && is_numeric($temperature)) {
+                $connector->setTemperature((float) $temperature);
+            }
             $recordProcess->Started = true;
             $recordProcess->Question = $question;
             $recordProcess->LLMClient = $connector->getClientNameNice();

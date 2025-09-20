@@ -104,6 +104,7 @@ class Instruction extends DataObject
         'AcceptAll' => 'Boolean',
         'RejectAll' => 'Boolean',
         'AcceptAnswersImmediately' => 'Boolean',
+        'Temperature' => 'Decimal(3,2)',
     ];
 
     private static $has_one = [
@@ -152,6 +153,7 @@ class Instruction extends DataObject
         'RecordsToProcess' => 'Process Log',
         'NumberOfTargetRecords' => 'Number of Target Records',
         'NumberOfRecords' => 'Number of records (to be) processed',
+        'Temperature' => 'Temperature (creativity of the LLM)',
     ];
 
     private static $casting = [
@@ -457,6 +459,15 @@ class Instruction extends DataObject
                     );
                 }
             }
+            $this->dataFieldByName('Temperature')
+                ?->setDescription(
+                    '
+                        <span style="color: red;">OPTIONAL - USE WITH CARE!</span><br />
+                        LLM creativity: 0.00 = very factual, 1.00 = very creative. <br />' .
+                        'Values like 0.2 or 0.3 are often a good compromise between fact and creativity. <br />' .
+                        'Higher values may lead to more "creative" answers but also to more mistakes.'
+                )
+                ->setRightTitle('Between 0.00 and 1.00');
             $this->makeFieldsReadonly($fields);
             return $fields;
         }
