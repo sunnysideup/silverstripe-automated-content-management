@@ -1,6 +1,7 @@
 ---
 Name: automated-content-management-routes
 After:
+  - "#rootroutes"
   - "#coreroutes"
 ---
 SilverStripe\Control\Director:
