@@ -159,7 +159,7 @@ class DataObjectUpdateCMSFieldsHelper
                     ]);
             }
 
-            $toUpdateName = $fieldName ? 'Field (' . $fieldNameNice . ')' : 'Record (' . $recordNameNice . ')';
+            $toUpdateName = $fieldName ? 'field: ' . $fieldNameNice : 'record: ' . $recordNameNice;
 
             $desc .= '<div class="llm-field-explanation llm-ajax-holder">';
 
@@ -172,12 +172,13 @@ class DataObjectUpdateCMSFieldsHelper
             $action = $this->getBestDisableLink($owner, $fieldName);
             $desc .= '<div class="turn-off-llm-instructions"><a href="' . $action . '" title="Stop LLM Editing for now" onclick="loadContentForLLMFunction(event);">' . $title . '</a></div>';
 
-            $id = [-1 => -1];
+            $recordProcessIds = [-1 => -1];
             foreach ($allInstructions as $i) {
-                $id = array_merge($id, $i->ReviewableRecords()->columnUnique('ID'));
+                $recordProcessIds = array_merge($recordProcessIds, $i->ReviewableRecords()->columnUnique('ID'));
             }
             $reviewableRecords = RecordProcess::get()->filter([
-                'ID' => $id,
+                'ID' => $recordProcessIds,
+                'RecordID' => $owner->ID,
             ]);
             if ($reviewableRecords && $reviewableRecords->exists()) {
                 $desc .= '
@@ -193,9 +194,15 @@ class DataObjectUpdateCMSFieldsHelper
             }
 
 
+            $existingLLMInstructionsForRunningIds = [-1 => -1];
+            foreach ($allInstructions as $i) {
+                if (! $i->getIsReadyForProcessing()) {
+                    $existingLLMInstructionsForRunningIds[] = $i->ID;
+                }
+            }
             $existingLLMInstructionsForRunning = $allInstructions
                 ->filter([
-                    'StartedProcess' => 0,
+                    'ID' => $existingLLMInstructionsForRunningIds,
                 ]);
             if ($existingLLMInstructionsForRunning && $existingLLMInstructionsForRunning->exists()) {
                 $desc .= '
@@ -219,7 +226,7 @@ class DataObjectUpdateCMSFieldsHelper
                             ->first();
                         if ($recordProcess) {
                             $instructionLink = $recordProcess->CMSEditLink();
-                            if ($recordProcess->getOriginalRecordUpdated()) {
+                            if ($recordProcess->HasOriginalUpdated()) {
                                 $action = '<a href="' . $recordProcess->getRecordLinkView() . '">view result</a>';
                             } elseif ($recordProcess->getCanBeReviewed()) {
                                 $action = '<a href="' . $recordProcess->Link() . '">review result</a>';
