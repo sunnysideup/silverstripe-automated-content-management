@@ -377,11 +377,10 @@ class QuickEditController extends Controller
         $this->recordOrRecordProcessID = (int) $request->param('OtherID');
         $this->fieldName = rawurldecode((string) $request->param('FieldName'));
         //process params
+        $this->providedClassName = null;
         if (! intval($instructionIDOrClassName)) {
             if ($instructionIDOrClassName && class_exists($instructionIDOrClassName)) {
                 $this->providedClassName = $instructionIDOrClassName;
-            } else {
-                $this->providedClassName = null;
             }
         }
 
@@ -414,10 +413,10 @@ class QuickEditController extends Controller
                         $this->instruction = null;
                     }
                 }
-                if ($this->recordOrRecordProcessID || $this->recordProcessID) {
+                if ($this->recordOrRecordProcessID) {
                     if ($getRecordProcess) {
                         if ($this->instruction) {
-                            $this->recordProcess = $this->instruction->RecordsToProcess()->byID($this->recordProcessID);
+                            $this->recordProcess = $this->instruction->RecordsToProcess()->byID($this->recordOrRecordProcessID);
                         }
                     } else {
                         $className = $this->instruction->ClassNameToChange;
