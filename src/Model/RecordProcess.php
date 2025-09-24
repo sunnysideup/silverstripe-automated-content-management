@@ -177,6 +177,7 @@ class RecordProcess extends DataObject
             ! $this->OriginalUpdated;
     }
 
+
     public function IsReadyForReview(): bool
     {
         return $this->getCanBeReviewed();
@@ -223,39 +224,6 @@ class RecordProcess extends DataObject
         return 'Error: record not found'; // (ID: #' . $this->RecordID . ')';
     }
 
-    public function Link()
-    {
-        return $this->getResultPreviewLink();
-    }
-
-    public function getRecordLink(): string|null
-    {
-        return $this->getRecordLinkEdit() ?: $this->getRecordLinkView();
-    }
-
-    public function getRecordLinkEdit(): string|null
-    {
-        $record = $this->getRecord();
-        if ($record) {
-            return $record->hasMethod('CMSEditLink') ? $record->CMSEditLink() : null;
-        }
-        return null;
-    }
-
-    public function getRecordLinkView(): string|null
-    {
-        $record = $this->getRecord();
-        if ($record) {
-            return $record->hasMethod('Link') ? $record->Link() . '?previewllm=1' : null;
-        }
-        return null;
-    }
-
-    public function getRecordClassName(): string|null
-    {
-        // CAREFULL!!!! Can not call getRecord here otherwise you end up in a an endless loop!
-        return $this->Instruction()?->ClassNameToChange ?: null;
-    }
 
     public function getRecordIDNice(): string|null
     {
@@ -263,14 +231,10 @@ class RecordProcess extends DataObject
     }
 
 
-    public function getRunExistingRecordProcessNowForOneFieldLink(): string
+    public function getRecordClassName(): string|null
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link_builder(
-            'runexistingrecordprocessnowforonefield',
-            $this->InstructionID,
-            $this->ID,
-            $this->getFieldToChange()
-        );
+        // CAREFULL!!!! Can not call getRecord here otherwise you end up in a an endless loop!
+        return $this->Instruction()?->ClassNameToChange ?: null;
     }
 
     public function getHydratedInstructions(): string
@@ -297,6 +261,65 @@ class RecordProcess extends DataObject
         }
         return $value;
     }
+
+
+    public function getResultPreviewLink(): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('preview', $this->InstructionID, $this->ID);
+    }
+
+    public function getAcceptLink(): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('acceptresult', $this->InstructionID, $this->ID);
+    }
+    public function getRejectLink(): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('rejectresult', $this->InstructionID, $this->ID);
+    }
+    public function getAcceptAndUpdateLink(): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('acceptresultandupdate', $this->InstructionID, $this->ID);
+    }
+
+
+    public function Link()
+    {
+        return $this->getResultPreviewLink();
+    }
+
+    public function getRecordLink(): string|null
+    {
+        return $this->getRecordLinkEdit() ?: $this->getRecordLinkView();
+    }
+
+    public function getRecordLinkEdit(): string|null
+    {
+        $record = $this->getRecord();
+        if ($record) {
+            return $record->hasMethod('CMSEditLink') ? $record->CMSEditLink() : null;
+        }
+        return $this->getResultPreviewLink();
+    }
+
+    public function getRecordLinkView(): string|null
+    {
+        $record = $this->getRecord();
+        if ($record) {
+            return $record->hasMethod('Link') ? $record->Link() . '?previewllm=1' : null;
+        }
+        return $this->getResultPreviewLink();;
+    }
+
+    public function getRunExistingRecordProcessNowForOneFieldLink(): string
+    {
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder(
+            'runexistingrecordprocessnowforonefield',
+            $this->InstructionID,
+            $this->ID,
+            $this->getFieldToChange()
+        );
+    }
+
 
 
     public function getResultPreviewLinkHTML(): DBHTMLText
@@ -693,25 +716,6 @@ class RecordProcess extends DataObject
         }
         return '<textarea readonly rows="20">' . $value . '</textarea>';
     }
-
-    public function getResultPreviewLink(): string
-    {
-        return DataObjectUpdateCMSFieldsHelper::my_link_builder('preview', $this->InstructionID, $this->ID);
-    }
-
-    public function getAcceptLink(): string
-    {
-        return DataObjectUpdateCMSFieldsHelper::my_link_builder('acceptresult', $this->InstructionID, $this->ID);
-    }
-    public function getRejectLink(): string
-    {
-        return DataObjectUpdateCMSFieldsHelper::my_link_builder('rejectresult', $this->InstructionID, $this->ID);
-    }
-    public function getAcceptAndUpdateLink(): string
-    {
-        return DataObjectUpdateCMSFieldsHelper::my_link_builder('acceptresultandupdate', $this->InstructionID, $this->ID);
-    }
-
 
     public function CMSEditLink(): string
     {
