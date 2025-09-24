@@ -15,7 +15,8 @@
     <h3>Based on: <a href="$Instruction.CMSEditLink">$Instruction.Title</a></h3>
     <h3>Record to be updated:
         <% if $RecordLinkEdit %><a href="$RecordLinkEdit" title="edit">✎</a><% end_if %>
-        <% if $RecordLinkView %><a href="$RecordLinkView" title="view">👁 $RecordTitle</a><% else %>$RecordTitle<% end_if %>
+        <% if $RecordLinkView %><a href="$RecordLinkView" title="view">👁 $RecordTitle</a>
+        <% else %>$RecordTitle<% end_if %>
     </h3>
     <h3>Field to be updated: <i>$Instruction.FieldToChangeNice</i></h3>
 
