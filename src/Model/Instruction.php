@@ -459,7 +459,7 @@ class Instruction extends DataObject
                     );
                 }
             }
-            $this->dataFieldByName('Temperature')
+            $fields->dataFieldByName('Temperature')
                 ?->setDescription(
                     '
                         <span style="color: red;">OPTIONAL - USE WITH CARE!</span><br />
