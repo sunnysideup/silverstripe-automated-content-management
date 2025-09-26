@@ -48,7 +48,7 @@ class ProcessInstructions extends BuildTask
 
     public function run($request)
     {
-        DB::query('SET SESSION wait_timeout=600;');
+        DB::query('SET SESSION wait_timeout=1200;');
         if ($request && $request->getVar('instruction')) {
             $this->instruction = Instruction::get()->byID($request->getVar('instruction'));
             if (! $this->instruction) {
