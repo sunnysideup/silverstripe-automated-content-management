@@ -213,7 +213,7 @@ class RecordProcess extends DataObject
         if ($this->IsObsolete()) {
             return false;
         }
-        return  $this->OriginalUpdated;
+        return  (bool) $this->OriginalUpdated;
     }
 
     public function getRecordTitle(): string
