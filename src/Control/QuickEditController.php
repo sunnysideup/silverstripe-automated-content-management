@@ -267,8 +267,8 @@ class QuickEditController extends Controller
     {
         $this->deconstructParams(false, true);
 
-        if ($this->instruction) {
-            return $this->redirect($this->instruction->CMSEditLink());
+        if ($this->recordProcess) {
+            return $this->redirect($this->recordProcess->CMSEditLink());
         }
         return $this->httpError(500, 'Could not create new instruction for the record field.');
     }
@@ -423,6 +423,14 @@ class QuickEditController extends Controller
                         $this->record = $className::get()->byID($this->recordOrRecordProcessID);
                         if ($this->record && $this->instruction) {
                             $this->instruction->AddRecordsToInstruction($this->record->ID);
+                            $this->recordProcess = $this->instruction->RecordsToProcess()
+                                ->filter(
+                                    [
+                                        'IsTest' => false,
+                                        'RecordID' => $this->record->ID
+                                    ]
+                                )
+                                ->first();
                         }
                     }
                 }
