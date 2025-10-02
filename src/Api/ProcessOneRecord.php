@@ -18,17 +18,32 @@ class ProcessOneRecord
     use Configurable;
 
     protected $verbose = false;
+    protected bool $returnResultsAsArray = false;
+    protected array $resultsAsArray = [];
 
-    public function setVerbose(bool $bool): self
+    public function setVerbose(bool $b): self
     {
-        $this->verbose = $bool;
+        $this->verbose = $b;
         return $this;
+    }
+
+    public function setReturnResultsAsArray(?bool $b = true): self
+    {
+        $this->verbose = $b;
+        $this->returnResultsAsArray = $b;
+        return $this;
+    }
+
+    public function getResultsAsArray(): array
+    {
+        return $this->resultsAsArray;
     }
 
     private static $call_back_method_after_update = 'OnAfterProcessedByACM';
 
     public function recordAnswer(RecordProcess $recordProcess): bool
     {
+        $this->resultsAsArray = [];
         $question = $recordProcess->getHydratedInstructions();
         $record = $recordProcess->getRecord();
         $field = $recordProcess->Instruction->FieldToChange;
@@ -67,6 +82,7 @@ class ProcessOneRecord
 
     public function updateOriginalRecord(RecordProcess $recordProcess)
     {
+        $this->resultsAsArray = [];
         if ($recordProcess->getCanUpdateOriginalRecord()) {
             $record = $recordProcess->getRecord();
             $isPublished = $record->hasMethod('isPublished') && $record->isPublished();
@@ -123,12 +139,19 @@ class ProcessOneRecord
     }
 
 
-    protected function outputMessage(string $message, string $type = 'info'): void
+    protected function outputMessage(string $message, ?string $type = 'info'): void
     {
         if (! $this->verbose) {
             return;
         }
+        if (strlen($message) > 100) {
+            $message = substr($message, 0, 100) . '...';
+        }
         $message = '... ... ... ' . trim($message);
+        if ($this->returnResultsAsArray) {
+            $this->resultsAsArray[] = ['message' => $message, 'type' => $type];
+            return;
+        }
         DB::alteration_message($message, $type);
     }
 }
