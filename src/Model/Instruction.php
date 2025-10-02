@@ -1096,25 +1096,28 @@ class Instruction extends DataObject
         return $field;
     }
 
+    /**
+     * data list of the records that are going to be updated!
+     */
     public function getRecordList(): ?DataList
     {
         $className = $this->ClassNameToChange;
-        if ($this->HasRecordIdsToAddToSelection()) {
-            $ids = explode(',', (string) $this->RecordIdsToAddToSelection);
-            if ($this->SelectionID > 0) {
-                $ids = array_merge($ids, $this->Selection()->getSelectionDataList()->column('ID'));
-            }
-            return $className::get()->filter(['ID' => $ids]);
-        } elseif ($this->SelectionID > 0) {
+        $list = null;
+        if ($this->SelectionID > 0) {
             $selection = $this->Selection();
             if ($selection && $selection->exists()) {
                 $list = $selection->getSelectionDataList();
-                if ($list) {
-                    return $list;
-                }
             }
         }
-        if ($this->HasValidClassName()) {
+        if ($this->HasRecordIdsToAddToSelection()) {
+            $ids = explode(',', (string) $this->RecordIdsToAddToSelection);
+            if ($list) {
+                $ids = array_merge($ids, $list->column('ID'));
+            }
+            return $className::get()->filter(['ID' => $ids]);
+        } elseif ($list) {
+            return $list;
+        } elseif ($this->HasValidClassName()) {
             return $className::get();
         }
         return null;
@@ -1153,22 +1156,17 @@ class Instruction extends DataObject
             return;
         }
         $existingList = $this->getRecordList()->columnUnique('ID');
-        $allPresent = false;
-        foreach ($recordIds as $id) {
-            if (in_array($id, $existingList, true)) {
-                $allPresent = true;
-            } else {
-                $allPresent = false;
-                break;
-            }
-        }
+        $allPresent = empty(array_diff($recordIds, $existingList));
         if ($allPresent) {
+            $this->AddRecords(false, ['ID' => $recordIds]);
             return;
         }
         $ids = array_merge($recordIds, $this->getRecordIdsToAddToSelectionArray());
         $ids = array_unique($ids);
         $ids = array_filter($ids);
         $this->RecordIdsToAddToSelection = trim(trim(implode(',', $ids)), ',');
+        $this->write();
+        $this->AddRecords(false, ['ID' => $recordIds]);
         $this->write();
     }
 
