@@ -113,6 +113,7 @@ class RecordProcess extends DataObject
     ];
 
     private static $indexes = [
+        'LastEdited' => true,
         'RecordID' => true,
         'InstructionID' => true,
         'IsTest' => true,
@@ -125,7 +126,7 @@ class RecordProcess extends DataObject
         'OriginalUpdated' => true,
     ];
 
-    private static $default_sort = 'ID DESC';
+    private static $default_sort = 'LastEdited DESC';
 
     public function getFieldToChange(): string
     {
@@ -329,7 +330,7 @@ class RecordProcess extends DataObject
         } else if ($this->getCanBeReviewed()) {
             $value =  '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review Suggestion</a>';
         } else {
-            $value =  '<a href="' . $this->getResultPreviewLink() . '" target="_blank">View Review Outcome</a>';
+            $value =  '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review Outcome</a>';
         }
         return DBHTMLText::create_field('HTMLText', $value);
     }
