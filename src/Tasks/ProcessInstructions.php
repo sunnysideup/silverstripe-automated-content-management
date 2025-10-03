@@ -158,7 +158,7 @@ class ProcessInstructions extends BuildTask
         foreach ($instructions as $instruction) {
             if ($instruction->getIsReadyForProcessing()) {
                 $this->log('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process ... ');
-                $instruction->AddRecords(false, null, $instruction->NumberOfRecordsToProcessPerBatch);
+                $instruction->AddRecordProcesses(false, null, $instruction->NumberOfRecordsToProcessPerBatch);
                 $instruction->write();
             } else {
                 $this->log('... NOT writing instruction: ' . $instruction->getTitle() . ' as it is NOT ready to process, or has been cancelled/completed).');

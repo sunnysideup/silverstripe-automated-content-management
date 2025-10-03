@@ -47,6 +47,12 @@ use Sunnysideup\Selections\Model\Selection;
 class Instruction extends DataObject
 {
 
+    public const ALL_RECORDS = -2;
+
+    public const MANUALLY_ADDED = -1;
+
+    public const NO_RECORDS = 0;
+
     use MakeFieldsRoadOnly;
 
     private static string $record_process_stuck_time = '-15 minutes';
@@ -95,6 +101,7 @@ class Instruction extends DataObject
         'Description' => 'Text',
         'AlwaysAddedInstruction' => 'Text',
         'RecordIdsToAddToSelection' => 'Text',
+        'FinalIdsToAddToSelection' => 'Text',
         'NumberOfRecordsToProcessPerBatch' => 'Int',
         'RunTest' => 'Boolean',
         'ReadyToProcess' => 'Boolean',
@@ -154,6 +161,8 @@ class Instruction extends DataObject
         'NumberOfTargetRecords' => 'Number of Target Records',
         'NumberOfRecords' => 'Number of records (to be) processed',
         'Temperature' => 'Temperature (creativity of the LLM)',
+        'RecordIdsToAddToSelection' => 'Record IDs to add to selection',
+        'FinalIdsToAddToSelection' => 'Final IDs to add to selection',
     ];
 
     private static $casting = [
@@ -207,7 +216,7 @@ class Instruction extends DataObject
 
     public function getCMSFields()
     {
-        $this->AlignSelectionID(true);
+        $this->AlignSelectionID();
         if (!$this->HasValidClassName()) {
             return FieldList::create(
                 $this->getSelectClassNameField()
@@ -219,7 +228,6 @@ class Instruction extends DataObject
             );
         } else {
             $fields = parent::getCMSFields();
-            $fields->removeByName('RecordIdsToAddToSelection');
 
             $fields->insertBefore(
                 'RecordsToProcess',
@@ -366,6 +374,8 @@ class Instruction extends DataObject
                         ->setTitle(
                             'User who created this instruction',
                         ),
+                    $fields->dataFieldByName('RecordIdsToAddToSelection')->setReadonly(true),
+                    $fields->dataFieldByName('FinalIdsToAddToSelection')->setReadonly(true),
                 ]
             );
             $fields->addFieldsToTab(
@@ -767,28 +777,22 @@ class Instruction extends DataObject
         if ($this->Title && !$this->isInDB() || $this->isChanged('Title')) {
             $this->Title = $this->ensureUniqueTitle((string) $this->Title);
         }
-        if ((int) $this->SelectionID === -2 && $this->isChanged('SelectionID', DataObject::CHANGE_STRICT)) {
+        //
+        if ((int) $this->SelectionID === self::ALL_RECORDS && $this->isChanged('SelectionID', DataObject::CHANGE_STRICT)) {
             $this->RecordIdsToAddToSelection = '';
+            $this->FinalIdsToAddToSelection = '';
         }
         $this->AlignSelectionID();
     }
 
-    protected function AlignSelectionID(?bool $basicOnly = false)
+    protected function AlignSelectionID()
     {
-        if (!$this->SelectionID) {
-            if ($this->HasRecordIdsToAddToSelection()) {
-                $this->SelectionID = -1; // manually added records only
-            }
-        }
-        if ($this->SelectionID < 1) {
-            if ($this->HasRecordIdsToAddToSelection()) {
-                $this->SelectionID = -1; // manually added records only
+        if ($this->SelectionID < 1 || !$this->SelectionID) {
+            if ($this->HasFinalIdsToAddToSelection()) {
+                $this->SelectionID = self::MANUALLY_ADDED; // manually added records only
             } else {
-                $this->SelectionID = -2; // all records
+                $this->SelectionID = self::ALL_RECORDS; // all records
             }
-        }
-        if (!$this->SelectionID) {
-            $this->SelectionID = 0;
         }
     }
 
@@ -840,7 +844,7 @@ class Instruction extends DataObject
     {
         parent::onAfterWrite();
         if ($this->RunTest) {
-            $item = $this->AddRecords(true);
+            $item = $this->AddRecordProcesses(true);
             if ($item) {
                 $obj = Injector::inst()->get(ProcessOneRecord::class);
                 $obj->recordAnswer($item);
@@ -849,7 +853,7 @@ class Instruction extends DataObject
             $this->write();
         } elseif ($this->ReadyToProcess) {
             // note that records can be added over time, even if previously completed.
-            $this->AddRecords(false);
+            $this->AddRecordProcesses(false);
         }
     }
 
@@ -987,6 +991,31 @@ class Instruction extends DataObject
             ]);
     }
 
+    public function AddRecordsToInstruction(int|array|null $recordIds = null): void
+    {
+        if (is_array($recordIds)) {
+            $recordIds = array_filter(array_unique(array_map('intval', $recordIds)));
+        } elseif ($recordIds !== null) {
+            $recordIds = [(int) $recordIds];
+        }
+        $recordIds = array_merge(is_array($recordIds) ? $recordIds : [], $this->getRecordIdsToAddToSelectionArray());
+        $recordIds = array_filter(array_unique($recordIds));
+        if (empty($recordIds)) {
+            return;
+        }
+        $existingList = $this->getFinalIdsToAddToSelectionArray();
+        $allPresentAlready = empty(array_diff($recordIds, $existingList));
+        if ($allPresentAlready !== true) {
+            $this->FinalIdsToAddToSelection = trim(trim(implode(',', $recordIds)), ',');
+        }
+        $this->RecordIdsToAddToSelection = '';
+        if ($this->SelectionID < 1) {
+            $this->SelectionID = self::MANUALLY_ADDED;
+        }
+        $this->AddRecordProcesses(false, ['ID' => $recordIds]);
+        $this->write();
+    }
+
     /**
      *
      * only returns a record if it is a test!
@@ -995,7 +1024,7 @@ class Instruction extends DataObject
      * @param mixed $limit
      * @return RecordProcess|null
      */
-    public function AddRecords(?bool $isTest = false, array|string|null $filter = null, ?int $limit = null): ?RecordProcess
+    public function AddRecordProcesses(?bool $isTest = false, array|string|null $filter = null, ?int $limit = null): ?RecordProcess
     {
         if ($this->HasValidClassName()) {
             $list = $this->getRecordList();
@@ -1111,10 +1140,10 @@ class Instruction extends DataObject
                 $list = $selection->getSelectionDataList();
             }
         }
-        if ($this->HasRecordIdsToAddToSelection()) {
-            $ids = explode(',', (string) $this->RecordIdsToAddToSelection);
+        if ($this->HasFinalIdsToAddToSelection()) {
+            $ids = explode(',', (string) $this->FinalIdsToAddToSelection);
             if ($list) {
-                $ids = array_merge($ids, $list->column('ID'));
+                $ids = array_filter(array_unique(array_merge($ids, $list->column('ID'))));
             }
             return $className::get()->filter(['ID' => $ids]);
         } elseif ($list) {
@@ -1146,31 +1175,28 @@ class Instruction extends DataObject
         return [];
     }
 
-
-    public function AddRecordsToInstruction(int|array $recordIds)
+    protected function HasFinalIdsToAddToSelection(): bool
     {
-        if (is_array($recordIds)) {
-            $recordIds = array_filter(array_unique(array_map('intval', $recordIds)));
-        } else {
-            $recordIds = [(int) $recordIds];
-        }
-        if (empty($recordIds)) {
-            return;
-        }
-        $existingList = $this->getRecordList()->columnUnique('ID');
-        $allPresent = empty(array_diff($recordIds, $existingList));
-        if ($allPresent) {
-            $this->AddRecords(false, ['ID' => $recordIds]);
-            return;
-        }
-        $ids = array_merge($recordIds, $this->getRecordIdsToAddToSelectionArray());
-        $ids = array_unique($ids);
-        $ids = array_filter($ids);
-        $this->RecordIdsToAddToSelection = trim(trim(implode(',', $ids)), ',');
-        $this->write();
-        $this->AddRecords(false, ['ID' => $recordIds]);
-        $this->write();
+        return (bool) (trim((string) $this->FinalIdsToAddToSelection) === '' ? false : true);
     }
+
+    protected function FinalIdsToAddToSelectionCount(): int
+    {
+        return count($this->getFinalIdsToAddToSelectionArray());
+    }
+
+    protected function getFinalIdsToAddToSelectionArray(): array
+    {
+        if ($this->HasFinalIdsToAddToSelection()) {
+            $ids = explode(',', (string) $this->FinalIdsToAddToSelection);
+            $ids = array_filter($ids);
+            $ids = array_unique($ids);
+            return $ids;
+        }
+        return [];
+    }
+
+
 
 
     public function getSelectExistingLLMInstructionForOneRecordLink($record): string
@@ -1224,18 +1250,18 @@ class Instruction extends DataObject
         $array = [];
         $className = $this->ClassNameToChange;
         $count = $className::get()->count();
-        $array[-2] = '-- All records (' . $count . ') --';
-        $hasRecordIdsToAddToSelection = $this->HasRecordIdsToAddToSelection();
+        $array[self::ALL_RECORDS] = '-- All records (' . $count . ') --';
+        $hasFinalIdsToAddToSelection = $this->HasFinalIdsToAddToSelection();
         $manuallyRecordedRecordsCount = 0;
-        if ($hasRecordIdsToAddToSelection) {
-            $manuallyRecordedRecordsCount = $this->RecordIdsToAddToSelectionCount();
-            $array[-1] = 'Manually added records only (' . $manuallyRecordedRecordsCount . ')';
+        if ($hasFinalIdsToAddToSelection) {
+            $manuallyRecordedRecordsCount = $this->FinalIdsToAddToSelectionCount();
+            $array[self::MANUALLY_ADDED] = 'Manually added records only (' . $manuallyRecordedRecordsCount . ')';
         }
         $source = Selection::get()
             ->filter(['ModelClassName' => $this->ClassNameToChange]);
         foreach ($source as $item) {
             $array[$item->ID] = $item->Title . ' (' . $item->getSelectionDataList()->count() . ')' .
-                ($hasRecordIdsToAddToSelection ? ' + manually added records (' . $manuallyRecordedRecordsCount . ')' : '');
+                ($hasFinalIdsToAddToSelection ? ' + manually added records (' . $manuallyRecordedRecordsCount . ')' : '');
         }
 
         return $array;

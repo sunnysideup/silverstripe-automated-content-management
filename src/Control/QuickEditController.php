@@ -201,20 +201,23 @@ class QuickEditController extends Controller
     protected function runTestForInstruction($request, $findErrorsOnly = false)
     {
         $this->deconstructParams(false, true);
-        if ($this->instruction) {
+        if ($this->instruction && $this->record) {
             $description = $request->postVar('description');
             if ($description) {
                 $this->instruction->Description = $description;
                 $this->instruction->RunTest = true;
                 $this->instruction->FindErrorsOnly = $findErrorsOnly;
-                $this->instruction->RecordIdsToAddToSelection = $this->recordOrRecordProcessID;
+                $this->instruction->AddRecordsToInstruction($this->record->ID);
+                // does it run automatically?????
+                $this->instruction->write();
+                sleep(1);
                 $this->instruction->write();
                 sleep(1);
                 $lastItem = $this->instruction->RecordsToProcess()
                     ->filter(
                         [
                             'IsTest' => true,
-                            'RecordID' => $this->recordOrRecordProcessID,
+                            'RecordID' => $this->record->ID,
                             'Completed' => true,
                             'Instruction.FindErrorsOnly' => $findErrorsOnly
                         ]
