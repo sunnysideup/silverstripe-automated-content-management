@@ -332,7 +332,10 @@ class Instruction extends DataObject
 
             $baseOnField = $fields->dataFieldByName('BasedOnID');
             if ($baseOnField) {
-                $options =   Instruction::get()
+                $options = [
+                    0 => '--- Please Select ---',
+                ];
+                $options +=  Instruction::get()
                     ->filter([
                         'FieldToChange' => $this->FieldToChange,
                         'ClassNameToChange' => $this->ClassNameToChange,
@@ -346,7 +349,6 @@ class Instruction extends DataObject
                         'Description',
                         DropdownField::create('BasedOnID', 'Base on another instruction (optional)')
                             ->setSource($options)
-                            ->setEmptyString('-- Please Select (OPTIONAL) --')
                             ->setDescription(
                                 'You can base your instruction on another instruction that you have already created. <br />' .
                                     'This will overwrite the instructions (including the "always added" instruction) as shown below. <br />' .
