@@ -146,6 +146,13 @@ class Instruction extends DataObject
         'Completed',
     ];
 
+    private static $indexes = [
+        'Title' => true,
+        'StartedProcess' => true,
+        'Completed' => true,
+        'Cancelled' => true,
+    ];
+
     private static $field_labels = [
         'ClassNameToChange' => '* Record Type you would like to update',
         'ClassNameToChangeNice' => 'Record Type',
@@ -185,7 +192,7 @@ class Instruction extends DataObject
     ];
 
 
-    private static $default_sort = 'Cancelled ASC, Completed ASC, ID DESC';
+    private static $default_sort = 'Cancelled ASC, Completed ASC, Title ASC';
 
     // public function getCMSCompositeValidator(): CompositeValidator
     // {
