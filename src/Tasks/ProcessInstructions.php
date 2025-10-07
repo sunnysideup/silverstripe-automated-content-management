@@ -82,6 +82,7 @@ class ProcessInstructions extends BuildTask
         $this->processor = Injector::inst()->get(ProcessOneRecord::class);
         $this->processor->setVerbose(true);
         $this->processor->setReturnResultsAsArray($this->returnResultsAsArray);
+        $this->removeObsoleteRecordsToProcess();
         $this->updateAllInstructions();
         $this->getAnswers();
         $this->readyToAcceptAnswersImmediately();
@@ -160,6 +161,20 @@ class ProcessInstructions extends BuildTask
                 $this->log('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process ... ');
                 $instruction->AddRecordProcesses(false, null, $instruction->NumberOfRecordsToProcessPerBatch);
                 $instruction->write();
+            } else {
+                $this->log('... NOT writing instruction: ' . $instruction->getTitle() . ' as it is NOT ready to process, or has been cancelled/completed).');
+            }
+        }
+    }
+
+    protected function removeObsoleteRecordsToProcess()
+    {
+        $this->log('=== Writing all instructions ready for processing: RemoveObsoleteRecordsToProcess');
+        $instructions = $this->allInstructions();
+        foreach ($instructions as $instruction) {
+            if ($instruction->getIsReadyForProcessing()) {
+                $this->log('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process ... ');
+                $instruction->RemoveObsoleteRecordsToProcess();
             } else {
                 $this->log('... NOT writing instruction: ' . $instruction->getTitle() . ' as it is NOT ready to process, or has been cancelled/completed).');
             }

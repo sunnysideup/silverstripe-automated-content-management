@@ -790,7 +790,6 @@ class Instruction extends DataObject
             $this->FinalIdsToAddToSelection = '';
         }
         $this->AlignSelectionID();
-        $this->RemoveObsoleteRecordsToProcess();
     }
 
     protected function AlignSelectionID()
