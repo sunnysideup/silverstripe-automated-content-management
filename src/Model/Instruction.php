@@ -790,6 +790,7 @@ class Instruction extends DataObject
             $this->FinalIdsToAddToSelection = '';
         }
         $this->AlignSelectionID();
+        $this->RemoveObsoleteRecordsToProcess();
     }
 
     protected function AlignSelectionID()
@@ -799,6 +800,21 @@ class Instruction extends DataObject
                 $this->SelectionID = self::MANUALLY_ADDED; // manually added records only
             } else {
                 $this->SelectionID = self::ALL_RECORDS; // all records
+            }
+        }
+    }
+
+    protected function RemoveObsoleteRecordsToProcess()
+    {
+        if ($this->ReadyToProcess) {
+            $list = $this->getRecordList()->columnUnique('ID') + [-1 => 1];
+            $processRecordsNotStarted = $this->RecordsToProcess()
+                ->filter([
+                    'Started' => false,
+                    'RecordID:Not' => $list,
+                ]);
+            foreach ($processRecordsNotStarted as $item) {
+                $item->delete();
             }
         }
     }
