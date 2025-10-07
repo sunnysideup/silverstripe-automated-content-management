@@ -191,6 +191,11 @@ class ProcessInstructions extends BuildTask
             foreach ($recordProcesses as $recordProcess) {
                 $this->log('... ... Processing record process: ' . $recordProcess->getRecordTitle());
                 if ($recordProcess->getCanProcess()) {
+                    if ($recordProcess->IsInTargetRecords() === false) {
+                        $recordProcess->delete();
+                        $this->log('... ... ... Deleted record process as record is no longer in target records', 'deleted');
+                        continue;
+                    }
                     $this->countOfAiInteractions++;
                     if ($this->countOfAiInteractions > $maxInteractions) {
                         $this->log('... ... ... Stopping as max number of AI interactions reached', 'deleted');
