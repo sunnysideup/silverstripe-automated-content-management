@@ -148,6 +148,7 @@ class Instruction extends DataObject
 
     private static $indexes = [
         'Title' => true,
+        'ReadyToProcess' => true,
         'StartedProcess' => true,
         'Completed' => true,
         'Cancelled' => true,
@@ -192,7 +193,7 @@ class Instruction extends DataObject
     ];
 
 
-    private static $default_sort = 'Cancelled ASC, Completed ASC, Title ASC';
+    private static $default_sort = 'Cancelled ASC, Completed ASC, ReadyToProcess ASC, Title ASC';
 
     // public function getCMSCompositeValidator(): CompositeValidator
     // {
