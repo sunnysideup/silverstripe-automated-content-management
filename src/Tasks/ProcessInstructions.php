@@ -82,6 +82,7 @@ class ProcessInstructions extends BuildTask
         $this->processor = Injector::inst()->get(ProcessOneRecord::class);
         $this->processor->setVerbose(true);
         $this->processor->setReturnResultsAsArray($this->returnResultsAsArray);
+        $this->removeObsoleteRecordsToProcess();
         $this->updateAllInstructions();
         $this->getAnswers();
         $this->readyToAcceptAnswersImmediately();
@@ -166,6 +167,20 @@ class ProcessInstructions extends BuildTask
         }
     }
 
+    protected function removeObsoleteRecordsToProcess()
+    {
+        $this->log('=== Writing all instructions ready for processing: RemoveObsoleteRecordsToProcess');
+        $instructions = $this->allInstructions();
+        foreach ($instructions as $instruction) {
+            if ($instruction->getIsReadyForProcessing()) {
+                $this->log('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process ... ');
+                $instruction->RemoveObsoleteRecordsToProcess();
+            } else {
+                $this->log('... NOT writing instruction: ' . $instruction->getTitle() . ' as it is NOT ready to process, or has been cancelled/completed).');
+            }
+        }
+    }
+
     protected function getAnswers()
     {
         $this->log('=== Get Answers for all instructions ready for processing');
@@ -191,6 +206,11 @@ class ProcessInstructions extends BuildTask
             foreach ($recordProcesses as $recordProcess) {
                 $this->log('... ... Processing record process: ' . $recordProcess->getRecordTitle());
                 if ($recordProcess->getCanProcess()) {
+                    if ($recordProcess->IsInTargetRecords() === false) {
+                        $recordProcess->delete();
+                        $this->log('... ... ... Deleted record process as record is no longer in target records', 'deleted');
+                        continue;
+                    }
                     $this->countOfAiInteractions++;
                     if ($this->countOfAiInteractions > $maxInteractions) {
                         $this->log('... ... ... Stopping as max number of AI interactions reached', 'deleted');

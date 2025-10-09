@@ -804,6 +804,28 @@ class Instruction extends DataObject
         }
     }
 
+    protected function RemoveObsoleteRecordsToProcess()
+    {
+        if ($this->ReadyToProcess) {
+            // if the number of records has been reduced, then we need to remove the obsolete records to process.
+            $this->RecordsToProcess()
+                ->filter([
+                    'IsTest' => false,
+                    'RecordID:Not' => $this->getRecordList()->columnUnique('ID') + [-1 => 1],
+                ])
+                ->removeAll();
+        }
+        $list = $this->getRecordList()->columnUnique('ID') + [-1 => 1];
+        $processRecordsNotStarted = $this->RecordsToProcess()
+            ->filter([
+                'Started' => false,
+                'RecordID:Not' => $list,
+            ]);
+        foreach ($processRecordsNotStarted as $item) {
+            $item->delete();
+        }
+    }
+
     protected function ensureUniqueTitle(?string $baseTitle = null): string
     {
         if (!$baseTitle) {

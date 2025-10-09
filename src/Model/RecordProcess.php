@@ -160,6 +160,12 @@ class RecordProcess extends DataObject
         return false;
     }
 
+    public function IsInTargetRecords(): bool
+    {
+        $instruction = $this->Instruction();
+        return $instruction->getRecordList()->filter(['ID' => $this->RecordID])->exists();
+    }
+
     public function getCanNotProcessAnymore(): bool
     {
         return $this->Completed || $this->IsObsolete();
