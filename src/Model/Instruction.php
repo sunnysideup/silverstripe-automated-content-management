@@ -729,7 +729,7 @@ class Instruction extends DataObject
     public function getRecordExample()
     {
         if ($this->HasValidClassName()) {
-            return $this->getRecordList()?->orderBy(DB::get_conn()->random())->first() ?: null;
+            return $this->getRecordList()?->shuffle()->first() ?: null;
         }
     }
 
@@ -804,7 +804,7 @@ class Instruction extends DataObject
         }
     }
 
-    protected function RemoveObsoleteRecordsToProcess()
+    public function RemoveObsoleteRecordsToProcess()
     {
         if ($this->ReadyToProcess) {
             // if the number of records has been reduced, then we need to remove the obsolete records to process.
@@ -1069,7 +1069,7 @@ class Instruction extends DataObject
                 $list = $list->limit($limit);
             }
             if ($isTest) {
-                $list = $list->orderBy(DB::get_conn()->random())->limit(1);
+                $list = $list->shuffle()->limit(1);
             }
             $ids = $list->columnUnique('ID');
             if (empty($ids)) {
