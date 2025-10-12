@@ -392,7 +392,7 @@ class ProcessInstructions extends BuildTask
                 'ID' => $this->recordProcess->InstructionID,
             ]);
         }
-        return $instructions->orderBy(DB::get_conn()->random());
+        return $instructions->shuffle();
     }
 
 
@@ -411,6 +411,7 @@ class ProcessInstructions extends BuildTask
         $recordProcesses = $recordProcesses->filter([
             'IsTest' => $instruction->RunTest,
         ]);
+        $recordProcesses = $recordProcesses->shuffle();
         return $recordProcesses;
     }
 
