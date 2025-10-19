@@ -506,14 +506,10 @@ class Instruction extends DataObject
 
     protected function makeFieldsReadonlyInner(string $fieldName): bool
     {
-        // everyting readonly
-        if ($this->getReviewCompleted()) {
-            return true;
-        }
-        // everyting readonly
-        if ($this->Cancelled) {
+        if ($this->Cancelled || $this->Locked) {
             switch ($fieldName) {
                 case 'Cancelled':
+                case 'Locked':
                     break;
                 default:
                     return true;
@@ -601,6 +597,9 @@ class Instruction extends DataObject
             }
         }
         if ($this->Cancelled) {
+            return false;
+        }
+        if ($this->Locked) {
             return false;
         }
         if (! $this->HasValidClassName()) {
@@ -757,7 +756,7 @@ class Instruction extends DataObject
                 $this->Completed = false;
             }
         }
-        if ((bool) $this->Completed === false) {
+        if ((bool) $this->Locked === false) {
             if ($this->BasedOnID) {
                 $this->Description = $this->BasedOn()->Description;
                 $this->AlwaysAddedInstruction = $this->BasedOn()->AlwaysAddedInstruction;

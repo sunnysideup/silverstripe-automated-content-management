@@ -106,7 +106,7 @@ class ProcessInstructions extends BuildTask
             'ReadyToProcess' => true,
             'RunTest' => true,
         ])->excludeAny([
-            'Completed' => true,
+            'Locked' => true,
         ]);
     }
 
@@ -146,6 +146,7 @@ class ProcessInstructions extends BuildTask
         return $this->allInstructions()->filter([
             'ReadyToProcess' => false,
             'Completed' => false,
+            'Locked' => false,
             'StartedProcess' => false,
             'Created:LessThan' => date('Y-m-d H:i:s', strtotime($delay)),
         ]);
