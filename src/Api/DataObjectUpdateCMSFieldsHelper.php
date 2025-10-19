@@ -149,13 +149,19 @@ class DataObjectUpdateCMSFieldsHelper
                     ->filter([
                         'ClassNameToChange' => $owner->ClassName,
                         'FieldToChange' => $fieldName,
-                        'Cancelled' => 0,
+                    ])
+                    ->excludeAny([
+                        'Canceled' => true,
+                        'Locked' => true,
                     ]);
             } else {
                 $allInstructions = Instruction::get()
                     ->filter([
                         'ClassName' => $owner->ClassName,
-                        'Cancelled' => 0,
+                    ])
+                    ->excludeAny([
+                        'Canceled' => true,
+                        'Locked' => true,
                     ]);
             }
 

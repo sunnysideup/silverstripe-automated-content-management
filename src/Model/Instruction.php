@@ -108,6 +108,7 @@ class Instruction extends DataObject
         'StartedProcess' => 'Boolean',
         'Completed' => 'Boolean',
         'Cancelled' => 'Boolean',
+        'Locked' => 'Boolean',
         'AcceptAll' => 'Boolean',
         'RejectAll' => 'Boolean',
         'AcceptAnswersImmediately' => 'Boolean',
@@ -164,6 +165,7 @@ class Instruction extends DataObject
         'RunTest' => 'Run test now',
         'ReadyToProcess' => 'Start process now',
         'Cancelled' => 'Cancel any further processing',
+        'Locked' => 'Stop any further processing and lock this instruction from edits',
         'FindErrorsOnly' => 'Find errors only - LLM will not update the record, but instead tell you if there are any errors (based on your instruction).',
         'RecordsToProcess' => 'Process Log',
         'NumberOfTargetRecords' => 'Number of Target Records',
@@ -1258,7 +1260,7 @@ class Instruction extends DataObject
 
     public function canEdit($member = null)
     {
-        if ($this->getReviewCompleted()) {
+        if ($this->Locked) {
             return false;
         }
         return Permission::check('CMS_ACCESS_LLMEDITOR', 'any', $member);

@@ -96,7 +96,7 @@ class ProcessInstructions extends BuildTask
 
     protected function allInstructions()
     {
-        $list = Instruction::get()->exclude(['Cancelled' => true]);
+        $list = Instruction::get()->excludeAny(['Cancelled' => true, 'Locked' => true]);
         return $this->filterInstructionsByCurrentInstruction($list);
     }
 
