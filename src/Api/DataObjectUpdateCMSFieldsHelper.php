@@ -151,7 +151,7 @@ class DataObjectUpdateCMSFieldsHelper
                         'FieldToChange' => $fieldName,
                     ])
                     ->excludeAny([
-                        'Canceled' => true,
+                        'Cancelled' => true,
                         'Locked' => true,
                     ]);
             } else {
@@ -160,7 +160,7 @@ class DataObjectUpdateCMSFieldsHelper
                         'ClassName' => $owner->ClassName,
                     ])
                     ->excludeAny([
-                        'Canceled' => true,
+                        'Cancelled' => true,
                         'Locked' => true,
                     ]);
             }
