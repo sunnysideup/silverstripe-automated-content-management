@@ -548,9 +548,6 @@ class Instruction extends DataObject
         }
         if ($this->StartedProcess && $this->ReadyToProcess) {
             switch ($fieldName) {
-                case 'BasedOnID':
-                case 'Description':
-                case 'AlwaysAddedInstruction':
                 case 'FindErrorsOnly':
                     return true;
                 default:
