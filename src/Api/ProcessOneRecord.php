@@ -45,7 +45,7 @@ class ProcessOneRecord
     {
         $this->resultsAsArray = [];
         $question = $recordProcess->getHydratedInstructions();
-        $record = $recordProcess->getRecord();
+        $record = $recordProcess->getRecord(false);
         $field = $recordProcess->Instruction->FieldToChange;
         if (! $field) {
             $this->outputMessage('NO field to change for record ID: ' . $recordProcess->RecordID . ' - ' . $recordProcess->RecordClassName, 'error');
@@ -84,7 +84,7 @@ class ProcessOneRecord
     {
         $this->resultsAsArray = [];
         if ($recordProcess->getCanUpdateOriginalRecord()) {
-            $record = $recordProcess->getRecord();
+            $record = $recordProcess->getRecord(false);
             $isPublished = $record->hasMethod('isPublished') && $record->isPublished();
             if ($isPublished) {
                 if ($record->hasMethod('isModifiedOnDraft')) {
@@ -109,6 +109,7 @@ class ProcessOneRecord
             } else {
                 $this->outputMessage('No callback set up for after update of record ID: ' . $record->ID . ' - ' . $record->ClassName, 'error');
             }
+
             $recordProcess->OriginalUpdated = true;
             $recordProcess->write();
         } else {
