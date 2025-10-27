@@ -378,7 +378,7 @@ class Instruction extends DataObject
                 }
             }
             $fields->addFieldsToTab(
-                'Root.ⓘ',
+                'Root.FullDetails',
                 [
                     $fields->dataFieldByName('ByID')
                         ->setTitle(
@@ -462,7 +462,7 @@ class Instruction extends DataObject
             $basedOnForOthers = $this->getBasedOnForOthers();
             if ($basedOnForOthers->exists()) {
                 $fields->addFieldsToTab(
-                    'Root.ⓘ',
+                    'Root.FullDetails',
                     [
                         GridField::create(
                             'BasedOnForOthers',
@@ -477,7 +477,7 @@ class Instruction extends DataObject
                     $basedOnField->setDescription(
                         $basedOnField->getDescription() . '<br />' .
                             'This instruction is used for ' . $basedOnForOthers->count() . ' other instructions.
-                        See the tab "ⓘ" for details.'
+                        See the "Full Details" tab for more details.'
                     );
                 }
             }

@@ -143,7 +143,7 @@ class RecordProcess extends DataObject
     public function IsObsolete(): bool
     {
         $instruction = $this->Instruction();
-        return $instruction->Cancelled || $this->Skip;
+        return $instruction?->Cancelled || $this->Skip;
     }
 
     public function getCanProcess(): bool
@@ -198,6 +198,7 @@ class RecordProcess extends DataObject
             return false;
         }
         return
+            $this->Completed &&
             $this->Accepted &&
             ! $this->getFindErrorsOnly() &&
             ! $this->OriginalUpdated;
@@ -383,6 +384,18 @@ class RecordProcess extends DataObject
     public function getCMSFields()
     {
         $fields = parent::getCMSFields();
+        $fields->addFieldsToTab(
+            'Root.FullDetails',
+            [
+                $fields->dataFieldByName('Started'),
+                $fields->dataFieldByName('Question'),
+                $fields->dataFieldByName('Completed'),
+                $fields->dataFieldByName('Rejected'),
+                $fields->dataFieldByName('OriginalUpdated'),
+                $fields->dataFieldByName('LLMClient'),
+                $fields->dataFieldByName('LLMModel'),
+            ]
+        );
         $fields->removeByName(['Question', 'InstructionID', 'RecordID']);
         Injector::inst()->get(AddCastedVariablesHelper::class)->AddCastingFields(
             $this,
