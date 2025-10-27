@@ -97,7 +97,9 @@ class QuickReviewController extends Controller
     {
         $filter = $this->BasicFilter($classNameUnescaped, $fieldName);
         $filter['OriginalUpdated'] = true;
-        return RecordProcess::get()->filter($filter)->sort('LastEdited', 'DESC')
+        return RecordProcess::get()
+            ->filter($filter)
+            ->sort('LastEdited', 'DESC')
             ->limit($limit ?: $this->limitPerList);
     }
 

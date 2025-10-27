@@ -251,7 +251,7 @@ class RecordProcess extends DataObject
             return $this->Question;
         }
         $description = $this->Instruction()->Description;
-        $record = $this->getRecord();
+        $record = $this->getRecord(false);
         $value =  '';
         if ($record) {
             $template = SSViewer_FromString::create($description);
@@ -348,18 +348,19 @@ class RecordProcess extends DataObject
      *
      * @return DataObject|null
      */
-    public function getRecord()
+    public function getRecord(?bool $fromCache = true)
     {
         if (! $this->RecordID) {
             return null;
         }
-        if (isset(self::$recordCache[$this->ID])) {
-            return self::$recordCache[$this->ID];
-        }
-        $list = $this->Instruction()->getRecordList();
-        $obj = null;
-        if ($list) {
-            $obj = $list->byID($this->RecordID);
+        if ($fromCache && isset(self::$recordCache[$this->ID])) {
+            $obj = self::$recordCache[$this->ID];
+        } else {
+            $list = $this->Instruction()->getRecordList();
+            $obj = null;
+            if ($list) {
+                $obj = $list->byID($this->RecordID);
+            }
         }
         if (! $obj) {
             $className = $this->getRecordClassName();
