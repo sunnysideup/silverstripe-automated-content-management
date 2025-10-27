@@ -316,10 +316,12 @@ class QuickEditController extends Controller
         $this->deconstructParams(true, false);
         if ($this->recordProcess) {
             $this->recordProcess->AcceptResult();
-            $record = $this->recordProcess->getRecord();
-            $link = $this->getBestLinkForRecord($record);
-            if ($link) {
-                return $this->redirect($link);
+            $record = $this->recordProcess->getRecord(false);
+            if ($record) {
+                $link = $this->getBestLinkForRecord($record);
+                if ($link) {
+                    return $this->redirect($link);
+                }
             }
             return $this->redirect($this->recordProcess->CMSEditLink());
         } else {
@@ -333,10 +335,12 @@ class QuickEditController extends Controller
         if ($this->recordProcess) {
             $this->recordProcess->AcceptResult();
             $this->recordProcess->UpdateOriginalRecord();
-            $record = $this->recordProcess->getRecord();
-            $link = $this->getBestLinkForRecord($record);
-            if ($link) {
-                return $this->redirect($link);
+            $record = $this->recordProcess->getRecord(false);
+            if ($record) {
+                $link = $this->getBestLinkForRecord($record);
+                if ($link) {
+                    return $this->redirect($link);
+                }
             }
             return $this->redirect($this->recordProcess->CMSEditLink());
         } else {
@@ -349,7 +353,7 @@ class QuickEditController extends Controller
         $this->deconstructParams(true, false);
         if ($this->recordProcess) {
             $this->recordProcess->RejectResult();
-            $record = $this->recordProcess->getRecord();
+            $record = $this->recordProcess->getRecord(false);
             $link = $this->getBestLinkForRecord($record);
             if ($link) {
                 return $this->redirect($link);
