@@ -97,6 +97,7 @@ class Instruction extends DataObject
         'ClassNameToChange' => 'Varchar(255)',
         'FieldToChange' => 'Varchar(255)',
         'Title' => 'Varchar(255)',
+        'FindRelatedRecordThroughFieldMatching' => 'Boolean',
         'FindErrorsOnly' => 'Boolean',
         'Description' => 'Text',
         'AlwaysAddedInstruction' => 'Text',
@@ -176,6 +177,8 @@ class Instruction extends DataObject
     ];
 
     private static $casting = [
+        'FieldToChangeIsRelationField' => 'Boolean',
+        'FieldToChangeRelationType' => 'Varchar',
         'IsReadyForProcessing' => 'Boolean',
         'IsReadyForReview' => 'Boolean',
         'ReviewCompleted' => 'Boolean',
@@ -577,13 +580,33 @@ class Instruction extends DataObject
 
     public function HasValidFieldName(): bool
     {
-        $fieldName = $this->FieldToChange;
-        $obj = $this->getRecordSingleton();
-        if (! $obj) {
-            return false;
-        }
-        $db = $obj->config()->get('db');
-        return isset($db[$fieldName]);
+        $list = $this->getListOfValidFields(false);
+        return isset($list[$this->FieldToChange]);
+    }
+
+    public function getFieldToChangeIsRelationField(): bool
+    {
+        $inst = $this->getRecordSingleton();
+        $dbFields = $inst->config()->get('db');
+        return ! isset($dbFields[$this->FieldToChange]);
+    }
+
+    public function getFieldToChangeRelationType(): string
+    {
+        $inst = $this->getRecordSingleton();
+        return $inst->getRelationType($this->FieldToChange) ?: 'error: not a relation field';
+    }
+
+    protected function getListOfValidFields(?bool $grouped = true): array
+    {
+        return Injector::inst()->get(ClassAndFieldInfo::class)->getListOfFieldNames(
+            $this->ClassNameToChange,
+            ['db', 'has_one', 'has_many', 'many_many', 'belongs_many_many'],
+            array_replace(
+                $this->Config()->get('class_and_field_inclusion_exclusion_schema'),
+                ['grouped' => $grouped, 'for_relations_only_include_field_names' => true]
+            ),
+        );
     }
 
     public function getIsReadyForProcessing(): bool
@@ -1141,11 +1164,7 @@ class Instruction extends DataObject
             $field = OptionsetGroupedField::create(
                 'FieldToChange',
                 $this->fieldLabel('FieldToChange'),
-                Injector::inst()->get(ClassAndFieldInfo::class)->getListOfFieldNames(
-                    $this->ClassNameToChange,
-                    ['db'],
-                    array_replace($this->Config()->get('class_and_field_inclusion_exclusion_schema'), ['grouped' => true]),
-                )
+                $this->getListOfValidFields()
             )->setDescription(
                 '
                     Please select the field you would like to change.
