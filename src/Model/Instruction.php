@@ -8,6 +8,7 @@ use Page;
 use phpDocumentor\Reflection\PseudoTypes\False_;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\GridField\GridField;
@@ -100,6 +101,7 @@ class Instruction extends DataObject
         'FindRelatedRecordThroughFieldMatching' => 'Boolean',
         'FindErrorsOnly' => 'Boolean',
         'Description' => 'Text',
+        'FilterForExactType' => 'Boolean',
         'AlwaysAddedInstruction' => 'Text',
         'RecordIdsToAddToSelection' => 'Text',
         'FinalIdsToAddToSelection' => 'Text',
@@ -158,9 +160,10 @@ class Instruction extends DataObject
 
     private static $field_labels = [
         'ClassNameToChange' => '* Record Type you would like to update',
-        'ClassNameToChangeNice' => 'Record Type',
+        'ClassNameToChangeNice' => 'Record Type Being Updated',
         'FieldToChange' => '* Field to change',
         'FieldToChangeNice' => 'Field to change',
+        'RecordType' => 'Field to change type',
         'Title' => '* Title (internal use only, required)',
         'Description' => '* Instructions for the LLM (required)',
         'RunTest' => 'Run test now',
@@ -437,6 +440,17 @@ class Instruction extends DataObject
                 'createselection',
                 $this->ClassNameToChange,
             );
+            if (!$this->SelectionID || $this->SelectionID < 1) {
+                $fields->addFieldsToTab(
+                    'Root.TargetRecords',
+                    [
+                        CheckboxField::create(
+                            'FilterForExactType',
+                            'Filter for exact record type',
+                        )
+                    ]
+                );
+            }
             $dropdownField = DropdownField::create(
                 'SelectionID',
                 'Selection for this record type (optional)',
@@ -722,11 +736,25 @@ class Instruction extends DataObject
     {
         $obj = $this->getRecordSingleton();
         if ($obj) {
-            $db = $obj->config()->get('db');
-            $type = $db[$this->FieldToChange] ?? 'Error: Field does not exist';
+            $fields = $this->listOfAllFields();
+            $type = $fields[$this->FieldToChange] ?? 'Error: Field does not exist';
             return ClassAndFieldInfo::standard_short_field_type_name($type);
         }
         return 'Error: Class does not exist';
+    }
+
+    protected function listOfAllFields()
+    {
+        $obj = $this->getRecordSingleton();
+        if ($obj) {
+            return $obj->config()->get('db') +
+                $obj->config()->get('belongs_to') +
+                $obj->config()->get('has_one') +
+                $obj->config()->get('has_many') +
+                $obj->config()->get('many_many') +
+                $obj->config()->get('belongs_many_many');
+        }
+        return [];
     }
 
     public function getLLMProvidedBy(): string
@@ -1196,7 +1224,11 @@ class Instruction extends DataObject
         } elseif ($list) {
             return $list;
         } elseif ($this->HasValidClassName()) {
-            return $className::get();
+            $list = $className::get();
+            if ($this->FilterForExactType) {
+                $list = $list->filter(['ClassName' => $className]);
+            }
+            return $list;
         }
         return null;
     }
@@ -1295,8 +1327,11 @@ class Instruction extends DataObject
     protected function getListForSelections(): array
     {
         $array = [];
-        $className = $this->ClassNameToChange;
-        $count = $className::get()->count();
+        $list = $this->getRecordList();
+        $count = 0;
+        if ($list) {
+            $count = $list->count();
+        }
         $array[self::ALL_RECORDS] = '-- All records (' . $count . ') --';
         $hasFinalIdsToAddToSelection = $this->HasFinalIdsToAddToSelection();
         $manuallyRecordedRecordsCount = 0;
