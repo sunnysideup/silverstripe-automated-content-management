@@ -21,9 +21,9 @@ class InstructionsForInstructions
     use Configurable;
     protected $record;
 
-    public function __construct($record)
+    public function __construct($record = null)
     {
-        if (!$record instanceof DataObject) {
+        if ($record !== null && !$record instanceof DataObject) {
             throw new \InvalidArgumentException('Record must be an instance of DataObject. Provided: ' . get_class($record));
         }
         $this->record = $record;
@@ -100,7 +100,7 @@ class InstructionsForInstructions
         return $v;
     }
 
-    public function getInstructions(Instruction $instruction): string
+    public function getInstructionVarList(Instruction $instruction): string
     {
         $fieldLists  = $this->getListOfFields();
         $sectionsHtml = '';
@@ -164,6 +164,62 @@ class InstructionsForInstructions
             . '</p>'
             . '</div>';
     }
+
+    public function getFindErrorsOnlyInstruction(Instruction $instruction): string
+    {
+        return $this->cleanWhitespace(
+            '
+            If you find an error, then please prepend any answer with ' . $instruction->Config()->get('error_prepend') . '.
+            If no error is found as per the instructions above then just return ' . $instruction->Config()->get('non_error_prepend')
+        );
+    }
+
+    public function getGenericUpdateInstruction(Instruction $instruction): string
+    {
+        $recordTypeSpecificInstruction = '';
+        $recordType = $instruction->getRecordType();
+        switch ($recordType) {
+            case 'Varchar':
+            case 'Text':
+                $recordTypeSpecificInstruction = 'Please return plain text only, no html.';
+                break;
+            case 'HTMLText':
+            case 'HTMLVarchar':
+                $recordTypeSpecificInstruction = 'For HTML, please make sure all text is wrapped in any of the following html tags: p, ul, ol, li, or h2 - h6 only.';
+                break;
+            default:
+                // no specific instruction
+
+        }
+        $stringSeparator = Instruction::config()->get('list_separator');
+        $type = $instruction->getFieldToChangeRelationType();
+        if ($instruction->getFieldToChangeIsRelationField()) {
+            if ($type === 'has_one' || $type === 'belongs_to') {
+                $recordTypeSpecificInstruction .= '
+                    If you have IDs available to chose from then please provide the ID directly.
+                    If there is no IDs to chose from then please provide a string I will try to match it to the related record.
+                    To provide an empty value just return 0.
+                ';
+            } else {
+                $recordTypeSpecificInstruction .= '
+                    To provide an empty list just return 0.
+                    If you have IDs available then please provide the IDs as a comma separated list.
+                    If you do not have any IDs available then provide a list of strings and I will try to match them to the related records.
+                    This string based items should be separated with three pipes like this: ' . $stringSeparator . '.
+                ';
+            }
+        }
+        return $this->cleanWhitespace(
+            'Please return the answer as a value suitable for insertion into a Silverstripe CMS Database
+
+            `' . $type . '` field of type `' . $instruction->getRecordType() . '`.
+
+            ' . $recordTypeSpecificInstruction . '
+
+            Only return the answer, no introduction, explanation or additional questions.'
+        );
+    }
+
 
     protected function getListOfFields(): array
     {
@@ -268,5 +324,12 @@ class InstructionsForInstructions
         $v = preg_replace('/\n +/', "\n", $v);
         $v = trim($v);
         return $v;
+    }
+    protected function cleanWhitespace(string $text): string
+    {
+        // Keep \n, collapse all other whitespace
+        $text = preg_replace('/[ \t\r\f\v]+/', ' ', $text);
+
+        return trim($text);
     }
 }

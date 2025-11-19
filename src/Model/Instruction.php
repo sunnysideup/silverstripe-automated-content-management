@@ -65,6 +65,8 @@ class Instruction extends DataObject
     private static string $error_prepend = 'HAS_ERROR: ';
     private static string $non_error_prepend = 'OK';
 
+    private static string $list_separator = '|||';
+
     private static array $class_and_field_inclusion_exclusion_schema = [
         'included_field_types' => [
             'Varchar',
@@ -446,7 +448,7 @@ class Instruction extends DataObject
                                 [
                                     LiteralField::create(
                                         'InstructionDetails',
-                                        $instructionsCreator->getInstructions($this)
+                                        $instructionsCreator->getInstructionVarList($this)
                                     ),
                                 ]
                             )->setHeadingLevel(4)
@@ -532,10 +534,10 @@ class Instruction extends DataObject
         }
     }
 
-    protected function HasRelatedListInstructions(): bool
+    public function HasRelatedListInstructions(): bool
     {
         $instruction = (string) $this->Description;
-        if (strpos($instruction, 'RelatedList') !== false) {
+        if (strpos($instruction, '$RelatedList') !== false) {
             return true;
         }
         return false;
@@ -850,9 +852,9 @@ class Instruction extends DataObject
     public function onBeforeWrite()
     {
         parent::onBeforeWrite();
-        if ($this->HasRelatedListInstructions() && !$this->getFieldForRelatedList()) {
+        if ($this->HasRelatedListInstructions()) {
             if (! $this->FieldForRelatedList) {
-                $options = $this->getListOfValidFieldsForRelated(false);
+                $options = $this->getListOfValidFieldsForRelation(false);
                 $this->FieldForRelatedList = isset($options['Title']) ? 'Title' : (isset($options['Name']) ? 'Name' : array_key_first($options) ?? '');
             }
         }
@@ -888,7 +890,7 @@ class Instruction extends DataObject
                 if ($this->FindErrorsOnly) {
                     $this->AlwaysAddedInstruction = $this->getFindErrorsOnlyInstruction();
                 } else {
-                    $this->AlwaysAddedInstruction = $this->getUpdateInstruction();
+                    $this->AlwaysAddedInstruction = $this->getGenericUpdateInstruction();
                 }
             }
         }
@@ -960,27 +962,14 @@ class Instruction extends DataObject
 
     protected function getFindErrorsOnlyInstruction(): string
     {
-        return $this->cleanWhitespace(
-            '
-            If you find an error, then please prepend any answer with ' . $this->Config()->get('error_prepend') . '.
-            If no error is found as per the instructions above then just return ' . $this->Config()->get('non_error_prepend')
-        );
+        return Injector::inst()->get(InstructionsForInstructions::class)
+            ->getFindErrorsOnlyInstruction($this);
     }
 
-    protected function getUpdateInstruction(): string
+    protected function getGenericUpdateInstruction(): string
     {
-        return $this->cleanWhitespace(
-            'Please return the answer as a value suitable for insertion into a
-            ' . $this->getRecordType() . ' field type in a Silverstripe CMS Database.
-            For example, if the field is a Varchar field, then please return a string.
-            For HTML, please make sure all text is wrapped in any of the following html tags: p, ul, ol, li, or h2 - h6 only.
-            Also - please only return the answer, no introduction or explanation.'
-        );
-    }
-
-    protected function cleanWhitespace(string $text): string
-    {
-        return trim(preg_replace('/\s+/', ' ', $text));
+        return Injector::inst()->get(InstructionsForInstructions::class)
+            ->getGenericUpdateInstruction($this);
     }
 
     public function onAfterWrite()
