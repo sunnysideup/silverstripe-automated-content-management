@@ -12,6 +12,7 @@ use SilverStripe\ORM\DataObjectInterface;
 use SilverStripe\ORM\FieldType\DBBoolean;
 use SilverStripe\ORM\FieldType\DBEnum;
 use SilverStripe\ORM\FieldType\DBString;
+use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 
 class InstructionsForInstructions
 {
@@ -28,26 +29,61 @@ class InstructionsForInstructions
         $this->record = $record;
     }
 
-    public function getExampleInstruction(?string $fieldName = null, ?bool $withHtml = true, ?bool $includeErrorCheck = false): string
+    public function getExampleInstruction(Instruction $instruction, ?bool $withHtml = true, ?bool $includeErrorCheck = false): string
     {
+        $fieldName = $instruction->FieldToChange;
         $nameOfRecord = $this->record->i18n_singular_name();
         if ($fieldName) {
             $fieldNameNice = $this->record->fieldLabel($fieldName);
-
-            $v = '
-        <div style="font-style: italic; ">
-        I am trying to update a ' . $nameOfRecord . ' record.
-        <br />I would like to improve the "' . $fieldNameNice . '" field in this record.
-        The current value of the ' . $fieldNameNice . ' is:
-        <br />
-        <br />
-        <strong>$' . $fieldName . '</strong>
-        <br />
-        (N.B. The variable here, with the dollar sign, be converted to the actual value for the record.)
-        <br />
-        <br />
-        Can you please improve it  ... here you put how you would like to improve it (e.g. make it shorter).
-        </div>';
+            $databaseFieldName = $fieldName . 'ID';
+            $fieldToChangeRelationType = $instruction->getFieldToChangeRelationType();
+            $v = '<div style="font-style: italic; ">
+             ';
+            switch ($fieldToChangeRelationType) {
+                case 'has_one':
+                case 'belongs_to':
+                    $v .= '
+                    I am trying to update a ' . $nameOfRecord . ' record.
+                    <br />
+                    <br />
+                    I would like to improve the "' . $fieldNameNice . '" field in this record.
+                    <br />
+                    This is a relation field. Each ' . $nameOfRecord . ' record has one ' . $fieldNameNice . '.
+                    <br />
+                    <br />
+                    The database field is ' . $databaseFieldName . '.
+                    The current ID and Title of this fields is:
+                    <br />
+                    <br />
+                    <strong>$' . $databaseFieldName . ' : $' . $fieldName . '.Title</strong>
+                    <br />
+                    <br />
+                    You can chose from the following list:
+                    <br />
+                    $RelatedList
+                    ';
+                    break;
+                case 'db':
+                    $v .= '
+                    I am trying to update a ' . $nameOfRecord . ' record.
+                    <br />I would like to improve the "' . $fieldNameNice . '" field in this record.
+                    The current value of the ' . $fieldNameNice . ' is:
+                    <br />
+                    <br />
+                    <strong>$' . $fieldName . '</strong>
+                    ';
+                    break;
+                default:
+            }
+            $v .= '
+                    <br />
+                    <br />
+                    Can you please improve it  ... here you put how you would like to improve it (e.g. make it shorter, chose a different value, etc... etc...).
+                    <br />
+                    <br />
+                    N.B. Words starting with a dollar sign will be replaced with actual values for the record.
+                    For a full list of available fields please see below.
+                </div>';
         } else {
             $v = '
         <div style="font-style: italic; ">
@@ -58,23 +94,27 @@ class InstructionsForInstructions
         Can you please improve it  ... here you put how you would like to improve it (e.g. make it shorter).
         </div>';
         }
-        if (! $withHtml) {
-            $v = preg_replace('/<br\s*\/?>/i', "\n", $v);
-            $v = strip_tags($v);
-            $v = html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $v = preg_replace('/[ \t]+/', ' ', $v);
-            $v = preg_replace('/\n{2,}/', "\n", $v);
-            $v = preg_replace('/ +\n/', "\n", $v);
-            $v = preg_replace('/\n +/', "\n", $v);
-            $v = trim($v);
+        if ($withHtml !== true) {
+            $v = $this->stripHTML($v);
         }
         return $v;
     }
 
-    public function getInstructions(): string
+    public function getInstructions(Instruction $instruction): string
     {
         $fieldLists  = $this->getListOfFields();
         $sectionsHtml = '';
+        if ($instruction->getFieldToChangeIsRelationField) {
+            $sectionsHtml .= '<p>
+                It is recommended that you include a list of items related to this relational field you are updating,
+                for this, you can add the following placeholder: <strong>$RelatedList</strong>.
+                This will add a list of the related items with their identifier (ID) and their Title (or Name) field (or another field you can select, once added).
+                As this list is used to find the related items,
+                it is important that you include it and that you ensure that there is a way for the LLM to match
+                the items based on their Title (or another field you select).
+                Note that this list is limited to 1,000 records.
+            </p>';
+        }
 
         foreach ($fieldLists as $header => $items) {
             // hack for better hierarchy
@@ -98,29 +138,28 @@ class InstructionsForInstructions
             '<div style="padding: 2rem;">'
             . '<h2>Using variables in your instructions</h2>'
             . '<p>'
-            . 'Example: to summarise each record using its Title and Description fields, you could write:'
-            . '<br><em style="color: var(--color-message-error);">'
+            . 'Example: to get a summary (for each record) based on the title using its Title and Description fields, you could write:'
+            . '<br><strong>'
             . 'Summarise the record using Title: $Title and Description: "$Description" in under five words.'
-            . '</em>'
-            . '<br><br>You can also check if a variable exists before using it:'
-            . '<br><em style="color: var(--color-message-error);">'
-            . 'Summarise Title: $Title <% if $Description %>and Description: $Description<% end_if %> in under five words.'
-            . '</em>'
+            . '</strong>'
             . '</p>'
             . '<p>Available field variables for this record:</p>'
             . $sectionsHtml
             . '<h2>Advanced Usage</h2>'
             . '<p>'
-            . '<br><br>You can check if a variable exists before using it:'
-            . '<br><em style="color: var(--color-message-error);">'
+            . 'You can check if a variable exists before using it:'
+            . '<br><strong>'
             . 'Summarise Title: $Title <% if $Description %>and Description: $Description<% end_if %> in under five words.'
-            . '</em>'
+            . '</strong>'
+            . '<br><strong>'
+            . 'Summarise Title: $Title, Description: <% if $Description %>$Description<% else %>No description available<% end_if %> in under five words.'
+            . '</strong>'
             . '</p>'
             . '<p>'
-            . '<br><br>You can loop through lists like this:'
-            . '<br><em style="color: var(--color-message-error);">'
+            . 'You can loop through lists like this:'
+            . '<br><strong>'
             . '<% loop $Foo %>$Title <% end_loop %>'
-            . '</em>'
+            . '</strong>'
             . '<br>Where Foo is a has_many or many_many relationship on the record.'
             . '</p>'
             . '</div>';
@@ -217,5 +256,17 @@ class InstructionsForInstructions
             return '.Nice';
         }
         return '';
+    }
+    protected function stripHTML(string $v): string
+    {
+        $v = preg_replace('/<br\s*\/?>/i', "\n", $v);
+        $v = strip_tags($v);
+        $v = html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $v = preg_replace('/[ \t]+/', ' ', $v);
+        $v = preg_replace('/\n{2,}/', "\n", $v);
+        $v = preg_replace('/ +\n/', "\n", $v);
+        $v = preg_replace('/\n +/', "\n", $v);
+        $v = trim($v);
+        return $v;
     }
 }

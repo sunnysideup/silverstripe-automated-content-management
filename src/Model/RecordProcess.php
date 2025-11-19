@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
+use SilverStripe\Assets\File;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\HTMLReadonlyField;
+use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\FieldType\DBHTMLText;
@@ -255,6 +257,7 @@ class RecordProcess extends DataObject
         $value =  '';
         if ($record) {
             $template = SSViewer_FromString::create($description);
+            $record->RelatedList = $this->myRelationListAsText();
             //FUTURE: SSViewer::create()->renderString($description);
             $return = $template->process($record);
             if ($return instanceof DBField) {
@@ -268,6 +271,44 @@ class RecordProcess extends DataObject
             $value .= PHP_EOL . PHP_EOL . $add;
         }
         return $value;
+    }
+
+    protected function myRelationList(?int $limit = 1000): ?DataList
+    {
+        $instruction = $this->Instruction();
+        if (! $instruction) {
+            return null;
+        }
+        if ($instruction->getFieldToChangeIsRelationField() !== true) {
+            return null;
+        }
+        $className = $instruction->getFieldToChangeRelationClassName();
+        if (class_exists($className)) {
+            return $className::get()->limit($limit);
+        }
+        return null;
+    }
+
+    protected function myRelationListAsText(?int $limit = 1000): string
+    {
+        $a = [];
+        foreach ($this->myRelationListAsArray($limit) as $id => $title) {
+            $a[] = (string) $id . ': \'' . addslashes($title) . '\'';
+        }
+        return PHP_EOL . PHP_EOL  . implode(PHP_EOL, $a) . PHP_EOL . PHP_EOL;
+    }
+
+    protected function myRelationListAsArray(?int $limit = 1000): array
+    {
+        $instruction = $this->Instruction();
+        $field = $instruction->FieldForRelationList ?: 'Title';
+        $list = $this->myRelationList($limit);
+        if ($list && $list->exists()) {
+            $array = $list->map('ID', $field)->toArray();
+        } else {
+            $array =  [0 => 'No related items found'];
+        }
+        return $array;
     }
 
 

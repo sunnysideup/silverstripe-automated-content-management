@@ -277,7 +277,7 @@ class DataObjectUpdateCMSFieldsHelper
                 $iForI = Injector::inst()->get(InstructionsForInstructions::class, false, [$owner]);
                 $desc .= '<h2>Try it now</h2>';
                 $desc .= '<p>To try out now, please enter some instructions below</p>';
-                $desc .= '<textarea name="' . $randomName . '"  rows="20">' . $iForI->getExampleInstruction($fieldName, false, true) . '</textarea>';
+                $desc .= '<textarea name="' . $randomName . '"  rows="20">' . $iForI->getExampleInstruction($instruction, false, true) . '</textarea>';
                 $desc .= '<div class="llm-ajax-actions">';
                 $desc .= '<a href="' . $link . '" data-description="' . $randomName . '" class="btn action btn-outline-primary font-icon-tick" onclick="loadContentForLLMFunction(event)">Request Improvement Ideas</a>';
                 // $desc .= '<a href="' . $link . '" class="btn action btn-outline-primary font-icon-tick" onclick="loadContentForLLMFunction(event)">Check for Errors</a>';

@@ -102,6 +102,7 @@ class Instruction extends DataObject
         'FindErrorsOnly' => 'Boolean',
         'Description' => 'Text',
         'FilterForExactType' => 'Boolean',
+        'FieldForRelatedList' => 'Varchar(255)',
         'AlwaysAddedInstruction' => 'Text',
         'RecordIdsToAddToSelection' => 'Text',
         'FinalIdsToAddToSelection' => 'Text',
@@ -182,6 +183,8 @@ class Instruction extends DataObject
     private static $casting = [
         'FieldToChangeIsRelationField' => 'Boolean',
         'FieldToChangeRelationType' => 'Varchar',
+        'FieldToChangeRelationClassName' => 'Varchar',
+        'HydratedInstructionsExample' => 'Varchar',
         'IsReadyForProcessing' => 'Boolean',
         'IsReadyForReview' => 'Boolean',
         'ReviewCompleted' => 'Boolean',
@@ -269,6 +272,23 @@ class Instruction extends DataObject
                     <br />
                     '
                 );
+            if ($this->getFieldToChangeIsRelationField() && $this->HasRelatedListInstructions()) {
+                $fields->addFieldToTab(
+                    'Root.Main',
+                    DropdownField::create(
+                        'FieldForRelatedList',
+                        'Field to use to find related record',
+                        $this->getListOfValidFieldsForRelation(false)
+                    )
+                        ->setDescription(
+                            'When you include the related list ($RelatedList) in the instructions above
+                            you can select here what field will be provided to the LLM.'
+                        ),
+                    'AlwaysAddedInstruction',
+                );
+            } else {
+                $fields->removeByName('FieldForRelatedList');
+            }
             $grids = [
                 'Test Only' => $this->TestRecords(),
                 'Queued' => $this->ReadyForProcessingRecords(),
@@ -418,7 +438,7 @@ class Instruction extends DataObject
                             HTMLEditorField_Readonly::create(
                                 'InstructionsForInstructions',
                                 'Example Instructions',
-                                $instructionsCreator->getExampleInstruction($this->FieldToChange)
+                                $instructionsCreator->getExampleInstruction($this)
                             ),
                             ToggleCompositeField::create(
                                 'InstructionDetailsHolder',
@@ -426,7 +446,7 @@ class Instruction extends DataObject
                                 [
                                     LiteralField::create(
                                         'InstructionDetails',
-                                        $instructionsCreator->getInstructions()
+                                        $instructionsCreator->getInstructions($this)
                                     ),
                                 ]
                             )->setHeadingLevel(4)
@@ -510,6 +530,15 @@ class Instruction extends DataObject
             $this->makeFieldsReadonly($fields);
             return $fields;
         }
+    }
+
+    protected function HasRelatedListInstructions(): bool
+    {
+        $instruction = (string) $this->Description;
+        if (strpos($instruction, 'RelatedList') !== false) {
+            return true;
+        }
+        return false;
     }
 
     public function getBasedOnForOthers()
@@ -608,7 +637,23 @@ class Instruction extends DataObject
     public function getFieldToChangeRelationType(): string
     {
         $inst = $this->getRecordSingleton();
-        return $inst->getRelationType($this->FieldToChange) ?: 'error: not a relation field';
+        return $inst->getRelationType($this->FieldToChange) ?: 'db';
+    }
+
+    public function getFieldToChangeRelationClassName(): string
+    {
+        $list = $this->listOfAllFields();
+        return $list[$this->FieldToChange] ?? 'error: not a relation field';
+    }
+
+    public function getHydratedInstructionsExample(): string
+    {
+        $list = $this->RecordsToProcess();
+        if ($list && $list->exists()) {
+            $record = $list->shuffle()->first();
+            return $record->getHydratedInstructions();
+        }
+        return 'No records found so no example is available.';
     }
 
     protected function getListOfValidFields(?bool $grouped = true): array
@@ -619,6 +664,19 @@ class Instruction extends DataObject
             array_replace(
                 $this->Config()->get('class_and_field_inclusion_exclusion_schema'),
                 ['grouped' => $grouped, 'for_relations_only_include_field_names' => true]
+            ),
+        );
+    }
+
+    protected function getListOfValidFieldsForRelation(?bool $grouped = false): array
+    {
+        $className = $this->getFieldToChangeRelationClassName();
+        return Injector::inst()->get(ClassAndFieldInfo::class)->getListOfFieldNames(
+            $className,
+            ['db'],
+            array_replace(
+                $this->Config()->get('class_and_field_inclusion_exclusion_schema'),
+                ['grouped' => $grouped]
             ),
         );
     }
@@ -792,6 +850,12 @@ class Instruction extends DataObject
     public function onBeforeWrite()
     {
         parent::onBeforeWrite();
+        if ($this->HasRelatedListInstructions() && !$this->getFieldForRelatedList()) {
+            if (! $this->FieldForRelatedList) {
+                $options = $this->getListOfValidFieldsForRelated(false);
+                $this->FieldForRelatedList = isset($options['Title']) ? 'Title' : (isset($options['Name']) ? 'Name' : array_key_first($options) ?? '');
+            }
+        }
         if (! $this->ByID) {
             $this->ByID = Security::getCurrentUser()?->ID;
         }
