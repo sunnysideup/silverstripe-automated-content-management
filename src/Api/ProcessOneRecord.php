@@ -80,6 +80,21 @@ class ProcessOneRecord
         return false;
     }
 
+    public function updateOriginalRecordInner(RecordProcess $recordProcess, $record)
+    {
+        $instruction = $recordProcess->Instruction();
+        $field = $recordProcess->getFieldToChange();
+        $type = $instruction->getFieldToChangeRelationType();
+
+        $this->outputMessage('... updating field ' . $field . ' for record ID: ' . $record->ID . ' - ' . $record->ClassName, 'changed');
+        $this->outputMessage($recordProcess->getAfterDatabaseValue());
+
+        switch ($type) {
+            case 'db':
+                $record->$field = $recordProcess->getAfterDatabaseValue();
+                break;
+        }
+    }
     public function updateOriginalRecord(RecordProcess $recordProcess)
     {
         $this->resultsAsArray = [];
@@ -91,10 +106,9 @@ class ProcessOneRecord
                     $isPublished = $record->isModifiedOnDraft() ? false : true;
                 }
             }
-            $field = $recordProcess->getFieldToChange();
-            $this->outputMessage('... updating field ' . $field . ' for record ID: ' . $record->ID . ' - ' . $record->ClassName, 'changed');
-            $this->outputMessage($recordProcess->getAfterDatabaseValue());
-            $record->$field = $recordProcess->getAfterDatabaseValue();
+
+            $this->updateOriginalRecordInner($recordProcess, $record);
+
             $record->write();
             if ($isPublished) {
                 $record->publishSingle();

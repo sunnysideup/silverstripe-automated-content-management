@@ -263,6 +263,7 @@ class DataObjectUpdateCMSFieldsHelper
 
             $desc .= '<h2>Create new LLM (AI) instructions</h2>';
             if ($fieldName) {
+                $instruction = Instruction::create();
                 $link = $owner->getCreateNewLLMInstructionForOneRecordOneFieldLink($fieldName);
                 $add = 'for this record (' . $owner->getTitle() . ')';
                 $desc .= '<div><a href="' . $link . '">+ for this ' . $toUpdateName . ' ' . $add . '</a></div>';
