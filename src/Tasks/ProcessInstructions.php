@@ -76,6 +76,7 @@ class ProcessInstructions extends BuildTask
                 return;
             }
         }
+
         if ($request && $request->getVar('recordprocess')) {
             $this->recordProcess = RecordProcess::get()->byID($request->getVar('recordprocess'));
             if (! $this->recordProcess) {
@@ -83,6 +84,7 @@ class ProcessInstructions extends BuildTask
                 return;
             }
         }
+
         $this->processor = Injector::inst()->get(ProcessOneRecord::class);
         $this->processor->setVerbose(true);
         $this->processor->setReturnResultsAsArray($this->returnResultsAsArray);

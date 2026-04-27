@@ -27,6 +27,7 @@ class TestLLM extends BuildTask
         if ($request->getVar('question')) {
             $question = $request->getVar('question');
         }
+
         echo '<hr>';
         echo 'Question: <br /><em>' . $question . '</em>';
         echo '<hr>';
