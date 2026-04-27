@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Control;
 
+use Override;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPResponse;
@@ -66,12 +67,14 @@ class QuickEditController extends Controller
 
     protected ?string $fieldName = null;
 
+    #[Override]
     protected function init()
     {
         parent::init();
         // Add any necessary initialization code here
     }
 
+    #[Override]
     public function Link($action = null): string
     {
         return Controller::join_links(Director::baseURL(), self::config()->get('url_segment'), $action);
@@ -483,6 +486,7 @@ class QuickEditController extends Controller
      * @param int $code
      * @return never
      */
+    #[Override]
     public function redirect(string $url, int $code = 302): HTTPResponse
     {
         if (! strpos($url, 'http')) {

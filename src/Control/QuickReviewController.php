@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Control;
 
+use Override;
 use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Model\ArrayData;
 use SilverStripe\Control\Controller;
@@ -134,6 +135,7 @@ class QuickReviewController extends Controller
     }
 
 
+    #[Override]
     public function Link($action = null): string
     {
         return Controller::join_links(Director::baseURL(), self::config()->get('url_segment'), $action);

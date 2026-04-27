@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Admin;
 
+use Override;
 use SilverStripe\Admin\ModelAdmin;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\Security\Permission;
@@ -24,11 +25,13 @@ class AdminInstructions extends ModelAdmin
         Selection::class,
     ];
 
+    #[Override]
     public function canView($member = null): bool
     {
         return Permission::check('CMS_ACCESS_LLMEDITOR', 'any', $member);
     }
 
+    #[Override]
     public function getEditForm($id = null, $fields = null)
     {
         $form = parent::getEditForm($id, $fields);

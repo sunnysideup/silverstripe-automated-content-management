@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
+use Override;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\CheckboxField;
@@ -233,6 +234,7 @@ class Instruction extends DataObject
     //     }
     // }
 
+    #[Override]
     public function getCMSFields()
     {
         $this->AlignSelectionID();
@@ -861,6 +863,7 @@ class Instruction extends DataObject
 
 
 
+    #[Override]
     protected function onBeforeWrite()
     {
         parent::onBeforeWrite();
@@ -991,6 +994,7 @@ class Instruction extends DataObject
             ->getGenericUpdateInstruction($this);
     }
 
+    #[Override]
     protected function onAfterWrite()
     {
         parent::onAfterWrite();
@@ -1389,6 +1393,7 @@ class Instruction extends DataObject
         return DataObjectUpdateCMSFieldsHelper::my_link_builder('selectexistinginstructionforonerecordonefield', $this->ID, $record->ID, $fieldName);
     }
 
+    #[Override]
     public function CMSEditLink(): string
     {
         return Injector::inst()->get(AdminInstructions::class)->getCMSEditLinkForManagedDataObject($this);
@@ -1400,12 +1405,14 @@ class Instruction extends DataObject
     }
 
 
+    #[Override]
     public function canView($member = null): bool
     {
         return Permission::check('CMS_ACCESS_LLMEDITOR', 'any', $member);
     }
 
 
+    #[Override]
     public function canEdit($member = null)
     {
         if ($this->Locked) {
@@ -1415,6 +1422,7 @@ class Instruction extends DataObject
         return Permission::check('CMS_ACCESS_LLMEDITOR', 'any', $member);
     }
 
+    #[Override]
     public function canDelete($member = null)
     {
         if ($this->Cancelled) {
