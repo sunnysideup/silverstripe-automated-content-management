@@ -24,17 +24,17 @@
     "silverstripe/admin": "^2.0",
     "openai-php/client": "^0.15",
     "mozex/anthropic-php": "^1.1",
-    "sunnysideup/classes-and-fields-info": "5.x-dev",
-    "sunnysideup/selections": "5.x-dev",
-    "sunnysideup/add-casted-variables": "5.x-dev",
-    "sunnysideup/optionsetfield-grouped": "5.x-dev",
-    "sunnysideup/yes-no-any-filter": "5.x-dev"
+    "sunnysideup/classes-and-fields-info": "^5.0-dev",
+    "sunnysideup/selections": "^5.0-dev",
+    "sunnysideup/add-casted-variables": "^5.0-dev",
+    "sunnysideup/optionsetfield-grouped": "^5.0-dev",
+    "sunnysideup/yes-no-any-filter": "^5.0-dev"
   },
   "suggest": {
     "khalsa-jio/silverstripe-ai-nexus": "The Silverstripe way to connect to LLMs"
   },
   "require-dev": {
-    "sunnysideup/sswebpack_engine_only": "5.x-dev",
+    "sunnysideup/sswebpack_engine_only": "^5.0-dev",
     "silverleague/ideannotator": "*",
     "phpunit/phpunit": "^9.6",
     "squizlabs/php_codesniffer": "^3.7",
