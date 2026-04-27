@@ -12,7 +12,16 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\FieldType\DBHTMLText;
 use SilverStripe\Security\Permission;
-use SilverStripe\View\SSViewer_FromString;
+
+/**
+  * ### @@@@ START REPLACEMENT @@@@ ###
+  * WHY: automated upgrade
+  * OLD: SilverStripe\View\SSViewer_FromString
+  * NEW: SSTemplateEngine::renderString() ...  (COMPLEX)
+  * EXP: Removed deprecated class SilverStripe\\View\\SSViewer_FromString - replaced with SSTemplateEngine::renderString(). See: https://docs.silverstripe.org/en/6/changelogs/6.0.0/
+  * ### @@@@ STOP REPLACEMENT @@@@ ###
+  */
+use SSTemplateEngine::renderString();
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
