@@ -4,33 +4,31 @@ namespace Sunnysideup\AutomatedContentManagement\Control;
 
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
-use SilverStripe\Control\HTTPResponse;
-use SilverStripe\Control\RequestHandler;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataList;
-use SilverStripe\ORM\FieldType\DBHTMLText;
-use SilverStripe\Security\PermissionProvider;
-use SilverStripe\SiteConfig\SiteConfig;
 use SilverStripe\View\ArrayData;
-use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
-use Sunnysideup\Selections\Model\Selection;
 
 class QuickReviewController extends Controller
 {
 
     private static $url_segment = 'llm-quick-review';
+
     private static $allowed_actions = [
         'index' => 'CMS_ACCESS_LLMEDITOR',
         'show' => 'CMS_ACCESS_LLMEDITOR',
     ];
 
     protected string $classNameUnescaped = '';
+
     protected string $classNameEscaped = '';
+
     protected string $fieldName = '';
+
     protected int $days = 7;
+
     protected int $limitPerList = 9999;
 
 
@@ -59,13 +57,16 @@ class QuickReviewController extends Controller
                     }
                 }
             }
+
             if ($request->getVar('days')) {
                 $this->days = (int) $request->getVar('days');
             }
+
             if ($request->getVar('limit')) {
                 $this->limitPerList = (int) $request->getVar('limit');
             }
         }
+
         return [];
         // Add any necessary initialization code here
     }
@@ -74,23 +75,21 @@ class QuickReviewController extends Controller
     {
         $t =  'LLM Quick Review';
         $t .= ' -  for the last ' . $this->days . ' days';
-        if ($this->classNameUnescaped) {
+        if ($this->classNameUnescaped !== '' && $this->classNameUnescaped !== '0') {
             $obj = Injector::inst()->get($this->classNameUnescaped);
             $t .= ' - for "' . $obj->i18n_plural_name() . '"';
-            if ($this->fieldName) {
+            if ($this->fieldName !== '' && $this->fieldName !== '0') {
                 $fieldLabels = $obj->fieldLabels();
                 $t .= ' (' . ($fieldLabels[$this->fieldName] ?? $this->fieldName) . ')';
             }
         }
+
         return $t;
     }
 
     public function ShowDetails(): bool
     {
-        if ($this->classNameUnescaped && $this->fieldName) {
-            return true;
-        }
-        return false;
+        return $this->classNameUnescaped && $this->fieldName;
     }
 
     protected function getListOriginalUpdated(?string $classNameUnescaped = null, ?string $fieldName = null, ?int $limit = null): DataList
@@ -98,8 +97,7 @@ class QuickReviewController extends Controller
         $filter = $this->BasicFilter($classNameUnescaped, $fieldName);
         $filter['OriginalUpdated'] = true;
         return RecordProcess::get()
-            ->filter($filter)
-            ->sort('LastEdited', 'DESC')
+            ->filter($filter)->sort(['LastEdited' => 'DESC'])
             ->limit($limit ?: $this->limitPerList);
     }
 
@@ -107,7 +105,7 @@ class QuickReviewController extends Controller
     {
         $filter = $this->BasicFilter($classNameUnescaped, $fieldName);
         $filter['Completed'] = true;
-        return RecordProcess::get()->filter($filter)->sort('LastEdited', 'DESC')
+        return RecordProcess::get()->filter($filter)->sort(['LastEdited' => 'DESC'])
             ->limit($limit ?: $this->limitPerList);
     }
 
@@ -123,14 +121,14 @@ class QuickReviewController extends Controller
         $instructions = Instruction::get();
         if ($classNameUnescaped || $this->classNameUnescaped) {
             $test = $classNameUnescaped ?: $this->classNameUnescaped;
-            $instructions = $instructions->filter('ClassNameToChange', $test);
+            $instructions = $instructions->filter(['ClassNameToChange' => $test]);
         }
-        if ($fieldName || $this->fieldName) {
-            if ($fieldName !== 'All') {
-                $test = $fieldName ?: $this->fieldName;
-                $instructions = $instructions->filter('FieldToChange', $test);
-            }
+
+        if (($fieldName || $this->fieldName) && $fieldName !== 'All') {
+            $test = $fieldName ?: $this->fieldName;
+            $instructions = $instructions->filter(['FieldToChange' => $test]);
         }
+
         $filter['InstructionID'] = $instructions->columnUnique('ID');
         return $filter;
     }
@@ -150,6 +148,7 @@ class QuickReviewController extends Controller
             if (!class_exists($classNameUnescaped)) {
                 continue;
             }
+
             $name = Injector::inst()->get($classNameUnescaped)->i18n_plural_name();
             $classNameEscaped = str_replace('\\', '-', $classNameUnescaped);
 
@@ -163,6 +162,7 @@ class QuickReviewController extends Controller
             ]);
             $al->push($arrayData);
         }
+
         return $al;
     }
 
@@ -179,6 +179,7 @@ class QuickReviewController extends Controller
         if (!class_exists($classNameUnescaped)) {
             return $al;
         }
+
         $list = $this->getListOfFieldsInner($classNameUnescaped);
         foreach ($list as $fieldName) {
             $obj = Injector::inst()->get($classNameUnescaped);
@@ -186,6 +187,7 @@ class QuickReviewController extends Controller
             if (!array_key_exists($fieldName, $dbs)) {
                 continue;
             }
+
             $labels = $obj->fieldLabels();
             $name = $labels[$fieldName] ?? $fieldName;
             $classNameEscaped = str_replace('\\', '-', $classNameUnescaped);
@@ -200,6 +202,7 @@ class QuickReviewController extends Controller
             ]);
             $al->push($arrayData);
         }
+
         return $al;
     }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sunnysideup\AutomatedContentManagement\Api;
 
 use SilverStripe\Core\Config\Configurable;

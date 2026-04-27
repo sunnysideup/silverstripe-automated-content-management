@@ -4,16 +4,10 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Api\Connectors;
 
-use Exception;
 use GuzzleHttp\Client;
 use OpenAI;
 use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
 use OpenAI\Client as OpenAIClient;
-
-use Symfony\Component\HttpClient\CurlHttpClient;
-use Symfony\Component\HttpClient\Psr18Client;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
-use Symfony\Component\HttpClient\Exception\TimeoutExceptionInterface;
 use Psr\Http\Client\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TimeoutExceptionInterface as ExceptionTimeoutExceptionInterface;
 
@@ -21,6 +15,7 @@ class OpenAIConnector extends ConnectorBaseClass
 {
 
     protected string $shortName = 'OpenAI';
+
     protected string $defaultModel = 'gpt-4o'; //gpt-4.1-mini
 
 
@@ -90,10 +85,12 @@ class OpenAIConnector extends ConnectorBaseClass
                 if ($i === $retries) {
                     throw $e; // bubble up after last attempt
                 }
+
                 usleep($delayMs * 1000);
                 $delayMs *= 2;
             }
         }
+
         return '';
     }
 }

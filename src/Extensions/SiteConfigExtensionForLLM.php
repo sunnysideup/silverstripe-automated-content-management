@@ -7,7 +7,6 @@ use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\HTMLReadonlyField;
-use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\TextField;
 use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
 
@@ -25,7 +24,7 @@ class SiteConfigExtensionForLLM extends Extension
     public function IsLLMEnabled(): bool
     {
         // to do - check credentials
-        return ConnectorBaseClass::is_ready() && $this->owner->LLMEnabled;
+        return ConnectorBaseClass::is_ready() && $this->getOwner()->LLMEnabled;
     }
 
     public function updateCMSFields(FieldList $fields)
@@ -64,9 +63,9 @@ class SiteConfigExtensionForLLM extends Extension
 
     public function onBeforeWrite()
     {
-        if (!$this->owner->LLMEnabled) {
-            $this->owner->LLMEnabledClassNames = '';
-            $this->owner->LLMEnabledFieldNames = '';
+        if (!$this->getOwner()->LLMEnabled) {
+            $this->getOwner()->LLMEnabledClassNames = '';
+            $this->getOwner()->LLMEnabledFieldNames = '';
         }
     }
 }

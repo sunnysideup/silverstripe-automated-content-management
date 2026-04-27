@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Api;
 
-use SilverStripe\Control\Director;
 use SilverStripe\Core\Config\Configurable;
-use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
-use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DB;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
@@ -18,7 +15,9 @@ class ProcessOneRecord
     use Configurable;
 
     protected $verbose = false;
+
     protected bool $returnResultsAsArray = false;
+
     protected array $resultsAsArray = [];
 
     public function setVerbose(bool $b): self
@@ -58,6 +57,7 @@ class ProcessOneRecord
             if ($temperature && is_numeric($temperature)) {
                 $connector->setTemperature((float) $temperature);
             }
+
             $recordProcess->Started = true;
             $recordProcess->Question = $question;
             $recordProcess->LLMClient = $connector->getClientNameNice();
@@ -72,11 +72,13 @@ class ProcessOneRecord
             if ($recordProcess->getFindErrorsOnly()) {
                 $recordProcess->ErrorFound = $recordProcess->getIsErrorAnswer($answer);
             }
+
             $recordProcess->write();
             return true;
         } else {
             $this->outputMessage('... NOT processing record ID: ' . $recordProcess->RecordID . ' - ' . $recordProcess->RecordClassName . ' for field ' . $recordProcess->Instruction->FieldToChange, 'error');
         }
+
         return false;
     }
 
@@ -89,22 +91,19 @@ class ProcessOneRecord
         $this->outputMessage('... updating field ' . $field . ' for record ID: ' . $record->ID . ' - ' . $record->ClassName, 'changed');
         $this->outputMessage($recordProcess->getAfterDatabaseValue());
 
-        switch ($type) {
-            case 'db':
-                $record->$field = $recordProcess->getAfterDatabaseValue();
-                break;
+        if ($type === 'db') {
+            $record->$field = $recordProcess->getAfterDatabaseValue();
         }
     }
+
     public function updateOriginalRecord(RecordProcess $recordProcess)
     {
         $this->resultsAsArray = [];
         if ($recordProcess->getCanUpdateOriginalRecord()) {
             $record = $recordProcess->getRecord(false);
             $isPublished = $record->hasMethod('isPublished') && $record->isPublished();
-            if ($isPublished) {
-                if ($record->hasMethod('isModifiedOnDraft')) {
-                    $isPublished = $record->isModifiedOnDraft() ? false : true;
-                }
+            if ($isPublished && $record->hasMethod('isModifiedOnDraft')) {
+                $isPublished = !(bool) $record->isModifiedOnDraft();
             }
 
             $this->updateOriginalRecordInner($recordProcess, $record);
@@ -113,6 +112,7 @@ class ProcessOneRecord
             if ($isPublished) {
                 $record->publishSingle();
             }
+
             $callback = $this->config()->get('call_back_method_after_update');
             if ($callback) {
                 if ($record->hasMethod($callback)) {
@@ -148,9 +148,9 @@ class ProcessOneRecord
         $value = preg_replace('/^```(?:\w+)?\n?/', '', $value);
 
         // remove closing backticks at the very end
-        $value = preg_replace('/```$/', '', $value);
+        $value = preg_replace('/```$/', '', (string) $value);
 
-        return trim($value);
+        return trim((string) $value);
     }
 
 
@@ -159,14 +159,17 @@ class ProcessOneRecord
         if (! $this->verbose) {
             return;
         }
+
         if (strlen($message) > 100) {
             $message = substr($message, 0, 100) . '...';
         }
+
         $message = '... ... ... ' . trim($message);
         if ($this->returnResultsAsArray) {
             $this->resultsAsArray[] = ['message' => $message, 'type' => $type];
             return;
         }
+
         DB::alteration_message($message, $type);
     }
 }

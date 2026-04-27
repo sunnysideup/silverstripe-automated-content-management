@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Api;
 
+use InvalidArgumentException;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
@@ -19,13 +20,15 @@ class InstructionsForInstructions
 
     use Injectable;
     use Configurable;
+
     protected $record;
 
     public function __construct($record = null)
     {
         if ($record !== null && !$record instanceof DataObject) {
-            throw new \InvalidArgumentException('Record must be an instance of DataObject. Provided: ' . get_class($record));
+            throw new InvalidArgumentException('Record must be an instance of DataObject. Provided: ' . $record::class);
         }
+
         $this->record = $record;
     }
 
@@ -75,6 +78,7 @@ class InstructionsForInstructions
                     break;
                 default:
             }
+
             $v .= '
                     <br />
                     <br />
@@ -94,9 +98,11 @@ class InstructionsForInstructions
         Can you please improve it  ... here you put how you would like to improve it (e.g. make it shorter).
         </div>';
         }
+
         if ($withHtml !== true) {
             $v = $this->stripHTML($v);
         }
+
         return $v;
     }
 
@@ -118,11 +124,8 @@ class InstructionsForInstructions
 
         foreach ($fieldLists as $header => $items) {
             // hack for better hierarchy
-            if (stripos($header, 'Main') === 0) {
-                $level = '2';
-            } else {
-                $level = '3';
-            }
+            $level = stripos((string) $header, 'Main') === 0 ? '2' : '3';
+
             $sectionsHtml .= '
                 <h' . $level . '>' . $header . '</h' . $level . '>
                 <ul>';
@@ -130,6 +133,7 @@ class InstructionsForInstructions
                 $sectionsHtml .= '
                     <li>' . $label . ': <strong>$' . $placeholder . '</strong></li>';
             }
+
             $sectionsHtml .= '
                 </ul>';
         }
@@ -191,6 +195,7 @@ class InstructionsForInstructions
                 // no specific instruction
 
         }
+
         $stringSeparator = Instruction::config()->get('list_separator');
         $type = $instruction->getFieldToChangeRelationType();
         if ($instruction->getFieldToChangeIsRelationField()) {
@@ -209,6 +214,7 @@ class InstructionsForInstructions
                 ';
             }
         }
+
         return $this->cleanWhitespace(
             'Please return the answer as a value suitable for insertion into a Silverstripe CMS Database
 
@@ -262,6 +268,7 @@ class InstructionsForInstructions
                 $otherFields[$label] = $placeholder;
             }
         }
+
         asort($mainFields);
         asort($otherFields);
         return [
@@ -275,35 +282,25 @@ class InstructionsForInstructions
         if ($obj instanceof DBEnum) {
             return false;
         }
-        if ($obj instanceof DBString) {
-            return true;
-        }
-        return false;
+        return $obj instanceof DBString;
     }
 
     protected function typeOfField($obj): string
     {
-        $string = get_class($obj);
+        $string = $obj::class;
         $string = ClassInfo::shortName(nameOrObject: $string);
         if (str_starts_with($string, 'DB')) {
             $string = substr($string, 2);
         }
-        switch ($string) {
-            case 'HTMLText':
-                return 'HTML';
-            case 'HTMLVarchar':
-                return 'HTML';
-            case 'Varchar':
-                return 'Short Text';
-            case 'Text':
-                return 'Long Text';
-            case 'Boolean':
-                return 'True/False';
-            case 'Enum':
-                return 'Predefined List';
-            default:
-                return $string;
-        }
+        return match ($string) {
+            'HTMLText' => 'HTML',
+            'HTMLVarchar' => 'HTML',
+            'Varchar' => 'Short Text',
+            'Text' => 'Long Text',
+            'Boolean' => 'True/False',
+            'Enum' => 'Predefined List',
+            default => $string,
+        };
     }
 
     protected function qualifierToAdd($obj): string
@@ -311,25 +308,28 @@ class InstructionsForInstructions
         if ($obj instanceof DBBoolean) {
             return '.Nice';
         }
+
         return '';
     }
+
     protected function stripHTML(string $v): string
     {
         $v = preg_replace('/<br\s*\/?>/i', "\n", $v);
-        $v = strip_tags($v);
+        $v = strip_tags((string) $v);
         $v = html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $v = preg_replace('/[ \t]+/', ' ', $v);
-        $v = preg_replace('/\n{2,}/', "\n", $v);
-        $v = preg_replace('/ +\n/', "\n", $v);
-        $v = preg_replace('/\n +/', "\n", $v);
-        $v = trim($v);
+        $v = preg_replace('/\n{2,}/', "\n", (string) $v);
+        $v = preg_replace('/ +\n/', "\n", (string) $v);
+        $v = preg_replace('/\n +/', "\n", (string) $v);
+        $v = trim((string) $v);
         return $v;
     }
+
     protected function cleanWhitespace(string $text): string
     {
         // Keep \n, collapse all other whitespace
         $text = preg_replace('/[ \t\r\f\v]+/', ' ', $text);
 
-        return trim($text);
+        return trim((string) $text);
     }
 }

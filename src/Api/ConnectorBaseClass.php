@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace Sunnysideup\AutomatedContentManagement\Api;
 
 use SilverStripe\SiteConfig\SiteConfig;
-use Anthropic;
 use Exception;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
-use OpenAI;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Injector\Injector;
@@ -22,13 +20,17 @@ abstract class ConnectorBaseClass
     use Injectable;
 
     private static string $client_name = '';
+
     private static string $client_model = '';
 
     private static int $time_out_in_seconds = 90;
+
     private static float $temperature = 0.7;
+
     private static int $max_tokens = 0;
 
     protected string $defaultModel;
+
     protected string $shortName;
 
     protected $client;
@@ -51,6 +53,7 @@ abstract class ConnectorBaseClass
         if (!$temperature || $temperature === 0 || $temperature < 0 || $temperature > 1) {
             $temperature = $this->config()->get('temperature') ?: 0.7;
         }
+
         return $temperature;
     }
 
@@ -63,9 +66,10 @@ abstract class ConnectorBaseClass
 
     public function getShortName(): string
     {
-        if (! $this->shortName) {
+        if ($this->shortName === '' || $this->shortName === '0') {
             $this->shortName = ClassInfo::shortName($this);
         }
+
         return $this->shortName;
     }
 
@@ -102,6 +106,7 @@ abstract class ConnectorBaseClass
                 return false;
             }
         }
+
         return true;
     }
 
@@ -121,11 +126,13 @@ abstract class ConnectorBaseClass
                     $client = Config::inst()->get(self::class, 'client_name');
                 }
             }
+
             $client = (string) (
                 Environment::getEnv('SS_LLM_CLIENT_NAME') ?:
                 Config::inst()->get(self::class, 'client_name')
             );
         }
+
         $isValidClient = self::get_client_is_valid($client);
         if (! $isValidClient) {
             $classes = ClassInfo::subclassesFor(self::class, false);
@@ -136,7 +143,8 @@ abstract class ConnectorBaseClass
                 }
             }
         }
-        if (self::get_client_is_valid($client) !== true) {
+
+        if (!self::get_client_is_valid($client)) {
             $client = TestConnector::class;
         }
 
@@ -169,6 +177,7 @@ abstract class ConnectorBaseClass
                 }
             }
         }
+
         return $v ?: null;
     }
 
@@ -179,22 +188,21 @@ abstract class ConnectorBaseClass
             $v = SiteConfig::current_site_config()->LLMModel;
             if (! $v) {
                 $v = Environment::getEnv('SS_LLM_CLIENT_MODEL');
-                if (! $v) {
+                if (!$v && ! $v) {
+                    $v = Environment::getEnv('SS_LLM_CLIENT_MODEL_' . $this->getShortName());
                     if (! $v) {
-                        $v = Environment::getEnv('SS_LLM_CLIENT_MODEL_' . $this->getShortName());
+                        $v = Config::inst()->get(static::class, 'client_model');
                         if (! $v) {
-                            $v = Config::inst()->get(static::class, 'client_model');
+                            $v = Config::inst()->get(static::class, 'client_model_' . strtolower($this->getShortName()));
                             if (! $v) {
-                                $v = Config::inst()->get(static::class, 'client_model_' . strtolower($this->getShortName()));
-                                if (! $v) {
-                                    $v = $this->getDefaultModel();
-                                }
+                                $v = $this->getDefaultModel();
                             }
                         }
                     }
                 }
             }
         }
+
         return $v ?: null;
     }
 
@@ -211,13 +219,13 @@ abstract class ConnectorBaseClass
     public function getApiKeyNice(): string
     {
         $input = $this->getApiKey();
-        $len = strlen($input);
+        $len = strlen((string) $input);
         if ($len <= 6) {
             return 'No valid key set';
         }
 
-        $start = substr($input, 0, 5);
-        $end = substr($input, -5);
+        $start = substr((string) $input, 0, 5);
+        $end = substr((string) $input, -5);
 
         return $start . '********' . $end;
     }
@@ -230,6 +238,7 @@ abstract class ConnectorBaseClass
             $obj = Injector::inst()->get($class);
             $list[$obj->getShortName()] = $obj->getClientNameNice();
         }
+
         return $list;
     }
 

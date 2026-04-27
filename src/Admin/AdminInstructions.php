@@ -4,7 +4,6 @@ namespace Sunnysideup\AutomatedContentManagement\Admin;
 
 use SilverStripe\Admin\ModelAdmin;
 use SilverStripe\Forms\LiteralField;
-use SilverStripe\Security\Member;
 use SilverStripe\Security\Permission;
 use SilverStripe\SiteConfig\SiteConfig;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
@@ -47,6 +46,7 @@ class AdminInstructions extends ModelAdmin
 
             );
         }
+
         return $form;
     }
 }

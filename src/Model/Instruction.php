@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
-use Page;
-use phpDocumentor\Reflection\PseudoTypes\False_;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\CheckboxField;
@@ -21,14 +19,11 @@ use SilverStripe\Forms\GridField\GridFieldEditButton;
 use SilverStripe\Forms\HTMLEditor\HTMLEditorField_Readonly;
 use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\Forms\LiteralField;
-use SilverStripe\Forms\OptionsetField;
 use SilverStripe\Forms\ReadonlyField;
-use SilverStripe\Forms\SearchableMultiDropdownField;
 use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\ToggleCompositeField;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\DB;
 use SilverStripe\ORM\UnsavedRelationList;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Permission;
@@ -61,8 +56,11 @@ class Instruction extends DataObject
     private static $table_name = 'AutomatedContentManagementInstruction';
 
     private static $singular_name = 'Automated Update Instruction for an LLM (AI)';
+
     private static $plural_name = 'Automated Update Instructions for an LLM (AI)';
+
     private static string $error_prepend = 'HAS_ERROR: ';
+
     private static string $non_error_prepend = 'OK';
 
     private static string $list_separator = '|||';
@@ -291,6 +289,7 @@ class Instruction extends DataObject
             } else {
                 $fields->removeByName('FieldForRelatedList');
             }
+
             $grids = [
                 'Test Only' => $this->TestRecords(),
                 'Queued' => $this->ReadyForProcessingRecords(),
@@ -309,16 +308,12 @@ class Instruction extends DataObject
                         '<p class="message info">There are currently no records in this category.</p>'
                     );
                 } else {
-                    $field = new GridField(
-                        'RecordsToProcess' . $name,
-                        $name,
-                        $list,
-                        GridFieldConfig_RecordEditor::create()
-                            ->removeComponentsByType(GridFieldAddNewButton::class)
-                            ->removeComponentsByType(GridFieldDeleteAction::class)
-                            ->removeComponentsByType(GridFieldEditButton::class)
-                    );
+                    $field = GridField::create('RecordsToProcess' . $name, $name, $list, GridFieldConfig_RecordEditor::create()
+                        ->removeComponentsByType(GridFieldAddNewButton::class)
+                        ->removeComponentsByType(GridFieldDeleteAction::class)
+                        ->removeComponentsByType(GridFieldEditButton::class));
                 }
+
                 $fields->addFieldToTab(
                     'Root.ProcessLogByStatus.' . $name,
                     $field
@@ -327,6 +322,7 @@ class Instruction extends DataObject
                 $count = ' (' . $count . ')';
                 $fields->fieldByName('Root.ProcessLogByStatus.' . $name)->setTitle($name . $count);
             }
+
             $recordsToProcessTab = $fields->fieldByName('Root.RecordsToProcess');
             if ($recordsToProcessTab) {
                 // $recordsToProcessTab->setTitle('Process Details');
@@ -390,7 +386,7 @@ class Instruction extends DataObject
                     ->exclude(['ID' => $this->ID])
                     ->map('ID', 'Title')
                     ->toArray();
-                if (count($options) > 0) {
+                if ($options !== []) {
                     $fields->insertBefore(
                         'Description',
                         DropdownField::create('BasedOnID', 'Base on another instruction (optional)')
@@ -405,6 +401,7 @@ class Instruction extends DataObject
                     $fields->removeByName('BasedOnID');
                 }
             }
+
             $fields->addFieldsToTab(
                 'Root.FullDetails',
                 [
@@ -473,6 +470,7 @@ class Instruction extends DataObject
                     ]
                 );
             }
+
             $dropdownField = DropdownField::create(
                 'SelectionID',
                 'Selection for this record type (optional)',
@@ -520,6 +518,7 @@ class Instruction extends DataObject
                     );
                 }
             }
+
             $fields->dataFieldByName('Temperature')
                 ?->setDescription(
                     '
@@ -537,10 +536,7 @@ class Instruction extends DataObject
     public function HasRelatedListInstructions(): bool
     {
         $instruction = (string) $this->Description;
-        if (strpos($instruction, '$RelatedList') !== false) {
-            return true;
-        }
-        return false;
+        return str_contains($instruction, '$RelatedList');
     }
 
     public function getBasedOnForOthers()
@@ -563,6 +559,7 @@ class Instruction extends DataObject
                     return true;
             }
         }
+
         if ($this->BasedOnID) {
             switch ($fieldName) {
                 case 'Description':
@@ -572,6 +569,7 @@ class Instruction extends DataObject
                     break;
             }
         }
+
         // always readonly
         switch ($fieldName) {
             case 'ClassNameToChange':
@@ -585,7 +583,8 @@ class Instruction extends DataObject
             default:
                 break;
         }
-        if ($this->getIsReadyForProcessing() !== true) {
+
+        if (!$this->getIsReadyForProcessing()) {
             switch ($fieldName) {
                 case 'ReadyToProcess':
                 case 'RunTest':
@@ -594,6 +593,7 @@ class Instruction extends DataObject
                     break;
             }
         }
+
         if ($this->StartedProcess && $this->ReadyToProcess) {
             switch ($fieldName) {
                 case 'FindErrorsOnly':
@@ -602,7 +602,8 @@ class Instruction extends DataObject
                     break;
             }
         }
-        if ($this->getIsReadyForReview() !== true) {
+
+        if (!$this->getIsReadyForReview()) {
             switch ($fieldName) {
                 case 'AcceptAll':
                 case 'RejectAll':
@@ -611,16 +612,14 @@ class Instruction extends DataObject
                     break;
             }
         }
+
         return false;
     }
 
     public function HasValidClassName(): bool
     {
         $className = $this->ClassNameToChange;
-        if ($className && class_exists($className)) {
-            return true;
-        }
-        return false;
+        return $className && class_exists($className);
     }
 
     public function HasValidFieldName(): bool
@@ -655,6 +654,7 @@ class Instruction extends DataObject
             $record = $list->shuffle()->first();
             return $record->getHydratedInstructions();
         }
+
         return 'No records found so no example is available.';
     }
 
@@ -685,34 +685,34 @@ class Instruction extends DataObject
 
     public function getIsReadyForProcessing(): bool
     {
-        if ($this->Completed) {
-            if ($this->RecordsMatchProcessedRecords()) {
-                return false;
-            }
+        if ($this->Completed && $this->RecordsMatchProcessedRecords()) {
+            return false;
         }
+
         if ($this->Cancelled) {
             return false;
         }
+
         if ($this->Locked) {
             return false;
         }
+
         if (! $this->HasValidClassName()) {
             return false;
         }
-        if (!$this->getRecordType()) {
+
+        if ($this->getRecordType() === '' || $this->getRecordType() === '0') {
             return false;
         }
+
         if (! $this->Title) {
-            return false;
-        }
-        if (! $this->Description) {
             return false;
         }
         // can still process...
         // if ($this->StartedProcess) {
         //     return false;
         // }
-        return true;
+        return (bool) $this->Description;
     }
 
 
@@ -727,9 +727,11 @@ class Instruction extends DataObject
         if ($this->Cancelled) {
             return true;
         }
+
         if ($this->Completed !== true) {
             return false;
         }
+
         return $this->ReviewableRecords()->count() === 0;
     }
 
@@ -738,6 +740,7 @@ class Instruction extends DataObject
         if ($this->HasValidClassName()) {
             return $this->getRecordList()?->count() ?? 0;
         }
+
         return 0;
     }
 
@@ -746,6 +749,7 @@ class Instruction extends DataObject
         if ($this->HasValidClassName()) {
             return $this->getRecordList()?->count() ?? 0;
         }
+
         return 0;
     }
 
@@ -759,6 +763,7 @@ class Instruction extends DataObject
         if ($this->getNumberOfRecords() === 0) {
             return 0;
         }
+
         return round(($this->getProcessedRecords() / $this->getNumberOfRecords()) * 100) / 100;
     }
 
@@ -768,6 +773,7 @@ class Instruction extends DataObject
         if ($obj) {
             return $obj->i18n_singular_name();
         }
+
         return 'ERROR: Class not found';
     }
 
@@ -777,6 +783,7 @@ class Instruction extends DataObject
         if ($obj) {
             return $obj->i18n_plural_name();
         }
+
         return 'ERROR: Class not found';
     }
 
@@ -789,6 +796,7 @@ class Instruction extends DataObject
                 return $obj->fieldLabel($fieldName);
             }
         }
+
         return 'ERROR: field not found';
     }
 
@@ -800,6 +808,7 @@ class Instruction extends DataObject
             $type = $fields[$this->FieldToChange] ?? 'Error: Field does not exist';
             return ClassAndFieldInfo::standard_short_field_type_name($type);
         }
+
         return 'Error: Class does not exist';
     }
 
@@ -814,6 +823,7 @@ class Instruction extends DataObject
                 $obj->config()->get('many_many') +
                 $obj->config()->get('belongs_many_many');
         }
+
         return [];
     }
 
@@ -832,6 +842,7 @@ class Instruction extends DataObject
         if ($this->HasValidClassName()) {
             return Injector::inst()->get($this->ClassNameToChange);
         }
+
         return null;
     }
 
@@ -849,62 +860,67 @@ class Instruction extends DataObject
 
 
 
-    public function onBeforeWrite()
+    protected function onBeforeWrite()
     {
         parent::onBeforeWrite();
-        if ($this->HasRelatedListInstructions()) {
-            if (! $this->FieldForRelatedList) {
-                $options = $this->getListOfValidFieldsForRelation(false);
-                $this->FieldForRelatedList = isset($options['Title']) ? 'Title' : (isset($options['Name']) ? 'Name' : array_key_first($options) ?? '');
-            }
+        if ($this->HasRelatedListInstructions() && ! $this->FieldForRelatedList) {
+            $options = $this->getListOfValidFieldsForRelation(false);
+            $this->FieldForRelatedList = isset($options['Title']) ? 'Title' : (isset($options['Name']) ? 'Name' : array_key_first($options) ?? '');
         }
+
         if (! $this->ByID) {
             $this->ByID = Security::getCurrentUser()?->ID;
         }
+
         if (! $this->Completed && $this->StartedProcess) {
-            if ($this->RecordsMatchProcessedRecords() === true) {
+            if ($this->RecordsMatchProcessedRecords()) {
                 $this->Completed = true;
             }
-        } else if ($this->Completed) {
-            if ($this->RecordsMatchProcessedRecords() !== true) {
+        } elseif ($this->Completed) {
+            if (!$this->RecordsMatchProcessedRecords()) {
                 $this->Completed = false;
             }
         }
-        if ((bool) $this->Locked === false) {
-            if ($this->BasedOnID) {
-                $this->Description = $this->BasedOn()->Description;
-                $this->AlwaysAddedInstruction = $this->BasedOn()->AlwaysAddedInstruction;
-            }
+
+        if ((bool) $this->Locked === false && $this->BasedOnID) {
+            $this->Description = $this->BasedOn()->Description;
+            $this->AlwaysAddedInstruction = $this->BasedOn()->AlwaysAddedInstruction;
         }
+
         if ($this->ReadyToProcess) {
             $this->RunTest = false;
         }
+
         if ($this->RunTest) {
             $this->ReadyToProcess = false;
         }
+
         if (! $this->Title && $this->HasValidClassName() && $this->HasValidFieldName()) {
             $this->Title = 'Update ' . $this->getFieldToChangeNice() . ' fields in ' . $this->getClassNameToChangePluralNice() . ' records';
         }
-        if ($this->HasValidClassName() && $this->HasValidFieldName()) {
-            if (!$this->AlwaysAddedInstruction || $this->isChanged('FindErrorsOnly')) {
-                if ($this->FindErrorsOnly) {
-                    $this->AlwaysAddedInstruction = $this->getFindErrorsOnlyInstruction();
-                } else {
-                    $this->AlwaysAddedInstruction = $this->getGenericUpdateInstruction();
-                }
+
+        if ($this->HasValidClassName() && $this->HasValidFieldName() && (!$this->AlwaysAddedInstruction || $this->isChanged('FindErrorsOnly'))) {
+            if ($this->FindErrorsOnly) {
+                $this->AlwaysAddedInstruction = $this->getFindErrorsOnlyInstruction();
+            } else {
+                $this->AlwaysAddedInstruction = $this->getGenericUpdateInstruction();
             }
         }
+
         if ($this->NumberOfRecordsToProcessPerBatch > 1000 || $this->NumberOfRecordsToProcessPerBatch < 1) {
             $this->NumberOfRecordsToProcessPerBatch = $this->Config()->get('defaults')['NumberOfRecordsToProcessPerBatch'] ?? 25;
         }
+
         if ($this->Title && !$this->isInDB() || $this->isChanged('Title')) {
             $this->Title = $this->ensureUniqueTitle((string) $this->Title);
         }
+
         //
         if ((int) $this->SelectionID === self::ALL_RECORDS && $this->isChanged('SelectionID', DataObject::CHANGE_STRICT)) {
             $this->RecordIdsToAddToSelection = '';
             $this->FinalIdsToAddToSelection = '';
         }
+
         $this->AlignSelectionID();
     }
 
@@ -930,6 +946,7 @@ class Instruction extends DataObject
                 ])
                 ->removeAll();
         }
+
         $list = $this->getRecordList()->columnUnique('ID') + [-1 => 1];
         $processRecordsNotStarted = $this->RecordsToProcess()
             ->filter([
@@ -946,6 +963,7 @@ class Instruction extends DataObject
         if (!$baseTitle) {
             return '';
         }
+
         $suffix = 1;
         $newTitle = $baseTitle;
 
@@ -972,15 +990,16 @@ class Instruction extends DataObject
             ->getGenericUpdateInstruction($this);
     }
 
-    public function onAfterWrite()
+    protected function onAfterWrite()
     {
         parent::onAfterWrite();
         if ($this->RunTest) {
             $item = $this->AddRecordProcesses(true);
-            if ($item) {
+            if ($item instanceof RecordProcess) {
                 $obj = Injector::inst()->get(ProcessOneRecord::class);
                 $obj->recordAnswer($item);
             }
+
             $this->RunTest = false;
             $this->write();
         } elseif ($this->ReadyToProcess) {
@@ -993,6 +1012,7 @@ class Instruction extends DataObject
     {
         return $this->TestRecords()->count();
     }
+
     public function  TestRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
@@ -1009,12 +1029,14 @@ class Instruction extends DataObject
 
     public function ReadyForProcessingRecords(): DataList|UnsavedRelationList
     {
-        if ($this->getIsReadyForProcessing() !== true) {
+        if (!$this->getIsReadyForProcessing()) {
             return $this->RecordsToProcess()->filter(['ID' => -1]);
         }
+
         if (Director::isLive() !== true) {
             return $this->RecordsToProcess()->filter(['Completed' => false]);
         }
+
         $ids1 = $this->RecordsToProcess()
             ->filter([
                 'Started' => false,
@@ -1026,14 +1048,16 @@ class Instruction extends DataObject
                 'Started' => true,
                 'Completed' => false,
                 'Skip' => false,
-                'LastEdited:LessThan' => date('Y-m-d H:i:s', strtotime($this->config()->get('record_process_stuck_time'))),
+                'LastEdited:LessThan' => date('Y-m-d H:i:s', strtotime((string) $this->config()->get('record_process_stuck_time'))),
             ])->columnUnique('ID');
         $ids = array_merge($ids1, $ids2);
-        if (empty($ids)) {
+        if ($ids === []) {
             return RecordProcess::get()->filter(['ID' => -1]);
         }
+
         return RecordProcess::get()->filter(['ID' => array_merge($ids1, $ids2)]);
     }
+
     public function InProcessRecordsCount(): Int
     {
         return $this->InProcessRecords()->count();
@@ -1049,9 +1073,10 @@ class Instruction extends DataObject
             ])->columnUnique('ID');
         $ids2 = $this->ReadyForProcessingRecords()->columnUnique('ID');
         $ids = array_diff($ids1, $ids2);
-        if (empty($ids)) {
+        if ($ids === []) {
             return RecordProcess::get()->filter(['ID' => -1]);
         }
+
         return RecordProcess::get()->filter(['ID' => $ids]);
     }
 
@@ -1086,10 +1111,12 @@ class Instruction extends DataObject
                 'OriginalUpdated' => false,
             ]);
     }
+
     public function RejectedRecordsCount(): Int
     {
         return $this->RejectedRecords()->count();
     }
+
     public function RejectedRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
@@ -1099,10 +1126,12 @@ class Instruction extends DataObject
                 'OriginalUpdated' => false,
             ]);
     }
+
     public function UpdatedOriginalsRecordsCount(): Int
     {
         return $this->UpdatedOriginalsRecords()->count();
     }
+
     public function UpdatedOriginalsRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
@@ -1111,10 +1140,12 @@ class Instruction extends DataObject
                 'Skip' => false,
             ]);
     }
+
     public function SkippedRecordsCount(): Int
     {
         return $this->SkippedRecords()->count();
     }
+
     public function SkippedRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
@@ -1126,24 +1157,28 @@ class Instruction extends DataObject
     public function AddRecordsToInstruction(int|array|null $recordIds = null): void
     {
         if (is_array($recordIds)) {
-            $recordIds = array_filter(array_unique(array_map('intval', $recordIds)));
+            $recordIds = array_filter(array_unique(array_map(intval(...), $recordIds)));
         } elseif ($recordIds !== null) {
             $recordIds = [(int) $recordIds];
         }
+
         $recordIds = array_merge(is_array($recordIds) ? $recordIds : [], $this->getRecordIdsToAddToSelectionArray());
         $recordIds = array_filter(array_unique($recordIds));
-        if (empty($recordIds)) {
+        if ($recordIds === []) {
             return;
         }
+
         $existingList = $this->getFinalIdsToAddToSelectionArray();
-        $allPresentAlready = empty(array_diff($recordIds, $existingList));
-        if ($allPresentAlready !== true) {
+        $allPresentAlready = array_diff($recordIds, $existingList) === [];
+        if (!$allPresentAlready) {
             $this->FinalIdsToAddToSelection = trim(trim(implode(',', $recordIds)), ',');
         }
+
         $this->RecordIdsToAddToSelection = '';
         if ($this->SelectionID < 1) {
             $this->SelectionID = self::MANUALLY_ADDED;
         }
+
         $this->AddRecordProcesses(false, ['ID' => $recordIds]);
         $this->write();
     }
@@ -1161,22 +1196,22 @@ class Instruction extends DataObject
         if ($this->HasValidClassName()) {
             $list = $this->getRecordList();
             if ($filter) {
-                if (is_array($filter)) {
-                    $list = $list->filter($filter);
-                } else {
-                    $list = $list->where($filter);
-                }
+                $list = is_array($filter) ? $list->filter($filter) : $list->where($filter);
             }
+
             if ($limit) {
                 $list = $list->limit($limit);
             }
+
             if ($isTest) {
                 $list = $list->shuffle()->limit(1);
             }
+
             $ids = $list->columnUnique('ID');
             if (empty($ids)) {
                 return null;
             }
+
             foreach ($ids as $id) {
                 $keyFields = [
                     'InstructionID' => $this->ID,
@@ -1186,16 +1221,20 @@ class Instruction extends DataObject
                 if ($isTest) {
                     $keyFields['Skip'] = false;
                 }
+
                 $recordProcess = RecordProcess::get()->filter($keyFields)->first();
                 if (! $recordProcess || $isTest) {
                     $recordProcess = RecordProcess::create($keyFields);
                 }
+
                 $recordProcess->write();
             }
+
             if ($isTest) {
                 return $recordProcess;
             }
         }
+
         return null;
     }
 
@@ -1228,6 +1267,7 @@ class Instruction extends DataObject
                 '
             );
         }
+
         return $field;
     }
 
@@ -1252,6 +1292,7 @@ class Instruction extends DataObject
                 '
             );
         }
+
         return $field;
     }
 
@@ -1268,11 +1309,13 @@ class Instruction extends DataObject
                 $list = $selection->getSelectionDataList();
             }
         }
+
         if ($this->HasFinalIdsToAddToSelection()) {
             $ids = explode(',', (string) $this->FinalIdsToAddToSelection);
             if ($list) {
                 $ids = array_filter(array_unique(array_merge($ids, $list->column('ID'))));
             }
+
             return $className::get()->filter(['ID' => $ids]);
         } elseif ($list) {
             return $list;
@@ -1281,14 +1324,16 @@ class Instruction extends DataObject
             if ($this->FilterForExactType) {
                 $list = $list->filter(['ClassName' => $className]);
             }
+
             return $list;
         }
+
         return null;
     }
 
     protected function HasRecordIdsToAddToSelection(): bool
     {
-        return (bool) (trim((string) $this->RecordIdsToAddToSelection) === '' ? false : true);
+        return (bool) (trim((string) $this->RecordIdsToAddToSelection) !== '');
     }
 
     protected function RecordIdsToAddToSelectionCount(): int
@@ -1304,12 +1349,13 @@ class Instruction extends DataObject
             $ids = array_unique($ids);
             return $ids;
         }
+
         return [];
     }
 
     protected function HasFinalIdsToAddToSelection(): bool
     {
-        return (bool) (trim((string) $this->FinalIdsToAddToSelection) === '' ? false : true);
+        return (bool) (trim((string) $this->FinalIdsToAddToSelection) !== '');
     }
 
     protected function FinalIdsToAddToSelectionCount(): int
@@ -1325,6 +1371,7 @@ class Instruction extends DataObject
             $ids = array_unique($ids);
             return $ids;
         }
+
         return [];
     }
 
@@ -1363,6 +1410,7 @@ class Instruction extends DataObject
         if ($this->Locked) {
             return false;
         }
+
         return Permission::check('CMS_ACCESS_LLMEDITOR', 'any', $member);
     }
 
@@ -1371,9 +1419,11 @@ class Instruction extends DataObject
         if ($this->Cancelled) {
             return true;
         }
+
         if ($this->StartedProcess) {
             return false;
         }
+
         return $this->canEdit($member);
     }
 
@@ -1382,9 +1432,10 @@ class Instruction extends DataObject
         $array = [];
         $list = $this->getRecordList();
         $count = 0;
-        if ($list) {
+        if ($list instanceof DataList) {
             $count = $list->count();
         }
+
         $array[self::ALL_RECORDS] = '-- All records (' . $count . ') --';
         $hasFinalIdsToAddToSelection = $this->HasFinalIdsToAddToSelection();
         $manuallyRecordedRecordsCount = 0;
@@ -1392,6 +1443,7 @@ class Instruction extends DataObject
             $manuallyRecordedRecordsCount = $this->FinalIdsToAddToSelectionCount();
             $array[self::MANUALLY_ADDED] = 'Manually added records only (' . $manuallyRecordedRecordsCount . ')';
         }
+
         $source = Selection::get()
             ->filter(['ModelClassName' => $this->ClassNameToChange]);
         foreach ($source as $item) {

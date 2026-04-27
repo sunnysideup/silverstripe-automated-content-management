@@ -3,13 +3,8 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Tasks;
 
-use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
-use SilverStripe\ORM\DB;
 use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
-use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
-use Sunnysideup\AutomatedContentManagement\Model\Instruction;
-use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class TestLLM extends BuildTask
 {
@@ -30,6 +25,7 @@ class TestLLM extends BuildTask
         if ($request->getVar('question')) {
             $question = $request->getVar('question');
         }
+
         echo '<hr>';
         echo 'Question: <br /><em>' . $question . '</em>';
         echo '<hr>';

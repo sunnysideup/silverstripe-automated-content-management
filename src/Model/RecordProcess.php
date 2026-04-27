@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
-use SilverStripe\Assets\File;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\HTMLReadonlyField;
@@ -153,12 +152,12 @@ class RecordProcess extends DataObject
         if ($this->IsObsolete()) {
             return false;
         }
+
         $instruction = $this->Instruction();
-        if ($instruction->getIsReadyForProcessing()) {
-            if (!$this->getCanNotProcessAnymore()) {
-                return true;
-            }
+        if ($instruction->getIsReadyForProcessing() && !$this->getCanNotProcessAnymore()) {
+            return true;
         }
+
         return false;
     }
 
@@ -179,6 +178,7 @@ class RecordProcess extends DataObject
         if ($this->IsObsolete()) {
             return false;
         }
+
         return
             $this->Completed &&
             ! $this->Accepted &&
@@ -199,6 +199,7 @@ class RecordProcess extends DataObject
         if ($this->IsObsolete()) {
             return false;
         }
+
         return
             $this->Completed &&
             $this->Accepted &&
@@ -211,6 +212,7 @@ class RecordProcess extends DataObject
         if ($this->IsObsolete()) {
             return false;
         }
+
         return
             $this->Accepted ||
             $this->Rejected ||
@@ -222,6 +224,7 @@ class RecordProcess extends DataObject
         if ($this->IsObsolete()) {
             return false;
         }
+
         return  (bool) $this->OriginalUpdated;
     }
 
@@ -231,6 +234,7 @@ class RecordProcess extends DataObject
         if ($record) {
             return $record->getTitle(); //. ' (ID: #' . $record->ID . ')';
         }
+
         return 'Error: record not found'; // (ID: #' . $this->RecordID . ')';
     }
 
@@ -252,6 +256,7 @@ class RecordProcess extends DataObject
         if ($this->Question) {
             return $this->Question;
         }
+
         $description = $this->Instruction()->Description;
         $record = $this->getRecord(false);
         $value =  '';
@@ -260,16 +265,14 @@ class RecordProcess extends DataObject
             $record->RelatedList = $this->myRelationListAsText();
             //FUTURE: SSViewer::create()->renderString($description);
             $return = $template->process($record);
-            if ($return instanceof DBField) {
-                $value =  $return->forTemplate();
-            } else {
-                $value =  $return;
-            }
+            $value = $return instanceof DBField ? $return->forTemplate() : $return;
         }
+
         $add = $this->getAlwaysAddedInstruction();
-        if ($add) {
+        if ($add !== '' && $add !== '0') {
             $value .= PHP_EOL . PHP_EOL . $add;
         }
+
         return $value;
     }
 
@@ -279,13 +282,16 @@ class RecordProcess extends DataObject
         if (! $instruction) {
             return null;
         }
+
         if ($instruction->getFieldToChangeIsRelationField() !== true) {
             return null;
         }
+
         $className = $instruction->getFieldToChangeRelationClassName();
         if (class_exists($className)) {
             return $className::get()->limit($limit);
         }
+
         return null;
     }
 
@@ -293,8 +299,9 @@ class RecordProcess extends DataObject
     {
         $a = [];
         foreach ($this->myRelationListAsArray($limit) as $id => $title) {
-            $a[] = (string) $id . ': \'' . addslashes($title) . '\'';
+            $a[] = (string) $id . ": '" . addslashes((string) $title) . "'";
         }
+
         return PHP_EOL . PHP_EOL  . implode(PHP_EOL, $a) . PHP_EOL . PHP_EOL;
     }
 
@@ -303,11 +310,8 @@ class RecordProcess extends DataObject
         $instruction = $this->Instruction();
         $field = $instruction->FieldForRelationList ?: 'Title';
         $list = $this->myRelationList($limit);
-        if ($list && $list->exists()) {
-            $array = $list->map('ID', $field)->toArray();
-        } else {
-            $array =  [0 => 'No related items found'];
-        }
+        $array = $list && $list->exists() ? $list->map('ID', $field)->toArray() : [0 => 'No related items found'];
+
         return $array;
     }
 
@@ -321,10 +325,12 @@ class RecordProcess extends DataObject
     {
         return DataObjectUpdateCMSFieldsHelper::my_link_builder('acceptresult', $this->InstructionID, $this->ID);
     }
+
     public function getRejectLink(): string
     {
         return DataObjectUpdateCMSFieldsHelper::my_link_builder('rejectresult', $this->InstructionID, $this->ID);
     }
+
     public function getAcceptAndUpdateLink(): string
     {
         return DataObjectUpdateCMSFieldsHelper::my_link_builder('acceptresultandupdate', $this->InstructionID, $this->ID);
@@ -347,6 +353,7 @@ class RecordProcess extends DataObject
         if ($record) {
             return $record->hasMethod('CMSEditLink') ? $record->CMSEditLink() : null;
         }
+
         return $this->getResultPreviewLink();
     }
 
@@ -356,6 +363,7 @@ class RecordProcess extends DataObject
         if ($record) {
             return $record->hasMethod('Link') ? $record->Link() . '?previewllm=1' : null;
         }
+
         return $this->getResultPreviewLink();;
     }
 
@@ -375,11 +383,12 @@ class RecordProcess extends DataObject
     {
         if ($this->getCanProcess()) {
             $value =  'Not processed yet';
-        } else if ($this->getCanBeReviewed()) {
+        } elseif ($this->getCanBeReviewed()) {
             $value =  '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review Suggestion</a>';
         } else {
             $value =  '<a href="' . $this->getResultPreviewLink() . '" target="_blank">Review Outcome</a>';
         }
+
         return DBHTMLText::create_field('HTMLText', $value);
     }
 
@@ -394,6 +403,7 @@ class RecordProcess extends DataObject
         if (! $this->RecordID) {
             return null;
         }
+
         if ($fromCache && isset(self::$recordCache[$this->ID])) {
             $obj = self::$recordCache[$this->ID];
         } else {
@@ -403,15 +413,18 @@ class RecordProcess extends DataObject
                 $obj = $list->byID($this->RecordID);
             }
         }
+
         if (! $obj) {
             $className = $this->getRecordClassName();
             if ($className && class_exists($className)) {
                 $obj = $className::get()->byID($this->RecordID);
             }
         }
+
         if ($obj && $obj instanceof RecordProcess) {
             return null;
         }
+
         self::$recordCache[$this->ID] = $obj;
         return $obj;
     }
@@ -462,20 +475,19 @@ class RecordProcess extends DataObject
         } else {
             $fields->removeByName('ErrorFound');
         }
+
         if ($this->IsTest) {
             $fields->removeByName('Skip');
             $fields->removeByName('Accepted');
             $fields->removeByName('Rejected');
             $fields->removeByName('OriginalUpdated');
         }
+
         $record = $this->getRecord();
         if ($record) {
             $link = $this->getRecordLink();
-            if ($link) {
-                $title = '<a href="' . $link . '">' . $this->getRecordTitle() . '</a>';
-            } else {
-                $title = $this->getRecordTitle();
-            }
+            $title = $link ? '<a href="' . $link . '">' . $this->getRecordTitle() . '</a>' : $this->getRecordTitle();
+
             $fields->addFieldsToTab(
                 'Root.Main',
                 [
@@ -501,6 +513,7 @@ class RecordProcess extends DataObject
                 $beforeFieldName
             );
         }
+
         $fields->addFieldsToTab(
             'Root.RunNow',
             [
@@ -539,7 +552,8 @@ class RecordProcess extends DataObject
             default:
                 break;
         }
-        if ($this->getCanNotProcessAnymore() !== true) {
+
+        if (!$this->getCanNotProcessAnymore()) {
             switch ($fieldName) {
                 case 'Accepted':
                 case 'Rejected':
@@ -555,6 +569,7 @@ class RecordProcess extends DataObject
                     break;
             }
         }
+
         return false;
     }
 
@@ -569,6 +584,7 @@ class RecordProcess extends DataObject
         if (strlen((string) $answer) > $length) {
             $answer = substr((string) $answer, 0, $length) . '...';
         }
+
         return $answer;
     }
 
@@ -609,23 +625,23 @@ class RecordProcess extends DataObject
         if ($this->IsTest) {
             $a[] = 'Is a Test Only';
         }
+
         if ($this->Skip) {
             $a[] = 'Record Skipped';
+        } elseif ($this->OriginalUpdated) {
+            $a[] = 'Original Record Updated';
+        } elseif ($this->Accepted) {
+            $a[] = 'Result Accepted';
+        } elseif ($this->Rejected) {
+            $a[] = 'Result Rejected';
+        } elseif ($this->Completed) {
+            $a[] = 'Question Answered - ready for review';
+        } elseif ($this->Started) {
+            $a[] = 'Processing Started';
         } else {
-            if ($this->OriginalUpdated) {
-                $a[] = 'Original Record Updated';
-            } elseif ($this->Accepted) {
-                $a[] = 'Result Accepted';
-            } elseif ($this->Rejected) {
-                $a[] = 'Result Rejected';
-            } elseif ($this->Completed) {
-                $a[] = 'Question Answered - ready for review';
-            } elseif ($this->Started) {
-                $a[] = 'Processing Started';
-            } else {
-                $a[] = 'Processing not started yet';
-            }
+            $a[] = 'Processing not started yet';
         }
+
         return implode(', ', $a);
     }
 
@@ -634,16 +650,19 @@ class RecordProcess extends DataObject
         if (! $answer) {
             $answer = $this->Answer;
         }
+
         if ($answer) {
             $prependNonError = Config::inst()->get(Instruction::class, 'non_error_prepend');
             if ($answer === $prependNonError) {
                 return false;
             }
+
             $prependError = Config::inst()->get(Instruction::class, 'error_prepend');
-            if (strpos($answer, $prependError) === 0) {
+            if (str_starts_with($answer, (string) $prependError)) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -660,7 +679,7 @@ class RecordProcess extends DataObject
             case 'Boolean':
                 return $value ? 'Yes' : 'No';
             case 'Datetime':
-                return date('Y-m-d H:i:s', strtotime($value));
+                return date('Y-m-d H:i:s', strtotime((string) $value));
             case 'Varchar':
             case 'Text':
                 return strip_tags((string) $value);
@@ -707,12 +726,9 @@ class RecordProcess extends DataObject
                     $value = true;
                 } else {
                     $value = strtolower(strip_tags((string) $value));
-                    if ($value === 'true' || $value === '1' || $value === 'yes' || $value === 'on') {
-                        $value =  true;
-                    } else {
-                        $value =  false;
-                    }
+                    $value = $value === 'true' || $value === '1' || $value === 'yes' || $value === 'on';
                 }
+
                 break;
             case 'Date':
                 $value = strip_tags((string) $value);
@@ -725,6 +741,7 @@ class RecordProcess extends DataObject
             default:
                 $value = strip_tags((string) $value);
         }
+
         return $value;
     }
 
@@ -748,6 +765,7 @@ class RecordProcess extends DataObject
         if ($this->Accepted || $this->Rejected) {
             return false;
         }
+
         return parent::canEdit($member);
     }
 
@@ -761,21 +779,27 @@ class RecordProcess extends DataObject
         if ($value === null) {
             return '[NULL]';
         }
+
         if ($value === '') {
             return '[EMPTY]';
         }
+
         if ($value === false) {
             return '[FALSE]';
         }
+
         if ($value === true) {
             return '[TRUE]';
         }
+
         if (is_array($value)) {
             return '[ARRAY]';
         }
+
         if (is_object($value)) {
             return '[OBJECT]';
         }
+
         return '<textarea readonly rows="20">' . $value . '</textarea>';
     }
 
