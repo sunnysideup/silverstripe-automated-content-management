@@ -154,11 +154,7 @@ class RecordProcess extends DataObject
         }
 
         $instruction = $this->Instruction();
-        if ($instruction->getIsReadyForProcessing() && !$this->getCanNotProcessAnymore()) {
-            return true;
-        }
-
-        return false;
+        return $instruction->getIsReadyForProcessing() && !$this->getCanNotProcessAnymore();
     }
 
     public function IsInTargetRecords(): bool
@@ -726,7 +722,7 @@ class RecordProcess extends DataObject
                     $value = true;
                 } else {
                     $value = strtolower(strip_tags((string) $value));
-                    $value = $value === 'true' || $value === '1' || $value === 'yes' || $value === 'on';
+                    $value = in_array($value, ['true', '1', 'yes', 'on'], true);
                 }
 
                 break;

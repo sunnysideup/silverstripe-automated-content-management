@@ -3,6 +3,8 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Tasks;
 
+use Symfony\Component\Console\Input\InputInterface;
+use SilverStripe\Console\PolyOutput;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DataList;
@@ -13,13 +15,13 @@ use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class ProcessInstructions extends BuildTask
 {
-    protected $title = 'Process LLM Instructions';
+    protected string $title = 'Process LLM Instructions';
 
     protected $description = 'Processes LLM instructions for automated content management.';
 
     protected $enabled = true;
 
-    private static $segment = 'acm-process-instructions';
+    protected static string $commandName = 'acm-process-instructions';
 
     protected $processor;
 
@@ -64,7 +66,7 @@ class ProcessInstructions extends BuildTask
         return $this->resultsAsArray;
     }
 
-    public function run($request)
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
         DB::query('SET SESSION wait_timeout=1200;');
         if ($request && $request->getVar('instruction')) {
@@ -74,7 +76,6 @@ class ProcessInstructions extends BuildTask
                 return;
             }
         }
-
         if ($request && $request->getVar('recordprocess')) {
             $this->recordProcess = RecordProcess::get()->byID($request->getVar('recordprocess'));
             if (! $this->recordProcess) {
@@ -82,7 +83,6 @@ class ProcessInstructions extends BuildTask
                 return;
             }
         }
-
         $this->processor = Injector::inst()->get(ProcessOneRecord::class);
         $this->processor->setVerbose(true);
         $this->processor->setReturnResultsAsArray($this->returnResultsAsArray);
@@ -96,6 +96,7 @@ class ProcessInstructions extends BuildTask
         $this->cleanupRecordProcesses();
         $this->updateAllInstructions();
         $this->showLink();
+        return 0;
     }
 
     protected function allInstructions()

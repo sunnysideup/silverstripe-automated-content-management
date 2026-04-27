@@ -3,20 +3,23 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Tasks;
 
+use Symfony\Component\Console\Input\InputInterface;
+use SilverStripe\Console\PolyOutput;
 use SilverStripe\Dev\BuildTask;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class ReviewRecentLLMEdits extends BuildTask
 {
-    protected $title = 'Review Recent LLM Edits';
+    protected string $title = 'Review Recent LLM Edits';
 
     protected $description = 'Review recent changes made via LLM.';
 
-    private static $segment = 'acm-review-recent-llm-edits';
+    protected static string $commandName = 'acm-review-recent-llm-edits';
 
-    public function run($request)
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
         $this->editsMadeInLastFewDays();
+        return 0;
     }
 
     protected function editsMadeInLastFewDays()

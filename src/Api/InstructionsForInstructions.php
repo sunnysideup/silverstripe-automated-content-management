@@ -282,6 +282,7 @@ class InstructionsForInstructions
         if ($obj instanceof DBEnum) {
             return false;
         }
+
         return $obj instanceof DBString;
     }
 
@@ -292,6 +293,7 @@ class InstructionsForInstructions
         if (str_starts_with($string, 'DB')) {
             $string = substr($string, 2);
         }
+
         return match ($string) {
             'HTMLText' => 'HTML',
             'HTMLVarchar' => 'HTML',

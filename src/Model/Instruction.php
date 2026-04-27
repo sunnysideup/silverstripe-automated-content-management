@@ -708,6 +708,7 @@ class Instruction extends DataObject
         if (! $this->Title) {
             return false;
         }
+
         // can still process...
         // if ($this->StartedProcess) {
         //     return false;
