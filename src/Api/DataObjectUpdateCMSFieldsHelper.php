@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AutomatedContentManagement\Api;
 
+use SilverStripe\Forms\FormField;
 use SilverStripe\Control\Controller;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
@@ -88,7 +89,7 @@ class DataObjectUpdateCMSFieldsHelper
             //     continue;
             // }
             $field = $fields->dataFieldByName($acceptableFieldName);
-            if (! $field) {
+            if (!$field instanceof FormField) {
                 continue;
             }
 

@@ -1,25 +1,30 @@
 <?php
 
 
-namespace Sunnysideup\AutomatedContentManagement\Tasks;
-
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DB;
+use SilverStripe\PolyExecution\PolyOutput;
 use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 
 class ProcessInstructions extends BuildTask
 {
-    protected $title = 'Process LLM Instructions';
+    protected string $title = 'Process LLM Instructions';
 
-    protected $description = 'Processes LLM instructions for automated content management.';
+    protected static string $description = 'Processes LLM instructions for automated content management.';
 
-    protected $enabled = true;
+    /**
+     * @config
+     */
+    private static $is_enabled = true;
 
-    private static $segment = 'acm-process-instructions';
+    protected static string $commandName = 'acm-process-instructions';
 
     protected $processor;
 
@@ -64,22 +69,23 @@ class ProcessInstructions extends BuildTask
         return $this->resultsAsArray;
     }
 
-    public function run($request)
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
+        $this->output = $output;
         DB::query('SET SESSION wait_timeout=1200;');
-        if ($request && $request->getVar('instruction')) {
-            $this->instruction = Instruction::get()->byID($request->getVar('instruction'));
+        if ($input->getOption('instruction')) {
+            $this->instruction = Instruction::get()->byID($input->getOption('instruction'));
             if (! $this->instruction) {
                 $this->log('ERROR: Instruction not found', 'deleted');
-                return;
+                return Command::FAILURE;
             }
         }
 
-        if ($request && $request->getVar('recordprocess')) {
-            $this->recordProcess = RecordProcess::get()->byID($request->getVar('recordprocess'));
+        if ($input->getOption('recordprocess')) {
+            $this->recordProcess = RecordProcess::get()->byID($input->getOption('recordprocess'));
             if (! $this->recordProcess) {
                 $this->log('ERROR: Record Process not found', 'deleted');
-                return;
+                return Command::FAILURE;
             }
         }
 
@@ -96,6 +102,7 @@ class ProcessInstructions extends BuildTask
         $this->cleanupRecordProcesses();
         $this->updateAllInstructions();
         $this->showLink();
+        return Command::SUCCESS;
     }
 
     protected function allInstructions()
@@ -443,9 +450,9 @@ class ProcessInstructions extends BuildTask
     {
         $obj = $this->instruction ?: $this->recordProcess;
         if ($obj) {
-            echo '<h2>Back to <a href="/' . $obj->CMSEditLink() . '">' . $obj->getTitle() . '</a></h2>';
+            $this->output->writeForHtml('<h2>Back to <a href="/' . $obj->CMSEditLink() . '">' . $obj->getTitle() . '</a></h2>');
         } else {
-            echo '<h2><a href="/admin/llm-edits/">Go to LLM Edits</a></h2>';
+            $this->output->writeForHtml('<h2><a href="/admin/llm-edits/">Go to LLM Edits</a></h2>');
         }
     }
 
@@ -465,7 +472,20 @@ class ProcessInstructions extends BuildTask
         if ($this->returnResultsAsArray) {
             $this->resultsAsArray[] = ['message' => $message, 'style' => $style];
         } else {
-            DB::alteration_message($message, $style);
+            $this->output->writeln(strip_tags($message));
         }
+    }
+
+    #[Override]
+    public function getOptions(): array
+    {
+        return [
+            new InputOption('instruction', 'i', InputOption::VALUE_REQUIRED, 'ID of the instruction'),
+            new InputOption('recordprocess', 'p', InputOption::VALUE_REQUIRED, 'ID of the record process')
+        ];
+    }
+}
+    {
+        return [new InputOption('instruction', null, InputOption::VALUE_NONE, 'do something specific'), new InputOption('recordprocess', null, InputOption::VALUE_NONE, 'do something specific')];
     }
 }

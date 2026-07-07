@@ -12,7 +12,16 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\FieldType\DBHTMLText;
 use SilverStripe\Security\Permission;
-use SilverStripe\View\SSViewer_FromString;
+
+/**
+  * ### @@@@ START REPLACEMENT @@@@ ###
+  * WHY: automated upgrade
+  * OLD: SilverStripe\View\SSViewer_FromString
+  * NEW: SilverStripe\TemplateEngine\SSTemplateEngine::renderString() ...  (COMPLEX)
+  * EXP: Removed deprecated class SilverStripe\View\SSViewer_FromString - replaced with SSTemplateEngine::renderString(). See: https://docs.silverstripe.org/en/6/changelogs/6.0.0/
+  * ### @@@@ STOP REPLACEMENT @@@@ ###
+  */
+use SilverStripe\TemplateEngine\SSTemplateEngine::renderString();
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
@@ -154,11 +163,7 @@ class RecordProcess extends DataObject
         }
 
         $instruction = $this->Instruction();
-        if ($instruction->getIsReadyForProcessing() && !$this->getCanNotProcessAnymore()) {
-            return true;
-        }
-
-        return false;
+        return $instruction->getIsReadyForProcessing() && !$this->getCanNotProcessAnymore();
     }
 
     public function IsInTargetRecords(): bool
@@ -726,7 +731,7 @@ class RecordProcess extends DataObject
                     $value = true;
                 } else {
                     $value = strtolower(strip_tags((string) $value));
-                    $value = $value === 'true' || $value === '1' || $value === 'yes' || $value === 'on';
+                    $value = in_array($value, ['true', '1', 'yes', 'on'], true);
                 }
 
                 break;
