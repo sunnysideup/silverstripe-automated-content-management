@@ -13,6 +13,7 @@ class ReviewRecentLLMEdits extends BuildTask
     protected $description = 'Review recent changes made via LLM.';
 
     private static $segment = 'acm-review-recent-llm-edits';
+
     public function run($request)
     {
         $this->editsMadeInLastFewDays();
@@ -25,7 +26,7 @@ class ReviewRecentLLMEdits extends BuildTask
         $edits = RecordProcess::get()->filter([
             'LastEdited:GreaterThan' => $date,
             'OriginalUpdated' => true,
-        ])->sort('LastEdited', 'DESC');
+        ])->sort(['LastEdited' => 'DESC']);
         echo '<h2>LLM Updates made in the last ' . $days . ' days</h2>';
         echo '<ul>';
         foreach ($edits as $edit) {
@@ -33,6 +34,7 @@ class ReviewRecentLLMEdits extends BuildTask
                 <a href="' . $edit->Link() . '">' . $edit->getTitle() . '</a>
             </li>';
         }
+
         echo '</ul>';
     }
 }

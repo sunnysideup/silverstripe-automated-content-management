@@ -18,7 +18,7 @@ class DataObjectExtensionForLLM extends Extension
         // Add your custom fields to the CMS fields here
 
         $this->callProtectedMethod(
-            $this->owner,
+            $this->getOwner(),
             'afterUpdateCMSFields',
             [
                 function (FieldList $fields) use ($owner) {
@@ -33,17 +33,17 @@ class DataObjectExtensionForLLM extends Extension
 
     public function getCreateNewLLMInstructionForOneRecordLink(): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforonerecord', $this->owner->ClassName, $this->owner->ID);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforonerecord', $this->getOwner()->ClassName, $this->getOwner()->ID);
     }
 
     public function getCreateNewLLMInstructionForOneRecordOneFieldLink(string $fieldName): string
     {
-        return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforonerecordonefield', $this->owner->ClassName, $this->owner->ID, $fieldName);
+        return DataObjectUpdateCMSFieldsHelper::my_link_builder('createinstructionforonerecordonefield', $this->getOwner()->ClassName, $this->getOwner()->ID, $fieldName);
     }
+
     private function callProtectedMethod(object $object, string $methodName, array $args = [])
     {
-        $refMethod = new ReflectionMethod($object, $methodName);
-        $refMethod->setAccessible(true); // still needed for unrelated classes
+        $refMethod = new ReflectionMethod($object, $methodName); // still needed for unrelated classes
         return $refMethod->invokeArgs($object, $args);
     }
 }

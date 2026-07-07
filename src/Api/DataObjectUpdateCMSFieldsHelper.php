@@ -8,13 +8,9 @@ use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
 use SilverStripe\Forms\HTMLEditor\HTMLEditorField_Readonly;
-use SilverStripe\Forms\LiteralField;
-use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\SiteConfig\SiteConfig;
-use SilverStripe\View\HTML;
 use Sunnysideup\AutomatedContentManagement\Control\QuickEditController;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
@@ -33,6 +29,7 @@ class DataObjectUpdateCMSFieldsHelper
             $arg = str_replace('\\', '-', $arg);
             $args[$key] = rawurlencode($arg);
         }
+
         return self::my_link(Controller::join_links(...$args));
     }
 
@@ -46,6 +43,7 @@ class DataObjectUpdateCMSFieldsHelper
     }
 
     protected static $record_count_cache = [];
+
     protected static $fields_completed = [];
 
     public function updateCMSFields($owner, FieldList $fields)
@@ -61,11 +59,13 @@ class DataObjectUpdateCMSFieldsHelper
         if (! isset($acceptableClasses[$owner->ClassName])) {
             return;
         }
+
         // Add your custom fields to the CMS fields here
         if ($owner->ID && $owner->exists() && $owner->canEdit()) {
             if (!isset(self::$fields_completed[$owner->ClassName])) {
                 self::$fields_completed[$owner->ClassName] = [];
             }
+
             $this->addLinksToInstructions($owner, $fields);
             $this->addGenericLinksToRecord($owner, $fields);
         }
@@ -91,6 +91,7 @@ class DataObjectUpdateCMSFieldsHelper
             if (! $field) {
                 continue;
             }
+
             // echo 'Field found: ' . $acceptableFieldName . "\n";
             $this->addLinksToInstructionsToOneField($owner, $field, $fields);
         }
@@ -103,22 +104,27 @@ class DataObjectUpdateCMSFieldsHelper
         if (! $hasDescField && !$hasRightTitlteField) {
             return;
         }
+
         if ($field->hasExtraClass('llm-field')) {
             return;
         }
+
         if ($field->hasExtraClass('llm-field-skip')) {
             return;
         }
+
         if ($field->isReadonly()) {
             return;
         }
+
         if ($hasDescField) {
             $getMethod = 'getDescription';
             $setMethod = 'setDescription';
-        } else if ($hasRightTitlteField) {
+        } elseif ($hasRightTitlteField) {
             $getMethod = 'getRightTitle';
             $setMethod = 'setRightTitle';
         }
+
         $fieldName = $field->getName();
         if ($fieldName) {
             self::$fields_completed[$owner->ClassName][$fieldName] = true;
@@ -126,6 +132,7 @@ class DataObjectUpdateCMSFieldsHelper
             if ($description instanceof DBField) {
                 $description = $description->getValue();
             }
+
             $description .= $this->getDescriptionForOneRecordAndField(
                 $owner,
                 $field->getName()
@@ -182,6 +189,7 @@ class DataObjectUpdateCMSFieldsHelper
             foreach ($allInstructions as $i) {
                 $recordProcessIds = array_merge($recordProcessIds, $i->ReviewableRecords()->columnUnique('ID'));
             }
+
             $reviewableRecords = RecordProcess::get()->filter([
                 'ID' => $recordProcessIds,
                 'RecordID' => $owner->ID,
@@ -206,6 +214,7 @@ class DataObjectUpdateCMSFieldsHelper
                     $existingLLMInstructionsForRunningIds[] = $i->ID;
                 }
             }
+
             $existingLLMInstructionsForRunning = $allInstructions
                 ->filter([
                     'ID' => $existingLLMInstructionsForRunningIds,
@@ -252,6 +261,7 @@ class DataObjectUpdateCMSFieldsHelper
                             $link = $instruction->getSelectExistingLLMInstructionForOneRecordLink($owner);
                         }
                     }
+
                     $desc .= '
                         <div>
                             <a href="' . $infoLink . '" class="icon-on-right"><span class="font-icon-info-circled"></span></a>
@@ -273,6 +283,7 @@ class DataObjectUpdateCMSFieldsHelper
                     $toUpdateNameClass = 'for this field (' . $fieldNameNice . ') on all records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
                     $desc .= '<div><a href="' . $link . '">++ ' . $toUpdateNameClass . '</a></div>';
                 }
+
                 $randomName = 'ta_' . uniqid();
                 $link = $this->getCreateNewLLMInstructionForClassOneFieldLinkTestNow($owner->ClassName, $fieldName, $owner);
                 $iForI = Injector::inst()->get(InstructionsForInstructions::class, false, [$owner]);
@@ -293,6 +304,7 @@ class DataObjectUpdateCMSFieldsHelper
                     $desc .= '<div><a href="' . $link . '">++ ' . $toUpdateNameClass . '</a></div>';
                 }
             }
+
             $desc .= '</div>';
         } else {
             // 🤖
@@ -301,6 +313,7 @@ class DataObjectUpdateCMSFieldsHelper
                 <a href="' . $link . '" onclick="loadContentForLLMFunction(event)" title="edit with LLM (large language model / ai)">✨</a>
             </div>';
         }
+
         // update field
         return $desc;
     }
@@ -311,6 +324,7 @@ class DataObjectUpdateCMSFieldsHelper
         if (isset(self::$fields_completed[$owner->ClassName][$tabName])) {
             return;
         }
+
         self::$fields_completed[$owner->ClassName][$tabName] = true;
         $fields->addFieldsToTab(
             $tabName,
@@ -351,6 +365,7 @@ class DataObjectUpdateCMSFieldsHelper
         if ($fieldName) {
             return $this->getEnableFieldLink($owner, $fieldName);
         }
+
         return $this->getEnableClassLink($owner);
     }
 
@@ -369,6 +384,7 @@ class DataObjectUpdateCMSFieldsHelper
         if ($fieldName) {
             return $this->getDisableFieldLink($owner, $fieldName);
         }
+
         return $this->getDisableClassLink($owner);
     }
 
@@ -386,9 +402,10 @@ class DataObjectUpdateCMSFieldsHelper
     {
         $siteConfig = SiteConfig::current_site_config();
         if ($siteConfig->LLMEnabledClassNames) {
-            $enabledClasses = explode(',', $siteConfig->LLMEnabledClassNames);
+            $enabledClasses = explode(',', (string) $siteConfig->LLMEnabledClassNames);
             return in_array($owner->ClassName, $enabledClasses);
         }
+
         return false;
     }
 
@@ -397,11 +414,13 @@ class DataObjectUpdateCMSFieldsHelper
         if (!$fieldName) {
             return true;
         }
+
         $siteConfig = SiteConfig::current_site_config();
         if ($siteConfig->LLMEnabledFieldNames) {
-            $enabledFields = explode(',', $siteConfig->LLMEnabledFieldNames);
-            return in_array($fieldName, $enabledFields);
+            $enabledFields = explode(',', (string) $siteConfig->LLMEnabledFieldNames);
+            return in_array($fieldName, $enabledFields, true);
         }
+
         return true;
     }
 
@@ -411,6 +430,7 @@ class DataObjectUpdateCMSFieldsHelper
             $className = $owner->ClassName;
             self::$record_count_cache[$owner->ClassName] = $className::get()->count();
         }
+
         return self::$record_count_cache[$owner->ClassName];
     }
 }

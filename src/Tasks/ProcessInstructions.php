@@ -24,6 +24,7 @@ class ProcessInstructions extends BuildTask
     protected $processor;
 
     protected $instruction = null;
+
     protected $recordProcess = null;
 
     private static string $delete_delay_for_record_processes = '-90 days';
@@ -35,6 +36,7 @@ class ProcessInstructions extends BuildTask
     protected int $countOfAiInteractions = 0;
 
     protected bool $returnResultsAsArray = false;
+
     protected array $resultsAsArray = [];
 
 
@@ -72,6 +74,7 @@ class ProcessInstructions extends BuildTask
                 return;
             }
         }
+
         if ($request && $request->getVar('recordprocess')) {
             $this->recordProcess = RecordProcess::get()->byID($request->getVar('recordprocess'));
             if (! $this->recordProcess) {
@@ -79,6 +82,7 @@ class ProcessInstructions extends BuildTask
                 return;
             }
         }
+
         $this->processor = Injector::inst()->get(ProcessOneRecord::class);
         $this->processor->setVerbose(true);
         $this->processor->setReturnResultsAsArray($this->returnResultsAsArray);
@@ -148,7 +152,7 @@ class ProcessInstructions extends BuildTask
             'Completed' => false,
             'Locked' => false,
             'StartedProcess' => false,
-            'Created:LessThan' => date('Y-m-d H:i:s', strtotime($delay)),
+            'Created:LessThan' => date('Y-m-d H:i:s', strtotime((string) $delay)),
         ]);
     }
 
@@ -193,6 +197,7 @@ class ProcessInstructions extends BuildTask
                 $instruction->StartedProcess = true;
                 $instruction->write();
             }
+
             $recordProcesses = $instruction->ReadyForProcessingRecords();
             // if it is a test, only include the tests.
 
@@ -200,6 +205,7 @@ class ProcessInstructions extends BuildTask
             if (! $recordProcesses->exists()) {
                 continue;
             }
+
             $this->log('... Processing instruction: ' . $instruction->getTitle() . '... Found ' . $recordProcesses->count() . ' record processes to process');
             /**
              * @var RecordProcess $recordProcess
@@ -212,17 +218,20 @@ class ProcessInstructions extends BuildTask
                         $this->log('... ... ... Deleted record process as record is no longer in target records', 'deleted');
                         continue;
                     }
+
                     $this->countOfAiInteractions++;
                     if ($this->countOfAiInteractions > $maxInteractions) {
                         $this->log('... ... ... Stopping as max number of AI interactions reached', 'deleted');
                         break 2;
                     }
+
                     $outcome = $this->processor->recordAnswer($recordProcess);
                     if ($outcome) {
                         $this->log('... ... ... Processed this record process', 'created');
                     } else {
                         $this->log('... ... ... Could not process this record process', 'deleted');
                     }
+
                     $this->logMany($this->processor->getResultsAsArray());
                 } else {
                     $this->log('... ... ... Cannot process this record process', 'deleted');
@@ -240,6 +249,7 @@ class ProcessInstructions extends BuildTask
             if (! $recordProcesses->exists()) {
                 continue;
             }
+
             $this->log('... Processing instruction: ' . $instruction->getTitle() . '... Found ' . $recordProcesses->count() . ' record processes to accept');
 
             /**
@@ -267,6 +277,7 @@ class ProcessInstructions extends BuildTask
             if (! $recordProcesses->exists()) {
                 continue;
             }
+
             $this->log('... Processing instruction: ' . $instruction->getTitle() . '... Found ' . $recordProcesses->count() . ' record processes to accept');
 
             /**
@@ -277,11 +288,13 @@ class ProcessInstructions extends BuildTask
                 $this->log('... ... Accepting record process: ' . $recordProcess->getRecordTitle(), 'created');
                 $recordProcess->AcceptResult();
             }
+
             if (!$instruction->ReviewableRecords()->exists()) {
                 $instruction->AcceptAll = false;
                 $instruction->write();
             }
         }
+
         $listRejectAll = $instructions->filter(['RejectAll' => true]);
         foreach ($listRejectAll as $instruction) {
             $recordProcesses = $instruction->ReviewableRecords();
@@ -289,6 +302,7 @@ class ProcessInstructions extends BuildTask
             if (! $recordProcesses->exists()) {
                 continue;
             }
+
             $this->log('... Processing instruction: ' . $instruction->getTitle() . '... Found ' . $recordProcesses->count() . ' record processes to reject');
             /**
              * @var RecordProcess $recordProcess
@@ -297,6 +311,7 @@ class ProcessInstructions extends BuildTask
                 $this->log('... ... Rejecting record process: ' . $recordProcess->getRecordTitle(), 'deleted');
                 $recordProcess->RejectResult();
             }
+
             if (!$instruction->ReviewableRecords()->exists()) {
                 $instruction->RejectAll = false;
                 $instruction->write();
@@ -315,6 +330,7 @@ class ProcessInstructions extends BuildTask
             if (! $recordProcesses->exists()) {
                 continue;
             }
+
             $this->log('... Processing instruction: ' . $instruction->getTitle() . '... Found ' . $recordProcesses->count() . ' original records to update');
             /**
              * @var RecordProcess $recordProcess
@@ -324,6 +340,7 @@ class ProcessInstructions extends BuildTask
                 $this->processor->updateOriginalRecord($recordProcess);
                 $this->logMany($this->processor->getResultsAsArray());
             }
+
             $instruction->write();
         }
     }
@@ -337,6 +354,7 @@ class ProcessInstructions extends BuildTask
                 $this->log('... NOT deleting instruction: ' . $instruction->getTitle() . ' as it has accepted or updated records ... ', 'deleted');
                 continue;
             }
+
             $this->log('... Deleting instruction: ' . $instruction->getTitle() . ' ... ', 'deleted');
             $instruction->delete();
         }
@@ -346,7 +364,7 @@ class ProcessInstructions extends BuildTask
     {
         $this->log('=== Cleaning up record processes (deleting old ones)');
         $delay = $this->Config()->get('delete_delay_for_record_processes') ?: self::$delete_delay_for_record_processes ?: '-90 days';
-        $oldFilter = ['LastEdited:LessThan' => date('Y-m-d H:i:s', strtotime($delay))];
+        $oldFilter = ['LastEdited:LessThan' => date('Y-m-d H:i:s', strtotime((string) $delay))];
         $filters = [
             ['Instruction.Cancelled' => true],
             ['Rejected' => true],
@@ -362,6 +380,7 @@ class ProcessInstructions extends BuildTask
             if (!$recordProcessesFullList->exists()) {
                 continue;
             }
+
             $this->log('... Processing instruction: ' . $instruction->getTitle() . ' for cleanup of old record processes');
             // $this->log('... Found ' . $recordProcessesFullList->count() . ' record processes for instruction: ' . $instruction->getTitle());
             foreach ($filters as $filter) {
@@ -369,6 +388,7 @@ class ProcessInstructions extends BuildTask
                 if (!$recordProcesses->exists()) {
                     continue;
                 }
+
                 $this->log('... ... Found ' . $recordProcesses->count() . ' record processes to delete with filter: ' . print_r($filter, true));
                 /**
                  * @var RecordProcess $recordProcess
@@ -393,6 +413,7 @@ class ProcessInstructions extends BuildTask
                 'ID' => $this->recordProcess->InstructionID,
             ]);
         }
+
         return $instructions->shuffle();
     }
 
@@ -404,11 +425,13 @@ class ProcessInstructions extends BuildTask
                 'ID' => $this->recordProcess->ID,
             ]);
         }
+
         if ($instruction->NumberOfRecordsToProcessPerBatch) {
             $recordProcesses = $recordProcesses->limit($instruction->NumberOfRecordsToProcessPerBatch);
         } else {
             $recordProcesses = $recordProcesses->limit(25);
         }
+
         $recordProcesses = $recordProcesses->filter([
             'IsTest' => $instruction->RunTest,
         ]);
@@ -432,11 +455,13 @@ class ProcessInstructions extends BuildTask
             $this->log($item['message'] ?? 'ERROR - NO MESSAGE', $item['style'] ?? '');
         }
     }
+
     protected function log(string $message, string $style = '')
     {
         if (strlen($message) > 100) {
             $message = substr($message, 0, 100) . '...';
         }
+
         if ($this->returnResultsAsArray) {
             $this->resultsAsArray[] = ['message' => $message, 'style' => $style];
         } else {

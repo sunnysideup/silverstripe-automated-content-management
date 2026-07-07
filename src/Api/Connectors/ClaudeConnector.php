@@ -6,18 +6,14 @@ namespace Sunnysideup\AutomatedContentManagement\Api\Connectors;
 
 use Anthropic;
 use Exception;
-use SilverStripe\Core\Config\Configurable;
-use SilverStripe\Core\Environment;
-use SilverStripe\Core\Injector\Injectable;
-use OpenAI;
-use SilverStripe\Core\Config\Config;
-use SilverStripe\Core\Injector\Injector;
 use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
 
 class ClaudeConnector extends ConnectorBaseClass
 {
     protected string $shortName = 'Claude';
+
     protected string $defaultModel = 'claude-3-opus-20240229';
+
     protected function makeClient(): void
     {
         $this->client = Anthropic::client($this->getApiKey());
@@ -39,9 +35,9 @@ class ClaudeConnector extends ConnectorBaseClass
 
 
             return $response->content[0]->text;
-        } catch (Exception $e) {
-            error_log('Anthropic API error: ' . $e->getMessage());
-            throw $e;
+        } catch (Exception $exception) {
+            error_log('Anthropic API error: ' . $exception->getMessage());
+            throw $exception;
         }
     }
 }

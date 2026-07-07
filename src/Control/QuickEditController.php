@@ -5,7 +5,6 @@ namespace Sunnysideup\AutomatedContentManagement\Control;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPResponse;
-use SilverStripe\Control\RequestHandler;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\SiteConfig\SiteConfig;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
@@ -18,6 +17,7 @@ class QuickEditController extends Controller
 {
 
     private static $url_segment = 'llm-quick-edit';
+
     private static $allowed_actions = [
         'createselection' => 'CMS_ACCESS_LLMEDITOR',
         'turnllmfunctionsonoroff' => 'CMS_ACCESS_LLMEDITOR',
@@ -55,13 +55,18 @@ class QuickEditController extends Controller
     ];
 
     protected $instruction = null;
+
     protected ?string $providedClassName = null;
+
     protected $record = null;
+
     protected int $recordOrRecordProcessID = 0;
+
     protected $recordProcess = null;
+
     protected ?string $fieldName = null;
 
-    public function init()
+    protected function init()
     {
         parent::init();
         // Add any necessary initialization code here
@@ -81,6 +86,7 @@ class QuickEditController extends Controller
             $selection->write();
             return $this->redirect($selection->CMSEditLink());
         }
+
         return $this->httpError(500, 'Could not create new instruction for this record.');
     }
 
@@ -95,7 +101,8 @@ class QuickEditController extends Controller
         } else {
             $test = (int) $request->param('ID');
         }
-        $zeroOrOne = $test === 1 ? true : false;
+
+        $zeroOrOne = $test === 1;
         $siteConfig = SiteConfig::current_site_config();
         $siteConfig->LLMEnabled = $zeroOrOne;
         $siteConfig->write();
@@ -108,9 +115,11 @@ class QuickEditController extends Controller
         if ($this->providedClassName) {
             $this->addSiteConfigArrayField('LLMEnabledClassNames', $this->providedClassName);
         }
+
         if ($this->fieldName) {
             $this->addSiteConfigArrayField('LLMEnabledFieldNames', $this->fieldName);
         }
+
         if (Director::is_ajax()) {
             $html = Injector::inst()->get(DataObjectUpdateCMSFieldsHelper::class)
                 ->getDescriptionForOneRecordAndField($this->record,  $this->fieldName);
@@ -123,6 +132,7 @@ class QuickEditController extends Controller
             // );
             // return $response;
         }
+
         return $this->redirectBack();
     }
 
@@ -132,9 +142,11 @@ class QuickEditController extends Controller
         if ($this->providedClassName) {
             $this->removeSiteConfigArrayField('LLMEnabledClassNames', $this->providedClassName);
         }
+
         if ($this->fieldName) {
             $this->removeSiteConfigArrayField('LLMEnabledFieldNames', $this->fieldName);
         }
+
         if (Director::is_ajax()) {
             $html = Injector::inst()->get(DataObjectUpdateCMSFieldsHelper::class)
                 ->getDescriptionForOneRecordAndField($this->record,  $this->fieldName);
@@ -147,6 +159,7 @@ class QuickEditController extends Controller
             // );
             // return $response;
         }
+
         return $this->redirectBack();
     }
 
@@ -158,6 +171,7 @@ class QuickEditController extends Controller
         if ($this->instruction) {
             return $this->redirect($this->instruction->CMSEditLink());
         }
+
         return $this->httpError(500, 'Could not create new instruction for this record type.');
     }
 
@@ -168,6 +182,7 @@ class QuickEditController extends Controller
         if ($this->instruction) {
             return $this->redirect($this->instruction->CMSEditLink());
         }
+
         return $this->httpError(500, 'Could not create new instruction for this record type field.');
     }
 
@@ -183,8 +198,10 @@ class QuickEditController extends Controller
             if ($this->recordProcess->Completed) {
                 return $this->redirect($this->recordProcess->Link());
             }
+
             return $this->httpError(500, 'Could not complete processing of record - please try again later.');
         }
+
         return $this->httpError(500, 'Could not find record process or you do not have permission to view it.');
     }
 
@@ -243,6 +260,7 @@ class QuickEditController extends Controller
                 } else {
                     $v .= '<h3 style="color: red;">No results found.</h3>';
                 }
+
                 die($v);
             } else {
                 die('
@@ -252,6 +270,7 @@ class QuickEditController extends Controller
                 ');
             }
         }
+
         return $this->httpError(500, 'Could not create new instruction for this record type.');
     }
 
@@ -263,6 +282,7 @@ class QuickEditController extends Controller
         if ($this->instruction) {
             return $this->redirect($this->instruction->CMSEditLink());
         }
+
         return $this->httpError(500, 'Could not create new instruction for the record.');
     }
 
@@ -273,6 +293,7 @@ class QuickEditController extends Controller
         if ($this->recordProcess) {
             return $this->redirect($this->recordProcess->CMSEditLink());
         }
+
         return $this->httpError(500, 'Could not create new instruction for the record field.');
     }
 
@@ -284,6 +305,7 @@ class QuickEditController extends Controller
         if ($this->instruction) {
             return $this->redirect($this->instruction->CMSEditLink());
         }
+
         return $this->httpError(500, 'Could not add record to instruction.');
     }
 
@@ -293,6 +315,7 @@ class QuickEditController extends Controller
         if ($this->instruction) {
             return $this->redirect($this->instruction->CMSEditLink());
         }
+
         return $this->httpError(500, 'Could not add record / field combo to instruction.');
     }
 
@@ -308,6 +331,7 @@ class QuickEditController extends Controller
         } else {
             return $this->httpError(404, 'Could not find preview results.');
         }
+
         // Logic for saving the edited item
     }
 
@@ -323,6 +347,7 @@ class QuickEditController extends Controller
                     return $this->redirect($link);
                 }
             }
+
             return $this->redirect($this->recordProcess->CMSEditLink());
         } else {
             return $this->httpError(404, 'Could not find results.');
@@ -342,6 +367,7 @@ class QuickEditController extends Controller
                     return $this->redirect($link);
                 }
             }
+
             return $this->redirect($this->recordProcess->CMSEditLink());
         } else {
             return $this->httpError(404, 'Could not find preview results.');
@@ -358,6 +384,7 @@ class QuickEditController extends Controller
             if ($link) {
                 return $this->redirect($link);
             }
+
             return $this->redirect($this->recordProcess->CMSEditLink());
         } else {
             return $this->httpError(404, 'Could not find results.');
@@ -381,14 +408,13 @@ class QuickEditController extends Controller
         //get request params
         $instructionIDOrClassName = rawurldecode((string) $request->param('ID'));
         $instructionIDOrClassName = str_replace('-', '\\', $instructionIDOrClassName);
+
         $this->recordOrRecordProcessID = (int) $request->param('OtherID');
         $this->fieldName = rawurldecode((string) $request->param('FieldName'));
         //process params
         $this->providedClassName = null;
-        if (! intval($instructionIDOrClassName)) {
-            if ($instructionIDOrClassName && class_exists($instructionIDOrClassName)) {
-                $this->providedClassName = $instructionIDOrClassName;
-            }
+        if (intval($instructionIDOrClassName) === 0 && ($instructionIDOrClassName && class_exists($instructionIDOrClassName))) {
+            $this->providedClassName = $instructionIDOrClassName;
         }
 
 
@@ -396,31 +422,33 @@ class QuickEditController extends Controller
         // create new instruction
         if ($createInstruction && $this->providedClassName) {
             $this->providedClassName = $instructionIDOrClassName;
-            $this->instruction = new Instruction();
+            $this->instruction = Instruction::create();
             $this->instruction->ClassNameToChange = $this->providedClassName;
             //to do -check if the field name is valid
-            if ($this->fieldName) {
+            if ($this->fieldName !== '' && $this->fieldName !== '0') {
                 $this->instruction->FieldToChange = $this->fieldName;
             }
+
             if ($this->instruction->HasValidClassName()) {
                 $instructionID = $this->instruction->write();
             }
         } else {
             $instructionID = (int) $instructionIDOrClassName;
         }
-        $instructionID = (int) $instructionID;
-        if ($instructionID) {
-            $this->instruction = Instruction::get()->byID($instructionID);
 
+        $instructionID = (int) $instructionID;
+        if ($instructionID !== 0) {
+            $this->instruction = Instruction::get()->byID($instructionID);
             if ($this->instruction && $this->instruction->HasValidClassName()) {
-                if ($this->fieldName) {
+                if ($this->fieldName !== '' && $this->fieldName !== '0') {
                     if ($this->instruction->FieldToChange !== $this->fieldName) {
                         $this->instruction = null;
                     } elseif (! $this->instruction->HasValidFieldName()) {
                         $this->instruction = null;
                     }
                 }
-                if ($this->recordOrRecordProcessID) {
+
+                if ($this->recordOrRecordProcessID !== 0) {
                     if ($getRecordProcess) {
                         if ($this->instruction) {
                             $this->recordProcess = $this->instruction->RecordsToProcess()->byID($this->recordOrRecordProcessID);
@@ -442,11 +470,9 @@ class QuickEditController extends Controller
                     }
                 }
             }
-        } else {
-            if ($this->providedClassName) {
-                $className = $this->providedClassName;
-                $this->record = $className::get()->byID($this->recordOrRecordProcessID);
-            }
+        } elseif ($this->providedClassName) {
+            $className = $this->providedClassName;
+            $this->record = $className::get()->byID($this->recordOrRecordProcessID);
         }
     }
 
@@ -462,6 +488,7 @@ class QuickEditController extends Controller
         if (! strpos($url, 'http')) {
             $url = Director::absoluteURL($url);
         }
+
         die('
             <script>
                 window.location.href = "' . $url . '";
@@ -473,7 +500,7 @@ class QuickEditController extends Controller
     {
         $siteConfig = SiteConfig::current_site_config();
         $currentValue = $siteConfig->$fieldName ?: '';
-        $enabledClassNamesArray = explode(',', $currentValue);
+        $enabledClassNamesArray = explode(',', (string) $currentValue);
         if (in_array($value, $enabledClassNamesArray)) {
             $enabledClassNamesArray = array_diff($enabledClassNamesArray, [$value]);
             $siteConfig->$fieldName = implode(',', $enabledClassNamesArray);
@@ -485,7 +512,7 @@ class QuickEditController extends Controller
     {
         $siteConfig = SiteConfig::current_site_config();
         $currentValue = $siteConfig->$fieldName ?: '';
-        $enabledClassNamesArray = explode(',', $currentValue);
+        $enabledClassNamesArray = explode(',', (string) $currentValue);
         if (! in_array($value, $enabledClassNamesArray)) {
             $enabledClassNamesArray[] = $value;
             $siteConfig->$fieldName = implode(',', $enabledClassNamesArray);
@@ -498,6 +525,7 @@ class QuickEditController extends Controller
         if ($record && $record->hasMethod('CMSEditLink')) {
             return $record->CMSEditLink();
         }
+
         return null;
     }
 }
