@@ -24,7 +24,11 @@
         "silverstripe/admin": "^3.0",
         "openai-php/client": "^0.15",
         "mozex/anthropic-php": "^1.1",
-        "sunnysideup/yes-no-any-filter": "^5.0"
+        "sunnysideup/yes-no-any-filter": "^5.0",
+        "sunnysideup/classes-and-fields-info": "dev-main",
+        "sunnysideup/selections": "dev-main",
+        "sunnysideup/add-casted-variables": "dev-main",
+        "sunnysideup/optionsetfield-grouped": "dev-main"
     },
     "suggest": {
         "khalsa-jio/silverstripe-ai-nexus": "The Silverstripe way to connect to LLMs"
@@ -56,27 +60,5 @@
             "email": "modules@sunnysideup.co.nz",
             "role": "lead developer"
         }
-    ],
-    "yet-to-update": {
-        "sunnysideup/classes-and-fields-info": {
-            "section": "require",
-            "current": "^5.0-dev",
-            "reason": "no-compatible-stable-release"
-        },
-        "sunnysideup/selections": {
-            "section": "require",
-            "current": "^5.0-dev",
-            "reason": "no-compatible-stable-release"
-        },
-        "sunnysideup/add-casted-variables": {
-            "section": "require",
-            "current": "^5.0-dev",
-            "reason": "no-compatible-stable-release"
-        },
-        "sunnysideup/optionsetfield-grouped": {
-            "section": "require",
-            "current": "^5.0-dev",
-            "reason": "no-compatible-stable-release"
-        }
-    }
+    ]
 }
