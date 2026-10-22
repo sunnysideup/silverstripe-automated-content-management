@@ -30,7 +30,7 @@ use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
-use Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass;
+use Sunnysideup\AiLlmConnector\Api\ConnectorBaseClass;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
 use Sunnysideup\AutomatedContentManagement\Api\InstructionsForInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;

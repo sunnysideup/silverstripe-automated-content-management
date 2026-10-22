@@ -22,8 +22,7 @@
   "require": {
     "silverstripe/framework": "^5.0",
     "silverstripe/admin": "^2.0",
-    "openai-php/client": "^0.15",
-    "mozex/anthropic-php": "^1.1",
+    "sunnysideup/ai-llm-connector": "5.x-dev",
     "sunnysideup/classes-and-fields-info": "5.x-dev",
     "sunnysideup/selections": "5.x-dev",
     "sunnysideup/add-casted-variables": "5.x-dev",
@@ -31,7 +30,9 @@
     "sunnysideup/yes-no-any-filter": "5.x-dev"
   },
   "suggest": {
-    "khalsa-jio/silverstripe-ai-nexus": "The Silverstripe way to connect to LLMs"
+    "openai-php/client": "Allows using OpenAI models, see sunnysideup/ai-llm-connector",
+    "mozex/anthropic-php": "Allows using Anthropic Claude models, see sunnysideup/ai-llm-connector",
+    "google-gemini-php/client": "Allows using Google Gemini models, see sunnysideup/ai-llm-connector"
   },
   "require-dev": {
     "sunnysideup/sswebpack_engine_only": "5.x-dev",

@@ -10,44 +10,17 @@ This module allows you to connect your SilverStripe site with LLMs (Large Langua
 https://github.com/emteknetnz/silverstripe-content-ai
 
 
-## Environment Configuration
+## Connecting to the LLM
 
-Add these variables to your `.env` file:
-
-```shell
-# Required: Which LLM to use - "OpenAI" or "Claude"
-SS_LLM_CLIENT_NAME="OpenAI"
-
-# Required: Your API key
-SS_LLM_CLIENT_API_KEY="your-api-key-here"
-
-# If you want to use more than one LLMs, 
-# add their short name to the end of the environment variable
-SS_LLM_CLIENT_API_KEY_CLAUDE="your-api-key-here"
-SS_LLM_CLIENT_API_KEY_OPENAI="your-api-key-here"
-
-# Optional: Specific model to use (defaults provided if not set)
-SS_LLM_CLIENT_MODEL="gpt-4o"  # For OpenAI
-# Again, if you are using more than one LLM, 
-# use their short name like this:
-SS_LLM_CLIENT_MODEL_OPENAI="gpt-4o"  # For OpenAI
-SS_LLM_CLIENT_MODEL_CLAUDE="claude-3-opus-20240229"  # For OpenAI
-
-# OR
-SS_LLM_CLIENT_MODEL="claude-3-opus-20240229"  # For Anthropic
-```
-
-## Environment Configuation in YML
-
-You can also set the variables in the Silverstripe Config Layer, like this:
+The connection to ChatGPT, Claude, Gemini, etc. is handled by
+[sunnysideup/ai-llm-connector](../../../ai-llm-connector/docs/en/INDEX.md).
+See its documentation for environment variables, YML settings, supported models and
+how to write your own connector. For example:
 
 ```yml
-Sunnysideup\AutomatedContentManagement\Api\ConnectorBaseClass:
-  client_name: OpenAI # OR Sunnysideup\AutomatedContentManagement\Api\Connectors\OpenAIConnector
+Sunnysideup\AiLlmConnector\Api\ConnectorBaseClass:
+  client_name: OpenAI
   client_model: gpt-4o
-  client_model_openai: gpt-4o
-  client_model_claude: claude-3-opus-20240229
-
 ```
 
 ## Customising this project
@@ -121,36 +94,7 @@ For automated processing, set up a cron job:
 
 #### Custom LLM Connector
 
-Create a custom LLM connector by extending the base class:
-
-`app/_config/automated-content-management.yml`
-
-```yml
-
----
-Name: custom-acm-config
-After: 'automated-content-management'
----
-SilverStripe\Core\Injector\Injector:
-Sunnysideup\AutomatedContentManagement\Api\ConnectWithLLM:
-    class: MyProject\CustomLLMConnector
-```
-
-```php
-<?php
-namespace MyProject;
-
-use Sunnysideup\AutomatedContentManagement\Api\ConnectWithLLM;
-
-class CustomLLMConnector extends ConnectWithLLM
-{
-    // Method name must be ask{ClientName}
-    protected function askMistral(string $apiKey, string $question, ?string $model = null): string
-    {
-        // Implementation for a different LLM service
-        // Return the response text
-    }
-}
+See the [ai-llm-connector docs](../../../ai-llm-connector/docs/en/INDEX.md#writing-your-own-connector).
 
 Customize Processing Logic
 
@@ -174,7 +118,7 @@ class CustomRecordProcessor extends ProcessOneRecord
         // Customize how instructions are sent to the LLM
         $enhancedPrompt = "Follow these guidelines:\n- Be concise\n- Maintain brand voice\n\n" . $instruction;
         // Get the LLM connector and query it
-        $connector = Injector::inst()->get(ConnectWithLLM::class);
+        $connector = ConnectorBaseClass::inst();
         return $connector->askQuestion($enhancedPrompt);
     }
 }

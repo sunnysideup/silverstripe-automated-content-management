@@ -7,6 +7,7 @@ namespace Sunnysideup\AutomatedContentManagement\Api;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\ORM\DB;
+use Sunnysideup\AiLlmConnector\Api\ConnectorBaseClass;
 use Sunnysideup\AutomatedContentManagement\Model\RecordProcess;
 
 class ProcessOneRecord
