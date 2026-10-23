@@ -43,12 +43,14 @@ class RecordProcess extends DataObject
         'Accepted' => 'Boolean',
         'Rejected' => 'Boolean',
         'OriginalUpdated' => 'Boolean',
+        'AutoAccept' => 'Boolean',
         'LLMClient' => 'Varchar(40)',
         'LLMModel' => 'Varchar(40)',
     ];
 
     private static $has_one = [
         'Instruction' => Instruction::class,
+        'RecheckOf' => RecordProcess::class,
     ];
 
     private static $summary_fields = [
@@ -117,6 +119,7 @@ class RecordProcess extends DataObject
         'LastEdited' => true,
         'RecordID' => true,
         'InstructionID' => true,
+        'RecheckOfID' => true,
         'IsTest' => true,
         'ErrorFound' => true,
         'Skip' => true,
@@ -226,6 +229,26 @@ class RecordProcess extends DataObject
         }
 
         return  (bool) $this->OriginalUpdated;
+    }
+
+    public function getIsRecheck(): bool
+    {
+        return (bool) $this->RecheckOfID;
+    }
+
+    /**
+     * For rechecks: was the live value edited by someone (or something) else
+     * since the previous run wrote its answer?  Call after `Before` has been set
+     * to the current live value.
+     */
+    public function getLiveValueChangedSinceLastRun(): bool
+    {
+        $previous = $this->RecheckOf();
+        if (! $previous || ! $previous->exists()) {
+            return false;
+        }
+
+        return trim((string) $previous->getAfterDatabaseValue()) !== trim((string) $this->getBeforeDatabaseValue());
     }
 
     public function getRecordTitle(): string
@@ -451,7 +474,7 @@ class RecordProcess extends DataObject
                 $fields->dataFieldByName('LLMModel'),
             ]
         );
-        $fields->removeByName(['Question', 'InstructionID', 'RecordID']);
+        $fields->removeByName(['Question', 'InstructionID', 'RecordID', 'RecheckOfID', 'AutoAccept']);
         Injector::inst()->get(AddCastedVariablesHelper::class)->AddCastingFields(
             $this,
             $fields,
@@ -624,6 +647,10 @@ class RecordProcess extends DataObject
         $a = [];
         if ($this->IsTest) {
             $a[] = 'Is a Test Only';
+        }
+
+        if ($this->RecheckOfID) {
+            $a[] = 'Recheck of #' . $this->RecheckOfID;
         }
 
         if ($this->Skip) {

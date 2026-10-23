@@ -113,13 +113,12 @@ class CustomRecordProcessor extends ProcessOneRecord
         // Custom logic after processing
     }
 
-    protected function sendToLLM($instruction, $before)
+    protected function sendToLLM(string $question): string
     {
-        // Customize how instructions are sent to the LLM
-        $enhancedPrompt = "Follow these guidelines:\n- Be concise\n- Maintain brand voice\n\n" . $instruction;
+        // Customize how the question is sent to the LLM
+        $enhancedPrompt = "Follow these guidelines:\n- Be concise\n- Maintain brand voice\n\n" . $question;
         // Get the LLM connector and query it
-        $connector = ConnectorBaseClass::inst();
-        return $connector->askQuestion($enhancedPrompt);
+        return ConnectorBaseClass::inst()->askQuestion($enhancedPrompt);
     }
 }
 ```
@@ -161,3 +160,17 @@ Make sure to emphasize these key features: $Features
 ### Included models
 
 In order to include a model, it needs to have a method `CMSEditLink`. 
+
+### Rechecking answers after some time
+
+Set "Recheck answers after (days)" on an instruction to have records processed again after that many days.
+
+- Each recheck creates a **new** process log (`RecheckOf` points to the previous one), so history is kept.
+- Rechecks ignore the record selection. A selection such as "records without a value" would otherwise never
+  include records that were filled in by an earlier run.
+- A log is due when it is completed, its original record was updated (for "find errors only": completed),
+  it was not rejected or skipped, it is older than the interval, and it has not been rechecked yet.
+- The original record is updated automatically. The exception is when the live value differs from what the
+  previous run wrote (somebody edited it by hand): that answer is left for review instead.
+- Run `dev/build` after upgrading (new fields: `Instruction.RecheckAfterDays`,
+  `RecordProcess.RecheckOfID`, `RecordProcess.AutoAccept`).

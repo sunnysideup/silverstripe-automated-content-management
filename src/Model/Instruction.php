@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
 use SilverStripe\Control\Director;
+use SilverStripe\Core\Convert;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\DropdownField;
@@ -117,6 +118,7 @@ class Instruction extends DataObject
         'RejectAll' => 'Boolean',
         'AcceptAnswersImmediately' => 'Boolean',
         'Temperature' => 'Decimal(3,2)',
+        'RecheckAfterDays' => 'Int',
     ];
 
     private static $has_one = [
@@ -176,6 +178,7 @@ class Instruction extends DataObject
         'NumberOfTargetRecords' => 'Number of Target Records',
         'NumberOfRecords' => 'Number of records (to be) processed',
         'Temperature' => 'Temperature (creativity of the LLM)',
+        'RecheckAfterDays' => 'Recheck answers after (days)',
         'RecordIdsToAddToSelection' => 'Record IDs to add to selection',
         'FinalIdsToAddToSelection' => 'Final IDs to add to selection',
     ];
@@ -335,6 +338,15 @@ class Instruction extends DataObject
                         ->setDescription(
                             'Immediately accept answers from the LLM (AI) without review. Use with care!'
                         ),
+                    $fields->dataFieldByName('RecheckAfterDays')
+                        ->setDescription(
+                            'Leave empty or 0 to never recheck. Otherwise, this many days after a record has been processed
+                            (and its original record updated), the LLM is asked again, using the then current value as the starting point.
+                            Rechecks ignore the record selection (so records that no longer match it are still rechecked)
+                            and update the original record automatically.
+                            The exception: if someone has changed the value by hand since the last run,
+                            the new answer is held back for review.'
+                        ),
                     $fields->dataFieldByName('AcceptAll')
                         ->setDescription(
                             'This will allow you to accept all the changes for all the records in the list.
@@ -471,19 +483,33 @@ class Instruction extends DataObject
                 );
             }
 
+            $selectionDescription = 'Chooses <strong>which records</strong> this instruction works on. '
+                . 'Leave on "All records" to process every record of this type. '
+                . 'You can <a href="' . $addLink . '">create a new selection</a> or choose an existing one for your selected record type.';
+            if ($this->SelectionID > 0 && $this->Selection()->exists()) {
+                $selectionDescription .= '<br />The selection is defined (filters, sorting) in '
+                    . '<a href="' . $this->Selection()->CMSEditLink() . '" target="_blank">'
+                    . 'the selection "' . Convert::raw2xml($this->Selection()->Title) . '"</a>.';
+            }
+
+            $selectionDescription .= '<br />Note: records that were processed before are not picked up again by a selection that no longer matches them'
+                . ($this->getRechecksAreEnabled() ? ', but they will still be rechecked (see the recheck setting).' : '.');
             $dropdownField = DropdownField::create(
                 'SelectionID',
-                'Selection for this record type (optional)',
+                'Selection (which records to process)',
                 $this->getListForSelections()
-            )
-                ->setDescription(
-                    'You can <a href="' . $addLink . '">create a new selection</a>  or chose an existing one for your selected record type.'
-                );
+            )->setDescription($selectionDescription);
             $fields->addFieldsToTab(
                 'Root.TargetRecords',
                 [
                     $dropdownField,
                 ],
+            );
+            $fields->fieldByName('Root.TargetRecords')?->setTitle('Which records? (Selection)');
+            $fields->addFieldToTab(
+                'Root.Main',
+                LiteralField::create('SelectionSummary', $this->getSelectionSummaryHTML()),
+                $fields->dataFieldByName('Description') ? 'Description' : null
             );
             $fields->addFieldsToTab(
                 'Root.TargetRecords',
@@ -531,6 +557,24 @@ class Instruction extends DataObject
             $this->makeFieldsReadonly($fields);
             return $fields;
         }
+    }
+
+    /**
+     * Short summary for the Main tab, so people can see (and find) which records are targeted.
+     */
+    protected function getSelectionSummaryHTML(): string
+    {
+        $count = $this->getNumberOfTargetRecords();
+        if ($this->SelectionID > 0 && $this->Selection()->exists()) {
+            $what = 'the selection <strong>' . Convert::raw2xml($this->Selection()->Title) . '</strong>';
+        } elseif ((int) $this->SelectionID === self::MANUALLY_ADDED) {
+            $what = 'manually added records only';
+        } else {
+            $what = '<strong>all records</strong> of this type';
+        }
+
+        return '<p class="message notice">Records targeted: <strong>' . $count . '</strong> (' . $what . '). '
+            . 'To change this, go to the <strong>"Which records? (Selection)"</strong> tab.</p>';
     }
 
     public function HasRelatedListInstructions(): bool
@@ -685,7 +729,7 @@ class Instruction extends DataObject
 
     public function getIsReadyForProcessing(): bool
     {
-        if ($this->Completed && $this->RecordsMatchProcessedRecords()) {
+        if ($this->Completed && $this->RecordsMatchProcessedRecords() && ! $this->getRechecksAreEnabled()) {
             return false;
         }
 
@@ -755,7 +799,8 @@ class Instruction extends DataObject
 
     public function getProcessedRecords(): int
     {
-        return $this->RecordsToProcess()->filter(['Completed' => true, 'IsTest' => false])->count();
+        // rechecks are repeat runs for records that were already counted
+        return $this->RecordsToProcess()->filter(['Completed' => true, 'IsTest' => false, 'RecheckOfID' => 0])->count();
     }
 
     public function getPercentageCompleted(): float
@@ -939,11 +984,19 @@ class Instruction extends DataObject
     {
         if ($this->ReadyToProcess) {
             // if the number of records has been reduced, then we need to remove the obsolete records to process.
+            // rechecks are deliberately outside the selection, so they are never obsolete.
+            // when rechecking is on, completed logs are history that we need to keep.
+            $obsoleteFilter = [
+                'IsTest' => false,
+                'RecheckOfID' => 0,
+                'RecordID:Not' => $this->getRecordList()->columnUnique('ID') + [-1 => 1],
+            ];
+            if ($this->getRechecksAreEnabled()) {
+                $obsoleteFilter['Completed'] = false;
+            }
+
             $this->RecordsToProcess()
-                ->filter([
-                    'IsTest' => false,
-                    'RecordID:Not' => $this->getRecordList()->columnUnique('ID') + [-1 => 1],
-                ])
+                ->filter($obsoleteFilter)
                 ->removeAll();
         }
 
@@ -951,6 +1004,7 @@ class Instruction extends DataObject
         $processRecordsNotStarted = $this->RecordsToProcess()
             ->filter([
                 'Started' => false,
+                'RecheckOfID' => 0,
                 'RecordID:Not' => $list,
             ]);
         foreach ($processRecordsNotStarted as $item) {
@@ -1152,6 +1206,85 @@ class Instruction extends DataObject
             ->filter([
                 'Skip' => true,
             ]);
+    }
+
+    public function getRechecksAreEnabled(): bool
+    {
+        return (int) $this->RecheckAfterDays > 0;
+    }
+
+    /**
+     * Finished process logs that are older than RecheckAfterDays and have not been rechecked yet.
+     * Deliberately NOT limited to the selection: a selection like "records without a value"
+     * would never contain records that have been filled in by a previous run.
+     */
+    public function RecordsDueForRecheck(): DataList|UnsavedRelationList
+    {
+        $none = $this->RecordsToProcess()->filter(['ID' => -1]);
+        if (! $this->getRechecksAreEnabled()) {
+            return $none;
+        }
+
+        $cutoff = date('Y-m-d H:i:s', strtotime('-' . (int) $this->RecheckAfterDays . ' days'));
+        $list = $this->RecordsToProcess()
+            ->filter([
+                'IsTest' => false,
+                'Skip' => false,
+                'Rejected' => false,
+                'Completed' => true,
+                'LastEdited:LessThan' => $cutoff,
+            ]);
+        if (! $this->FindErrorsOnly) {
+            // only logs that have actually been applied to the record
+            $list = $list->filter(['OriginalUpdated' => true]);
+        }
+
+        // only the latest run for a record counts
+        $alreadyRechecked = $this->RecordsToProcess()
+            ->filter(['RecheckOfID:GreaterThan' => 0])
+            ->columnUnique('RecheckOfID');
+        if ($alreadyRechecked !== []) {
+            $list = $list->exclude(['ID' => $alreadyRechecked]);
+        }
+
+        return $list->sort('LastEdited ASC');
+    }
+
+    /**
+     * Queue new process logs (a new "generation") for records that are due for a recheck.
+     * The previous logs are kept as history.
+     *
+     * @return int number of rechecks queued
+     */
+    public function AddRecheckRecordProcesses(?int $limit = null): int
+    {
+        if (! $this->HasValidClassName() || ! $this->getRechecksAreEnabled()) {
+            return 0;
+        }
+
+        $limit = $limit ?: (int) $this->NumberOfRecordsToProcessPerBatch ?: 25;
+        $count = 0;
+        foreach ($this->RecordsDueForRecheck()->limit($limit * 4) as $previous) {
+            if ($count >= $limit) {
+                break;
+            }
+
+            // the record may have been deleted in the meantime
+            if (! $previous->getRecord(false)) {
+                continue;
+            }
+
+            RecordProcess::create([
+                'InstructionID' => $this->ID,
+                'RecordID' => $previous->RecordID,
+                'IsTest' => false,
+                'RecheckOfID' => $previous->ID,
+                'AutoAccept' => ! $this->FindErrorsOnly,
+            ])->write();
+            $count++;
+        }
+
+        return $count;
     }
 
     public function AddRecordsToInstruction(int|array|null $recordIds = null): void
@@ -1430,10 +1563,16 @@ class Instruction extends DataObject
     protected function getListForSelections(): array
     {
         $array = [];
-        $list = $this->getRecordList();
+        // count ALL records of this type, not the (selected) list
         $count = 0;
-        if ($list instanceof DataList) {
-            $count = $list->count();
+        $className = (string) $this->ClassNameToChange;
+        if ($this->HasValidClassName()) {
+            $all = $className::get();
+            if ($this->FilterForExactType) {
+                $all = $all->filter(['ClassName' => $className]);
+            }
+
+            $count = $all->count();
         }
 
         $array[self::ALL_RECORDS] = '-- All records (' . $count . ') --';

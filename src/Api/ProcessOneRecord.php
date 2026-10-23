@@ -54,10 +54,11 @@ class ProcessOneRecord
         } elseif ($recordProcess->getCanProcess()) {
             $recordProcess->Before = $record->$field;
             $connector = ConnectorBaseClass::inst();
+            // the connector is a shared (Injector) instance: always set the temperature
+            // so that a previous record's value does not leak into this one.
+            // 0 / empty makes the connector fall back to its configured default.
             $temperature = $recordProcess->Instruction()->Temperature;
-            if ($temperature && is_numeric($temperature)) {
-                $connector->setTemperature((float) $temperature);
-            }
+            $connector->setTemperature(is_numeric($temperature) ? (float) $temperature : 0.0);
 
             $recordProcess->Started = true;
             $recordProcess->Question = $question;
@@ -70,6 +71,13 @@ class ProcessOneRecord
             $this->outputMessage('ANSWER: ' . $answer . PHP_EOL . " writing to record process ID: " . $recordProcess->ID . PHP_EOL);
             $recordProcess->After = $answer;
             $recordProcess->Completed = true;
+            if ($recordProcess->AutoAccept && ! $recordProcess->getFindErrorsOnly()) {
+                if ($recordProcess->getLiveValueChangedSinceLastRun()) {
+                    $this->outputMessage('... value was changed since the previous run for record ID: ' . $recordProcess->RecordID . ' - NOT auto-accepting, please review.', 'error');
+                } else {
+                    $recordProcess->Accepted = true;
+                }
+            }
             if ($recordProcess->getFindErrorsOnly()) {
                 $recordProcess->ErrorFound = $recordProcess->getIsErrorAnswer($answer);
             }

@@ -165,6 +165,11 @@ class ProcessInstructions extends BuildTask
             if ($instruction->getIsReadyForProcessing()) {
                 $this->log('... Writing instruction: ' . $instruction->getTitle() . ' as it is ready to process ... ');
                 $instruction->AddRecordProcesses(false, null, $instruction->NumberOfRecordsToProcessPerBatch);
+                $rechecks = $instruction->AddRecheckRecordProcesses((int) $instruction->NumberOfRecordsToProcessPerBatch);
+                if ($rechecks > 0) {
+                    $this->log('... ... Queued ' . $rechecks . ' records for a recheck', 'created');
+                }
+
                 $instruction->write();
             } else {
                 $this->log('... NOT writing instruction: ' . $instruction->getTitle() . ' as it is NOT ready to process, or has been cancelled/completed).');
@@ -213,7 +218,7 @@ class ProcessInstructions extends BuildTask
             foreach ($recordProcesses as $recordProcess) {
                 $this->log('... ... Processing record process: ' . $recordProcess->getRecordTitle());
                 if ($recordProcess->getCanProcess()) {
-                    if ($recordProcess->IsInTargetRecords() === false) {
+                    if (! $recordProcess->RecheckOfID && $recordProcess->IsInTargetRecords() === false) {
                         $recordProcess->delete();
                         $this->log('... ... ... Deleted record process as record is no longer in target records', 'deleted');
                         continue;
