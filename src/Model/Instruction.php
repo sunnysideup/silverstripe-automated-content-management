@@ -30,8 +30,8 @@ use SilverStripe\Security\Member;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
-use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
 use Sunnysideup\AiLlmConnector\Api\ConnectorBaseClass;
+use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
 use Sunnysideup\AutomatedContentManagement\Api\InstructionsForInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
@@ -43,14 +43,13 @@ use Sunnysideup\Selections\Model\Selection;
 
 class Instruction extends DataObject
 {
+    use MakeFieldsRoadOnly;
 
     public const ALL_RECORDS = -2;
 
     public const MANUALLY_ADDED = -1;
 
     public const NO_RECORDS = 0;
-
-    use MakeFieldsRoadOnly;
 
     private static string $record_process_stuck_time = '-15 minutes';
 
@@ -99,9 +98,9 @@ class Instruction extends DataObject
         'ClassNameToChange' => 'Varchar(255)',
         'FieldToChange' => 'Varchar(255)',
         'Title' => 'Varchar(255)',
-        'FindRelatedRecordThroughFieldMatching' => 'Boolean',
         'FindErrorsOnly' => 'Boolean',
         'Description' => 'Text',
+        'RecheckAfterDays' => 'Int',
         'FilterForExactType' => 'Boolean',
         'FieldForRelatedList' => 'Varchar(255)',
         'AlwaysAddedInstruction' => 'Text',
@@ -118,7 +117,6 @@ class Instruction extends DataObject
         'RejectAll' => 'Boolean',
         'AcceptAnswersImmediately' => 'Boolean',
         'Temperature' => 'Decimal(3,2)',
-        'RecheckAfterDays' => 'Int',
     ];
 
     private static $has_one = [
@@ -320,7 +318,6 @@ class Instruction extends DataObject
                 $fields->addFieldToTab(
                     'Root.ProcessLogByStatus.' . $name,
                     $field
-
                 );
                 $count = ' (' . $count . ')';
                 $fields->fieldByName('Root.ProcessLogByStatus.' . $name)->setTitle($name . $count);
@@ -359,7 +356,6 @@ class Instruction extends DataObject
                         ),
                 ],
                 'RecordsToProcess'
-
             );
             $fields->dataFieldByName('RecordsToProcess')
                 ->setDescription(
@@ -1067,7 +1063,7 @@ class Instruction extends DataObject
         return $this->TestRecords()->count();
     }
 
-    public function  TestRecords(): DataList|UnsavedRelationList
+    public function TestRecords(): DataList|UnsavedRelationList
     {
         return $this->RecordsToProcess()
             ->filter([

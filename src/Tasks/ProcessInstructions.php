@@ -249,7 +249,8 @@ class ProcessInstructions extends BuildTask
     {
         $instructions = $this->readyToAcceptAnswersImmediatelyInstructions();
         foreach ($instructions as $instruction) {
-            $recordProcesses = $instruction->ReviewableRecords();
+            // rechecks that were held back because someone edited the value by hand need a human
+            $recordProcesses = $instruction->ReviewableRecords()->filter(['HeldForReview' => false]);
             $recordProcesses = $this->filterAndLimitRecordProcesses($recordProcesses, $instruction);
             if (! $recordProcesses->exists()) {
                 continue;

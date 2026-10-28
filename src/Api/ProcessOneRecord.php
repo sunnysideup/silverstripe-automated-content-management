@@ -73,6 +73,8 @@ class ProcessOneRecord
             $recordProcess->Completed = true;
             if ($recordProcess->AutoAccept && ! $recordProcess->getFindErrorsOnly()) {
                 if ($recordProcess->getLiveValueChangedSinceLastRun()) {
+                    // keeps it out of the "accept answers immediately" automation
+                    $recordProcess->HeldForReview = true;
                     $this->outputMessage('... value was changed since the previous run for record ID: ' . $recordProcess->RecordID . ' - NOT auto-accepting, please review.', 'error');
                 } else {
                     $recordProcess->Accepted = true;

@@ -44,6 +44,7 @@ class RecordProcess extends DataObject
         'Rejected' => 'Boolean',
         'OriginalUpdated' => 'Boolean',
         'AutoAccept' => 'Boolean',
+        'HeldForReview' => 'Boolean',
         'LLMClient' => 'Varchar(40)',
         'LLMModel' => 'Varchar(40)',
     ];
@@ -331,7 +332,7 @@ class RecordProcess extends DataObject
     protected function myRelationListAsArray(?int $limit = 1000): array
     {
         $instruction = $this->Instruction();
-        $field = $instruction->FieldForRelationList ?: 'Title';
+        $field = $instruction->FieldForRelatedList ?: 'Title';
         $list = $this->myRelationList($limit);
         $array = $list && $list->exists() ? $list->map('ID', $field)->toArray() : [0 => 'No related items found'];
 
@@ -474,7 +475,7 @@ class RecordProcess extends DataObject
                 $fields->dataFieldByName('LLMModel'),
             ]
         );
-        $fields->removeByName(['Question', 'InstructionID', 'RecordID', 'RecheckOfID', 'AutoAccept']);
+        $fields->removeByName(['Question', 'InstructionID', 'RecordID', 'RecheckOfID', 'AutoAccept', 'HeldForReview']);
         Injector::inst()->get(AddCastedVariablesHelper::class)->AddCastingFields(
             $this,
             $fields,
