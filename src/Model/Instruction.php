@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sunnysideup\AutomatedContentManagement\Model;
 
 use SilverStripe\Control\Director;
+use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Convert;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\CheckboxField;
@@ -26,8 +27,18 @@ use SilverStripe\Forms\ToggleCompositeField;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\UnsavedRelationList;
+use SilverStripe\Versioned\ChangeSet;
+use SilverStripe\Versioned\ChangeSetItem;
+use SilverStripe\SiteConfig\SiteConfig;
+use SilverStripe\UserForms\Model\EditableFormField;
+use SilverStripe\Security\Group;
+use SilverStripe\Security\LoginAttempt;
 use SilverStripe\Security\Member;
+use SilverStripe\Security\MemberPassword;
 use SilverStripe\Security\Permission;
+use SilverStripe\Security\PermissionRole;
+use SilverStripe\Security\PermissionRoleCode;
+use SilverStripe\Security\RememberLoginHash;
 use SilverStripe\Security\Security;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AiLlmConnector\Api\ConnectorBaseClass;
@@ -82,9 +93,25 @@ class Instruction extends DataObject
             'Time',
             'Currency',
         ],
+        // These replace (not add to) the defaults of ClassAndFieldInfo, so the sensitive models are repeated here.
+        // An LLM editor must never be able to point an instruction at users, groups, permissions or site settings.
         'excluded_models' => [
             Instruction::class,
             RecordProcess::class,
+            ChangeSet::class,
+            ChangeSetItem::class,
+            LoginAttempt::class,
+            RememberLoginHash::class,
+            MemberPassword::class,
+            Permission::class,
+            SiteConfig::class,
+        ],
+        'excluded_models_and_descendants' => [
+            EditableFormField::class,
+            Member::class,
+            Group::class,
+            PermissionRole::class,
+            PermissionRoleCode::class,
         ],
         'grouped' => true,
         'minimum_class_count' => 5,
@@ -588,6 +615,31 @@ class Instruction extends DataObject
     }
 
 
+    /**
+     * These make the (cron) task write the answers of the LLM into the live records without anyone reviewing them.
+     */
+    private const ADMIN_ONLY_FIELDS = ['AcceptAnswersImmediately', 'AcceptAll', 'RecheckAfterDays'];
+
+    /**
+     * A logged-in user who is not an admin can not switch on automatic acceptance (turning it off is fine).
+     * The cron task has no logged-in user so is not affected.
+     */
+    protected function stopNonAdminsFromAutoAccepting(): void
+    {
+        $member = Security::getCurrentUser();
+        if (! $member || Permission::checkMember($member, 'ADMIN')) {
+            return;
+        }
+
+        $changed = $this->getChangedFields();
+        foreach (self::ADMIN_ONLY_FIELDS as $field) {
+            if (isset($changed[$field]) && (int) $this->{$field} > 0) {
+                $before = $changed[$field]['before'] ?? 0;
+                $this->{$field} = $before ?: 0;
+            }
+        }
+    }
+
     protected function makeFieldsReadonlyInner(string $fieldName): bool
     {
         if ($this->Cancelled || $this->Locked) {
@@ -608,6 +660,11 @@ class Instruction extends DataObject
                 default:
                     break;
             }
+        }
+
+        // only an admin can switch on anything that publishes LLM answers without a review.
+        if (in_array($fieldName, self::ADMIN_ONLY_FIELDS, true) && ! Permission::check('ADMIN')) {
+            return true;
         }
 
         // always readonly
@@ -658,8 +715,31 @@ class Instruction extends DataObject
 
     public function HasValidClassName(): bool
     {
-        $className = $this->ClassNameToChange;
-        return $className && class_exists($className);
+        return self::class_name_is_allowed((string) $this->ClassNameToChange);
+    }
+
+    /**
+     * Is this class name one that an instruction may change?
+     * The class name often comes from the URL so it has to be a DataObject that is not excluded.
+     */
+    public static function class_name_is_allowed(string $className): bool
+    {
+        if ('' === $className || ! class_exists($className) || ! is_subclass_of($className, DataObject::class)) {
+            return false;
+        }
+
+        $schema = (array) Config::inst()->get(self::class, 'class_and_field_inclusion_exclusion_schema');
+        if (in_array($className, (array) ($schema['excluded_models'] ?? []), true)) {
+            return false;
+        }
+
+        foreach ((array) ($schema['excluded_models_and_descendants'] ?? []) as $parent) {
+            if ($className === $parent || is_subclass_of($className, $parent)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function HasValidFieldName(): bool
@@ -904,6 +984,7 @@ class Instruction extends DataObject
     protected function onBeforeWrite()
     {
         parent::onBeforeWrite();
+        $this->stopNonAdminsFromAutoAccepting();
         if ($this->HasRelatedListInstructions() && ! $this->FieldForRelatedList) {
             $options = $this->getListOfValidFieldsForRelation(false);
             $this->FieldForRelatedList = isset($options['Title']) ? 'Title' : (isset($options['Name']) ? 'Name' : array_key_first($options) ?? '');

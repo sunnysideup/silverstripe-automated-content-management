@@ -413,7 +413,7 @@ class QuickEditController extends Controller
         $this->fieldName = rawurldecode((string) $request->param('FieldName'));
         //process params
         $this->providedClassName = null;
-        if (intval($instructionIDOrClassName) === 0 && ($instructionIDOrClassName && class_exists($instructionIDOrClassName))) {
+        if (intval($instructionIDOrClassName) === 0 && ($instructionIDOrClassName && Instruction::class_name_is_allowed($instructionIDOrClassName))) {
             $this->providedClassName = $instructionIDOrClassName;
         }
 
@@ -485,13 +485,15 @@ class QuickEditController extends Controller
      */
     public function redirect(string $url, int $code = 302): HTTPResponse
     {
-        if (! strpos($url, 'http')) {
-            $url = Director::absoluteURL($url);
+        $url = Director::absoluteURL($url);
+        // never send somebody to another website, and never put the url straight into the script.
+        if (! Director::is_site_url($url)) {
+            $url = Director::absoluteBaseURL();
         }
 
         die('
             <script>
-                window.location.href = "' . $url . '";
+                window.location.href = ' . json_encode($url, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
             </script>');
         // return RequestHandler::redirect($url, $code);
     }

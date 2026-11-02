@@ -46,7 +46,7 @@ class QuickReviewController extends Controller
             if ($request->param('ID')) {
                 $classNameEscaped = $request->param('ID');
                 $classNameUnescaped = str_replace('-', '\\', $classNameEscaped);
-                if (class_exists($classNameUnescaped)) {
+                if (Instruction::class_name_is_allowed($classNameUnescaped)) {
                     $this->classNameUnescaped = $classNameUnescaped;
                     $this->classNameEscaped = $classNameEscaped;
                     if ($request->param('OtherID')) {
@@ -176,7 +176,7 @@ class QuickReviewController extends Controller
     {
 
         $al = ArrayList::create();
-        if (!class_exists($classNameUnescaped)) {
+        if (!Instruction::class_name_is_allowed($classNameUnescaped)) {
             return $al;
         }
 
