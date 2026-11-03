@@ -4,9 +4,13 @@ namespace Sunnysideup\AutomatedContentManagement\Control;
 
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
+use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\HTTPResponse;
+use SilverStripe\Control\HTTPResponse_Exception;
 use SilverStripe\Core\Convert;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Security\Security;
+use SilverStripe\Security\SecurityToken;
 use SilverStripe\SiteConfig\SiteConfig;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
 use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
@@ -67,10 +71,69 @@ class QuickEditController extends Controller
 
     protected ?string $fieldName = null;
 
+    /**
+     * Actions that do not change anything: they can be opened with a plain link.
+     * Every other action needs a POST with a valid SecurityID (or an AJAX request, see below).
+     *
+     * @var array
+     */
+    private static $actions_without_confirmation = [
+        'preview',
+    ];
+
     protected function init()
     {
         parent::init();
-        // Add any necessary initialization code here
+        $this->confirmDataChange($this->getRequest());
+    }
+
+    /**
+     * Without this, another website could make the browser of a logged-in editor open
+     * e.g. llm-quick-edit/acceptresultandupdate/1/2 and so change live content, or switch the LLM on / off.
+     *
+     * - a POST with a valid SecurityID goes ahead.
+     * - an AJAX call (the CMS buttons) goes ahead: a request with the X-Requested-With header
+     *   can not be made by another website (the browser would first ask this site for permission).
+     *   NB: we check the header only, not Director::is_ajax(), as that also accepts ?ajax=1.
+     * - anything else gets a confirmation form (that posts the SecurityID) instead of the action.
+     *
+     * @throws HTTPResponse_Exception
+     */
+    protected function confirmDataChange(HTTPRequest $request): void
+    {
+        $action = strtolower((string) $request->param('Action'));
+        $exempt = array_map('strtolower', (array) $this->config()->get('actions_without_confirmation'));
+        if ('' === $action || in_array($action, $exempt, true)) {
+            return;
+        }
+
+        // not logged in: the permission check of the action takes care of this.
+        if (! Security::getCurrentUser()) {
+            return;
+        }
+
+        if ('XMLHttpRequest' === $request->getHeader('X-Requested-With')) {
+            return;
+        }
+
+        if ($request->isPOST() && SecurityToken::inst()->checkRequest($request)) {
+            return;
+        }
+
+        $token = SecurityToken::inst();
+        $formAction = Director::baseURL() . ltrim($request->getURL(true), '/');
+        $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Please confirm</title></head><body>'
+            . '<form method="post" action="' . Convert::raw2att($formAction) . '" style="padding: 1rem; margin: 1rem; border: 2px solid #c00; background: #fff4f4;">'
+            . '<input type="hidden" name="' . Convert::raw2att($token->getName()) . '" value="' . Convert::raw2att($token->getValue()) . '" />'
+            . '<p><strong>Do you want to run this LLM action? (' . Convert::raw2xml($action) . ')</strong></p>'
+            . '<p>Nothing has been changed yet.</p>'
+            . '<button type="submit">Yes, do it now</button> '
+            . '<a href="' . Convert::raw2att(Director::baseURL()) . '">Cancel</a>'
+            . '</form></body></html>';
+
+        throw new HTTPResponse_Exception(
+            HTTPResponse::create($html, 200)->addHeader('Content-Type', 'text/html; charset=utf-8')
+        );
     }
 
     public function Link($action = null): string
