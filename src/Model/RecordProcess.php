@@ -12,10 +12,10 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\FieldType\DBHTMLText;
 use SilverStripe\Security\Permission;
-use SilverStripe\View\SSViewer_FromString;
 use Sunnysideup\AddCastedVariables\AddCastedVariablesHelper;
 use Sunnysideup\AutomatedContentManagement\Admin\AdminInstructions;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
+use Sunnysideup\AutomatedContentManagement\Api\LlmHtmlSanitiser;
 use Sunnysideup\AutomatedContentManagement\Api\ProcessOneRecord;
 use Sunnysideup\AutomatedContentManagement\Model\Instruction;
 use Sunnysideup\AutomatedContentManagement\Traits\MakeFieldsRoadOnly;
@@ -285,11 +285,9 @@ class RecordProcess extends DataObject
         $record = $this->getRecord(false);
         $value =  '';
         if ($record) {
-            $template = SSViewer_FromString::create($description);
-            $record->RelatedList = $this->myRelationListAsText();
-            //FUTURE: SSViewer::create()->renderString($description);
-            $return = $template->process($record);
-            $value = $return instanceof DBField ? $return->forTemplate() : $return;
+            // NOT the full template engine: that would give the author of an instruction
+            // access to every global (e.g. $SiteConfig, $CurrentMember) and to any relation or method.
+            $value = $this->hydratePlaceholders((string) $description, $record);
         }
 
         $add = $this->getAlwaysAddedInstruction();
@@ -298,6 +296,114 @@ class RecordProcess extends DataObject
         }
 
         return $value;
+    }
+
+    /**
+     * Restricted replacement of placeholders in the instructions:
+     *
+     *  - $RelatedList
+     *  - $FieldName, {$FieldName}, $FieldName.Nice for the database fields of the record
+     *  - $HasOneName.FieldName for the database fields of a has_one (of a class that may be used with instructions)
+     *  - <% if $FieldName %>...<% else %>...<% end_if %> (not nested)
+     *
+     * No method calls, no other property access, no loops. Unknown placeholders are left as they are.
+     * Values are inserted once and never parsed again.
+     */
+    protected function hydratePlaceholders(string $description, DataObject $record): string
+    {
+        $name = '[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)?';
+        $description = preg_replace_callback(
+            '/<%\s*if\s+\$?(' . $name . ')\s*%>(.*?)(?:<%\s*else\s*%>(.*?))?<%\s*end_if\s*%>/s',
+            function (array $matches) use ($record): string {
+                $value = $this->getPlaceholderValue($record, $matches[1]);
+                if ($value === null) {
+                    return $matches[0];
+                }
+
+                return ($value !== '' && $value !== '0') ? $matches[2] : ($matches[3] ?? '');
+            },
+            $description
+        ) ?? $description;
+
+        return preg_replace_callback(
+            '/\{\$(' . $name . ')\}|\$(' . $name . ')/',
+            function (array $matches) use ($record): string {
+                $key = $matches[2] ?? '';
+                if ($key === '') {
+                    $key = $matches[1];
+                }
+
+                $value = $this->getPlaceholderValue($record, $key);
+
+                return $value ?? $matches[0];
+            },
+            $description
+        ) ?? $description;
+    }
+
+    /**
+     * @return string|null null means: unknown placeholder
+     */
+    protected function getPlaceholderValue(DataObject $record, string $key): ?string
+    {
+        if ($key === 'RelatedList') {
+            return $this->myRelationListAsText();
+        }
+
+        $parts = explode('.', $key);
+        if (count($parts) === 1) {
+            return $this->getDatabaseFieldPlaceholderValue($record, $parts[0], false);
+        }
+
+        [$first, $second] = $parts;
+        // only the "Nice" version of a field of this record
+        if ($second === 'Nice') {
+            return $this->getDatabaseFieldPlaceholderValue($record, $first, true);
+        }
+
+        // database field of a has_one
+        $hasOnes = (array) $record->config()->get('has_one');
+        if (isset($hasOnes[$first]) && is_string($hasOnes[$first])) {
+            $relatedClass = $hasOnes[$first];
+            if (! Instruction::class_name_is_allowed($relatedClass)) {
+                return null;
+            }
+
+            $related = $record->$first();
+            if ($related instanceof DataObject && $related->exists() && Instruction::class_name_is_allowed($related->ClassName)) {
+                return $this->getDatabaseFieldPlaceholderValue($related, $second, false);
+            }
+
+            return $related instanceof DataObject ? '' : null;
+        }
+
+        return null;
+    }
+
+    protected function getDatabaseFieldPlaceholderValue(DataObject $record, string $fieldName, bool $nice): ?string
+    {
+        if (preg_match('/password|secret|token|apikey|api_key|hash|salt/i', $fieldName)) {
+            return null;
+        }
+
+        if ($fieldName === 'Title') {
+            return (string) $record->getTitle();
+        }
+
+        if (! DataObject::getSchema()->databaseField($record->ClassName, $fieldName)) {
+            return null;
+        }
+
+        $obj = $record->dbObject($fieldName);
+        if (! $obj) {
+            return null;
+        }
+
+        if ($nice) {
+            return $obj->hasMethod('Nice') ? strip_tags((string) $obj->Nice()) : null;
+        }
+
+        return (string) $obj->getValue();
     }
 
     protected function myRelationList(?int $limit = 1000): ?DataList
@@ -630,7 +736,8 @@ class RecordProcess extends DataObject
 
     public function getAfterHTMLValue(): DBHTMLText
     {
-        return DBHTMLText::create_field('HTMLText', $this->After);
+        // the LLM answer is not trusted: only an allow-list of tags / attributes is shown as HTML
+        return LlmHtmlSanitiser::to_html_field((string) $this->After);
     }
 
     public function getBeforeDatabaseValueForInspection(): string
@@ -734,11 +841,19 @@ class RecordProcess extends DataObject
             case 'HTMLText':
             case 'HTMLVarchar':
             case 'HTML':
-                $value = trim((string) $value);
+                // the LLM answer is not trusted: only an allow-list of tags / attributes is kept
+                $value = LlmHtmlSanitiser::sanitise((string) $value);
+                break;
+            case 'ExternalURL':
+            case 'URL':
+                $value = LlmHtmlSanitiser::sanitise_url(strip_tags((string) $value));
                 break;
             case 'Varchar':
             case 'Text':
                 $value =  (string) strip_tags((string) $value);
+                if ($this->isUrlField()) {
+                    $value = LlmHtmlSanitiser::sanitise_url($value);
+                }
                 break;
             case 'Int':
                 $value = strip_tags((string) $value);
@@ -771,6 +886,14 @@ class RecordProcess extends DataObject
         }
 
         return $value;
+    }
+
+    /**
+     * Fields like ExternalURL are plain varchar fields but must only ever hold http(s) or relative links.
+     */
+    protected function isUrlField(): bool
+    {
+        return (bool) preg_match('/(url|link|href)$/i', $this->getFieldToChange());
     }
 
     public function getRecordType(): ?string
@@ -828,7 +951,7 @@ class RecordProcess extends DataObject
             return '[OBJECT]';
         }
 
-        return '<textarea readonly rows="20">' . $value . '</textarea>';
+        return '<textarea readonly rows="20">' . htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</textarea>';
     }
 
     public function CMSEditLink(): string
@@ -873,6 +996,10 @@ class RecordProcess extends DataObject
         parent::onBeforeWrite();
         if ($this->isChanged('After')) {
             $this->After = trim((string) $this->After);
+            // sanitise LLM HTML before it is stored
+            if ($this->After !== '' && $this->InstructionID && $this->IsHTML()) {
+                $this->After = LlmHtmlSanitiser::sanitise($this->After);
+            }
         }
     }
 }

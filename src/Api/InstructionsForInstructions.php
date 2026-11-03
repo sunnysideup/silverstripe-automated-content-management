@@ -160,11 +160,7 @@ class InstructionsForInstructions
             . '</strong>'
             . '</p>'
             . '<p>'
-            . 'You can loop through lists like this:'
-            . '<br><strong>'
-            . '<% loop $Foo %>$Title <% end_loop %>'
-            . '</strong>'
-            . '<br>Where Foo is a has_many or many_many relationship on the record.'
+            . 'Only the variables listed above (and $RelatedList) can be used, loops and other template code are not supported.'
             . '</p>'
             . '</div>';
     }

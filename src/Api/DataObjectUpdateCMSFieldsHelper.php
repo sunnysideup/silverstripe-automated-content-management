@@ -5,6 +5,7 @@ namespace Sunnysideup\AutomatedContentManagement\Api;
 use SilverStripe\Control\Controller;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Core\Convert;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\FieldList;
@@ -172,7 +173,7 @@ class DataObjectUpdateCMSFieldsHelper
                     ]);
             }
 
-            $toUpdateName = $fieldName ? 'field: ' . $fieldNameNice : 'record: ' . $recordNameNice;
+            $toUpdateName = $fieldName ? 'field: ' . Convert::raw2xml((string) $fieldNameNice) : 'record: ' . Convert::raw2xml((string) $recordNameNice);
 
             $desc .= '<div class="llm-field-explanation llm-ajax-holder">';
 
@@ -202,7 +203,7 @@ class DataObjectUpdateCMSFieldsHelper
                         <div>
                             <a href="' . $reviewableRecord->CMSEditLink() . '" class="icon-on-right" title="Review log"><span class="font-icon-info-circled"></span></a>
                             ' . $reviewableRecord->getResultPreviewLinkHTML() . ' made by
-                            "' . $reviewableRecord->Instruction()->Title . '"
+                            "' . Convert::raw2xml($reviewableRecord->Instruction()->Title) . '"
                         </div>';
                 }
             }
@@ -265,7 +266,7 @@ class DataObjectUpdateCMSFieldsHelper
                     $desc .= '
                         <div>
                             <a href="' . $infoLink . '" class="icon-on-right"><span class="font-icon-info-circled"></span></a>
-                            <a href="' . $instructionLink . '">' . $instruction->getTitle() . '</a>: ' . $action . '
+                            <a href="' . $instructionLink . '">' . Convert::raw2xml($instruction->getTitle()) . '</a>: ' . $action . '
                         </div>';
                 }
             }
@@ -275,12 +276,12 @@ class DataObjectUpdateCMSFieldsHelper
             if ($fieldName) {
                 $instruction = Instruction::create();
                 $link = $owner->getCreateNewLLMInstructionForOneRecordOneFieldLink($fieldName);
-                $add = 'for this record (' . $owner->getTitle() . ')';
+                $add = 'for this record (' . Convert::raw2xml($owner->getTitle()) . ')';
                 $desc .= '<div><a href="' . $link . '">+ for this ' . $toUpdateName . ' ' . $add . '</a></div>';
                 $count = $this->getRecordCount($owner);
                 if ($count > 1) {
                     $link = $this->getCreateNewLLMInstructionForClassOneFieldLink($owner->ClassName, $fieldName);
-                    $toUpdateNameClass = 'for this field (' . $fieldNameNice . ') on all records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
+                    $toUpdateNameClass = 'for this field (' . Convert::raw2xml((string) $fieldNameNice) . ') on all records (' . $count . ') of this type (' . Convert::raw2xml($owner->i18n_singular_name()) . ')';
                     $desc .= '<div><a href="' . $link . '">++ ' . $toUpdateNameClass . '</a></div>';
                 }
 
@@ -296,11 +297,11 @@ class DataObjectUpdateCMSFieldsHelper
                 $desc .= '</div>';
             } else {
                 $link = $owner->getCreateNewLLMInstructionForOneRecordLink();
-                $desc .= '<div><a href="' . $link . '">+ for this record: ' . $owner->getTitle() . '</a></div>';
+                $desc .= '<div><a href="' . $link . '">+ for this record: ' . Convert::raw2xml($owner->getTitle()) . '</a></div>';
                 $count = $this->getRecordCount($owner);
                 if ($count > 1) {
                     $link = $this->getCreateNewLLMInstructionForClassLink($owner->ClassName);
-                    $toUpdateNameClass = 'on all records (' . $count . ') of this type (' . $owner->i18n_singular_name() . ')';
+                    $toUpdateNameClass = 'on all records (' . $count . ') of this type (' . Convert::raw2xml($owner->i18n_singular_name()) . ')';
                     $desc .= '<div><a href="' . $link . '">++ ' . $toUpdateNameClass . '</a></div>';
                 }
             }

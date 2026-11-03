@@ -5,6 +5,7 @@ namespace Sunnysideup\AutomatedContentManagement\Control;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPResponse;
+use SilverStripe\Core\Convert;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\SiteConfig\SiteConfig;
 use Sunnysideup\AutomatedContentManagement\Api\DataObjectUpdateCMSFieldsHelper;
@@ -250,11 +251,12 @@ class QuickEditController extends Controller
                             $v .= '<h3 style="color: green;">OK</h3>';
                         }
                     } else {
-                        $v .= $lastItem->getAfterHumanValue();
+                        // the answer comes from an LLM: never output it as HTML
+                        $v .= Convert::raw2xml($lastItem->getAfterHumanValue());
                         $v .= '<p>
-                            <a href="' . $lastItem->getAcceptAndUpdateLink() . '">update record</a> |
-                            <a href="' . $lastItem->getRejectLink() . '">reject</a> |
-                            <a href="' . $lastItem->getResultPreviewLink() . '" target="_blank">more details ...</a>
+                            <a href="' . Convert::raw2att($lastItem->getAcceptAndUpdateLink()) . '">update record</a> |
+                            <a href="' . Convert::raw2att($lastItem->getRejectLink()) . '">reject</a> |
+                            <a href="' . Convert::raw2att($lastItem->getResultPreviewLink()) . '" target="_blank">more details ...</a>
                         </p>';
                     }
                 } else {
